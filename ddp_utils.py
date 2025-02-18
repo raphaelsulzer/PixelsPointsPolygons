@@ -10,7 +10,6 @@ from datasets.dataset_spacenet_coco import SpacenetCocoDataset, SpacenetCocoData
 from datasets.dataset_whu_buildings_coco import WHUBuildingsCocoDataset, WHUBuildingsCocoDatasetTest
 from datasets.dataset_mass_roads import MassRoadsDataset, MassRoadsDatasetTest
 
-
 def is_dist_avail_and_initialized():
     if not dist.is_available():
         return False
@@ -60,6 +59,65 @@ def collate_fn(batch, max_len, pad_idx):
     return image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch
 
 
+
+
+def get_lidar_poly_loaders(
+    train_dataset_dir,
+    val_dataset_dir,
+    test_images_dir,
+    tokenizer,
+    n_vertices,
+    max_len,
+    pad_idx,
+    shuffle_tokens,
+    batch_size,
+    train_transform,
+    val_transform,
+    num_workers=2,
+    pin_memory=True,
+):
+
+
+    from lidar_poly_dataloader import TrainDataset, ValDataset
+
+    train_ds = TrainDataset(
+        dataset_dir=train_dataset_dir,
+        transform=train_transform,
+        tokenizer=tokenizer,
+        shuffle_tokens=shuffle_tokens,
+        n_polygon_vertices=n_vertices
+    )
+
+
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=batch_size,
+        collate_fn=partial(collate_fn, max_len=max_len, pad_idx=pad_idx),
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        drop_last=True
+    )
+
+    valid_ds = ValDataset(
+        dataset_dir=val_dataset_dir,
+        transform=val_transform,
+        tokenizer=tokenizer,
+        shuffle_tokens=shuffle_tokens
+    )
+
+    valid_loader = DataLoader(
+        valid_ds,
+        batch_size=batch_size,
+        collate_fn=partial(collate_fn, max_len=max_len, pad_idx=pad_idx),
+        num_workers=0,
+        pin_memory=True,
+    )
+
+    return train_loader, valid_loader, None
+
+
+
+
 def get_inria_loaders(
     train_dataset_dir,
     val_dataset_dir,
@@ -82,13 +140,13 @@ def get_inria_loaders(
         shuffle_tokens=shuffle_tokens
     )
 
-    train_sampler = DistributedSampler(dataset=train_ds, shuffle=True)
+    # train_sampler = DistributedSampler(dataset=train_ds, shuffle=True)
 
     train_loader = DataLoader(
         train_ds,
         batch_size=batch_size,
         collate_fn=partial(collate_fn, max_len=max_len, pad_idx=pad_idx),
-        sampler=train_sampler,
+        # sampler=train_sampler,
         num_workers=num_workers,
         pin_memory=pin_memory,
         drop_last=True
@@ -101,13 +159,13 @@ def get_inria_loaders(
         shuffle_tokens=shuffle_tokens
     )
 
-    valid_sampler = DistributedSampler(dataset=valid_ds, shuffle=False)
+    # valid_sampler = DistributedSampler(dataset=valid_ds, shuffle=False)
 
     valid_loader = DataLoader(
         valid_ds,
         batch_size=batch_size,
         collate_fn=partial(collate_fn, max_len=max_len, pad_idx=pad_idx),
-        sampler=valid_sampler,
+        # sampler=valid_sampler,
         num_workers=0,
         pin_memory=True,
     )
@@ -117,12 +175,12 @@ def get_inria_loaders(
         transform=val_transform
     )
 
-    test_sampler = DistributedSampler(dataset=test_ds, shuffle=False)
+    # test_sampler = DistributedSampler(dataset=test_ds, shuffle=False)
 
     test_loader = DataLoader(
         test_ds,
         batch_size=batch_size,
-        sampler=test_sampler,
+        # sampler=test_sampler,
         num_workers=num_workers,
         pin_memory=pin_memory,
     )

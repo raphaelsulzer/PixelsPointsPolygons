@@ -252,10 +252,12 @@ def lt_crop(im, gt, crop_size):
 
 
 if __name__ == '__main__':
-    input_image_path = '../data/inria_raw/train/images/'
-    input_gt_path = '../data/inria_raw/train/gt/'
+    input_image_path = '/home/rsulzer/data/AerialImageDataset/train/images/'
+    input_gt_path = '/home/rsulzer/data/AerialImageDataset/train/gt/'
 
-    split = "train"  # 'train' or 'val'
+
+    # split = "train"  # 'train' or 'val'
+    split = "val"  # 'train' or 'val'
     save_path = f'../data/inria_coco_224_negAug/{split}/'
 
     cities = ['austin', 'chicago', 'kitsap', 'tyrol-w', 'vienna']
