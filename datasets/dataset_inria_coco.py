@@ -44,6 +44,67 @@ class InriaCocoDataset(Dataset):
 
         return new_perm
 
+    def debug_vis(self, polygon_vertices, polygon_indices, image=None, point_cloud=None):
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+        import matplotlib.colors as mcolors
+
+        # # Example polygon data
+        # polygon_indices = ann['juncs_index']
+        # polygon_vertices = ann['junctions']
+
+        # Get unique polygon IDs
+        unique_polygons = np.unique(polygon_indices)
+
+        # Assign a different color to each polygon
+        colors = list(mcolors.TABLEAU_COLORS.values())
+
+        fig, ax = plt.subplots()
+
+
+
+        if image is not None:
+            ax.imshow(image)
+
+
+        if point_cloud is not None:
+            # Normalize Z-values for colormap
+            z_min, z_max = point_cloud[:, 2].min(), point_cloud[:, 2].max()
+            norm = plt.Normalize(vmin=z_min, vmax=z_max)
+            cmap = plt.cm.turbo  # 'turbo' colormap
+
+            # Plot point cloud below polygons
+            ax.scatter(point_cloud[:, 0], point_cloud[:, 1], c=cmap(norm(point_cloud[:, 2])), s=0.2, zorder=2)
+
+        # Plot polygons
+        for i, pid in enumerate(unique_polygons):
+            # Get vertices belonging to this polygon
+            mask = polygon_indices == pid
+            poly = polygon_vertices[mask]
+            # poly = np.vstack([poly, poly[0]])
+
+            # Draw polygon edges
+            color = colors[i % len(colors)]  # Cycle through colors
+            ax.plot(*zip(*np.vstack([poly, poly[0]])), color=color, linewidth=4)
+
+            # Draw polygon vertices
+            ax.scatter(poly[:, 0], poly[:, 1], color=color, zorder=3, s=10)
+
+        plt.show()
+
+    def debug_vis_mask(self, mask):
+
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots()
+
+        # Plot the image
+        ax.imshow(mask)
+
+        plt.show()
+
+
     def __getitem__(self, index):
         n_vertices = CFG.N_VERTICES
         img_id = self.image_ids[index]
@@ -58,6 +119,8 @@ class InriaCocoDataset(Dataset):
         corner_coords = []
         corner_mask = np.zeros((img['width'], img['height']), dtype=np.float32)
         perm_matrix = np.zeros((n_vertices, n_vertices), dtype=np.float32)
+        point_ids = []
+        point_id = 0
         for ins in annotations:
             segmentations = ins['segmentation']
             for i, segm in enumerate(segmentations):
@@ -67,18 +130,27 @@ class InriaCocoDataset(Dataset):
                 points = segm[:-1]
                 corner_coords.extend(points.tolist())
                 mask += self.coco.annToMask(ins)
+                point_ids.extend([point_id]*len(points))
+                point_id+=1
         mask = mask / 255. if mask.max() == 255 else mask
         mask = np.clip(mask, 0, 1)
 
-        corner_coords = np.flip(np.round(corner_coords, 0), axis=-1).astype(np.int32)
+        # corner_coords = np.flip(np.round(corner_coords, 0), axis=-1).astype(np.int32)
+        corner_coords = np.round(corner_coords, 0).astype(np.int32)
 
         if len(corner_coords) > 0.:
             corner_mask[corner_coords[:, 0], corner_coords[:, 1]] = 1.
 
         ############# START: Generate gt permutation matrix. #############
         v_count = 0
+
+        # if len(corner_coords) > 0:
+        #     # self.debug_vis(np.flip(corner_coords, axis=-1), point_ids, image/255.0)
+        #     self.debug_vis(corner_coords, point_ids, image/255.0)
+
         for ins in annotations:
             segmentations = ins['segmentation']
+
             for idx, segm in enumerate(segmentations):
                 segm = np.array(segm).reshape(-1, 2)
                 points = segm[:-1]
@@ -113,6 +185,12 @@ class InriaCocoDataset(Dataset):
             corner_mask = augmentations['masks'][1]
             corner_coords = np.array(augmentations['keypoints'])
 
+            # if len(corner_coords) > 0:
+            #     # self.debug_vis(corner_coords, point_ids, augmented_image)
+            #     augmented_image = (image.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
+            #     self.debug_vis(corner_coords, point_ids, augmented_image)
+            #     self.debug_vis_mask(mask)
+
         if self.tokenizer is not None:
             coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.shuffle_tokens)
             coords_seqs = torch.LongTensor(coords_seqs)
@@ -120,6 +198,8 @@ class InriaCocoDataset(Dataset):
                 perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
         else:
             coords_seqs = corner_coords
+
+
 
         return image, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix
 

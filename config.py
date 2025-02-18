@@ -12,6 +12,7 @@ class CFG:
     - mass_roads_224
     """
     DATASET = f"inria_coco_224_negAug"
+    # DATASET = "lidar_poly"
     if "coco" in DATASET:
         TRAIN_DATASET_DIR = f"./data/{DATASET}/train"
         VAL_DATASET_DIR = f"./data/{DATASET}/val"
@@ -20,10 +21,13 @@ class CFG:
         TRAIN_DATASET_DIR = f"./data/{DATASET}/train"
         VAL_DATASET_DIR = f"./data/{DATASET}/valid"
         TEST_IMAGES_DIR = f"./data/{DATASET}/test/images"
+    elif "lidar_poly" in DATASET:
+        TRAIN_DATASET_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed"
+        VAL_DATASET_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed"
+        TEST_IMAGES_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed"
 
-
-    TRAIN_DDP = True
-    NUM_WORKERS = 2
+    TRAIN_DDP = False
+    NUM_WORKERS = 0
     PIN_MEMORY = True
     LOAD_MODEL = False
 
@@ -35,6 +39,8 @@ class CFG:
         N_VERTICES = 144  # maximum number of vertices per image in dataset.
     elif "mass_roads" in DATASET:
         N_VERTICES = 192  # maximum number of vertices per image in dataset.
+    elif "lidar_poly" in DATASET:
+        N_VERTICES = 192
 
     SINKHORN_ITERATIONS = 100
     MAX_LEN = (N_VERTICES*2) + 2
@@ -46,6 +52,9 @@ class CFG:
         IMG_SIZE = 224
     elif "mass_roads" in DATASET:
         IMG_SIZE = 224
+    elif "lidar_poly" in DATASET:
+        IMG_SIZE = 512
+
     INPUT_SIZE = 224
     PATCH_SIZE = 8
     INPUT_HEIGHT = INPUT_SIZE
@@ -56,7 +65,7 @@ class CFG:
     perm_loss_weight = 10.0
     SHUFFLE_TOKENS = False  # order gt vertex tokens randomly every time
 
-    BATCH_SIZE = 24  # batch size per gpu; effective batch size = BATCH_SIZE * NUM_GPUs
+    BATCH_SIZE = 2  # batch size per gpu; effective batch size = BATCH_SIZE * NUM_GPUs
     START_EPOCH = 0
     NUM_EPOCHS = 500
     MILESTONE = 0

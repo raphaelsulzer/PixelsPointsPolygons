@@ -1,5 +1,6 @@
 from tqdm import tqdm
 import torch
+from copy import deepcopy
 
 from utils import (
     AverageMeter,
@@ -25,13 +26,6 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
     if is_main_process():
         loader = tqdm(train_loader, total=len(train_loader))
 
-    # prof = torch.profiler.profile(
-    #     schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=2),
-    #     on_trace_ready=torch.profiler.tensorboard_trace_handler(f"runs/{CFG.EXPERIMENT_NAME}/logs/profiler"),
-    #     record_shapes=True,
-    #     with_stack=True
-    # )
-    # prof.start()
     for x, y_mask, y_corner_mask, y, y_perm in loader:
         x = x.to(CFG.DEVICE, non_blocking=True)
         y = y.to(CFG.DEVICE, non_blocking=True)
@@ -69,12 +63,16 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
         lr = get_lr(optimizer)
         if is_main_process():
             loader.set_postfix(train_loss=loss_meter.avg, lr=f"{lr:.5f}")
-            writer.add_scalar('Running_logs/Train_Loss', loss_meter.avg, iter_idx)
-            writer.add_scalar('Running_logs/LR', lr, iter_idx)
+            # print(f"Running_logs/Train_Loss: {loss_meter.avg}")
+            # writer.add_scalar('Running_logs/Train_Loss', loss_meter.avg, iter_idx)
+            # writer.add_scalar('Running_logs/LR', lr, iter_idx)
             # writer.add_image(f"Running_logs/input_images", torchvision.utils.make_grid(x), iter_idx)
             # writer.add_graph(model, input_to_model=(x, y_input))
 
         iter_idx += 1
+
+        # if iter_idx % 5 == 0:
+        #     break
         # prof.step()
     # prof.stop()
     print(f"Total train loss: {loss_meter.avg}\n\n")
@@ -160,11 +158,6 @@ def train_eval(
         if is_main_process():
             print(f"\n\nEPOCH: {epoch + 1}\n\n")
 
-        if CFG.TRAIN_DDP:
-            train_loader.sampler.set_epoch(epoch)
-            valid_loader.sampler.set_epoch(epoch)
-            test_loader.sampler.set_epoch(epoch)
-
         train_loss_dict, iter_idx = train_one_epoch(
             epoch,
             iter_idx,
@@ -176,6 +169,10 @@ def train_eval(
             perm_loss_fn,
             writer
         )
+
+        wandb_dict = deepcopy(train_loss_dict)
+        wandb_dict['epoch'] = epoch
+
         if is_main_process():
             writer.add_scalar('Train_Losses/Total_Loss', train_loss_dict['total_loss'], epoch)
             writer.add_scalar('Train_Losses/Vertex_Loss', train_loss_dict['vertex_loss'], epoch)
@@ -190,9 +187,6 @@ def train_eval(
         )  # TODO: add eval metrics to validation function?
         if is_main_process():
             print(f"Valid loss: {valid_loss_dict['total_loss']:.3f}\n\n")
-
-        if step=='epoch':
-            pass
 
         # Save best validation loss epoch.
         if valid_loss_dict['total_loss'] < best_loss and CFG.SAVE_BEST and is_main_process():
