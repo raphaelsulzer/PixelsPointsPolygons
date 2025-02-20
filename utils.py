@@ -10,6 +10,7 @@ from transformers import top_k_top_p_filtering
 from torchmetrics.functional.classification import binary_jaccard_index, binary_accuracy
 from config import CFG
 
+from tqdm import tqdm
 
 def seed_everything(seed=1234):
     random.seed(seed)

@@ -9,6 +9,16 @@ inpath = [
 out_path = f"runs/CYENS_CLUSTER_train_Pix2Poly_AUGSRUNS_inria_coco_224_negAug_run1_vit_small_patch8_224_dino_AffineRotaugs0.8_LinearWarmupLRS_1.0xVertexLoss_10.0xPermLoss__2xScoreNet_initialLR_0.0004_bs_24_Nv_192_Nbins224_500epochs/combined_predictions_inria_coco_224_negAug_val_images_epoch_499.json"
 
 
+def combine_polygons_from_list(polygons,outpath):
+
+
+    for image_polygons in polygons:
+        for polygon in image_polygons:
+
+            # TODO: put the polygons of shape [batches, polygons, vertices] to a coco annotation file
+
+            a=5
+
 ################################################################
 def combine_polygons(inpath,outpath):
     combined = []
