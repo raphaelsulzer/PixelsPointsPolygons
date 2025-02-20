@@ -1,6 +1,7 @@
 from tqdm import tqdm
 import torch, os
-from copy import deepcopy
+from predict_lidarpoly_coco import predict_to_coco
+from postprocess_coco_parts import *
 
 from utils import (
     AverageMeter,
@@ -12,6 +13,7 @@ from config import CFG
 
 from ddp_utils import is_main_process
 
+from lidar_poly_dataloader.metrics import compute_IoU_cIoU
 
 def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_scheduler, vertex_loss_fn, perm_loss_fn, writer):
     model.train()
@@ -70,7 +72,7 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
 
         iter_idx += 1
 
-        if iter_idx % 2000 == 0:
+        if iter_idx % 5 == 0:
             break
 
     print(f"Total train loss: {loss_meter.avg}\n\n")
@@ -132,10 +134,12 @@ def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn):
     return loss_dict
 
 
+
+
 def train_eval(
     model,
     train_loader,
-    valid_loader,
+    val_loader,
     test_loader,
     tokenizer,
     vertex_loss_fn,
@@ -173,33 +177,33 @@ def train_eval(
         for k, v in train_loss_dict.items():
             wandb_dict[f"train_{k}"] = v
 
-        val_loss_dict = valid_one_epoch(
-            epoch,
-            model,
-            valid_loader,
-            vertex_loss_fn,
-            perm_loss_fn,
-        )
-
-        for k, v in val_loss_dict.items():
-            wandb_dict[f"val_{k}"] = v
-
-        # Save best validation loss epoch.
-        if val_loss_dict['total_loss'] < best_loss and CFG.SAVE_BEST and is_main_process():
-            best_loss = val_loss_dict['total_loss']
-            checkpoint = {
-                "state_dict": model.state_dict(),
-                "optimizer": optimizer.state_dict(),
-                "scheduler": lr_scheduler.state_dict(),
-                "epochs_run": epoch,
-                "loss": train_loss_dict["total_loss"]
-            }
-            save_checkpoint(
-                checkpoint,
-                folder=os.path.join(CFG.OUTPATH,"logs","checkpoints"),
-                filename="validation_best.pth"
-            )
-            print(f"Saved best val loss model.")
+        # val_loss_dict = valid_one_epoch(
+        #     epoch,
+        #     model,
+        #     val_loader,
+        #     vertex_loss_fn,
+        #     perm_loss_fn,
+        # )
+        #
+        # for k, v in val_loss_dict.items():
+        #     wandb_dict[f"val_{k}"] = v
+        #
+        # # Save best validation loss epoch.
+        # if val_loss_dict['total_loss'] < best_loss and CFG.SAVE_BEST and is_main_process():
+        #     best_loss = val_loss_dict['total_loss']
+        #     checkpoint = {
+        #         "state_dict": model.state_dict(),
+        #         "optimizer": optimizer.state_dict(),
+        #         "scheduler": lr_scheduler.state_dict(),
+        #         "epochs_run": epoch,
+        #         "loss": train_loss_dict["total_loss"]
+        #     }
+        #     save_checkpoint(
+        #         checkpoint,
+        #         folder=os.path.join(CFG.OUTPATH,"logs","checkpoints"),
+        #         filename="validation_best.pth"
+        #     )
+        #     print(f"Saved best val loss model.")
 
         # Save latest checkpoint every epoch.
         if CFG.SAVE_LATEST and is_main_process():
@@ -233,17 +237,13 @@ def train_eval(
         # output examples to a folder
         if (epoch + 1) % CFG.VAL_EVERY == 0:
 
+            batched_polygons = predict_to_coco(model, tokenizer, val_loader)
+            outfile = os.path.join(CFG.OUTPATH,"coco",f"validation_{epoch}.json")
+            combine_polygons_from_list(batched_polygons, outfile)
 
+            iou, ciou = compute_IoU_cIoU(outfile, val_loader.dataset.ann_file)
+            print("Iou: {:.4f}, CIou: {:.4f}".format())
 
-            # save_single_predictions_as_images(
-            #     test_loader,
-            #     model,
-            #     tokenizer,
-            #     epoch,
-            #     wandb_dict,
-            #     folder=os.path.join(CFG.OUTPATH,"runtime_outputs")
-            # )
-            #
             # # Save best single batch validation metric epoch.
             # if wandb_dict["miou"] > best_metric and CFG.SAVE_BEST:
             #     best_metric = wandb_dict["miou"]

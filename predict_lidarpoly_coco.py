@@ -3,19 +3,15 @@ import time
 import json
 from tqdm import tqdm
 import numpy as np
-import cv2
-import matplotlib.pyplot as plt
+
 import argparse
 
 from functools import partial
 import torch
-from torch import nn
-from torch.utils.data.distributed import DistributedSampler
-from torchvision.utils import make_grid
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-from test_config import CFG
+from config import CFG
 from tokenizer import Tokenizer
 from utils import (
     seed_everything,
@@ -97,7 +93,99 @@ def collate_fn(batch, max_len, pad_idx):
     return image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, idx_batch
 
 
-def predict():
+
+def predict_to_coco(model,tokenizer,data_loader):
+
+    mean_iou_metric = BinaryJaccardIndex()
+    mean_acc_metric = BinaryAccuracy()
+
+    model.eval()
+
+    with torch.no_grad():
+        cumulative_miou = []
+        cumulative_macc = []
+        speed = []
+        predictions = []
+        for i_batch, (x, y_mask, y_corner_mask, y, y_perm) in enumerate(tqdm(data_loader)):
+            all_coords = []
+            all_confs = []
+            t0 = time.time()
+            batch_preds, batch_confs, perm_preds = test_generate(model, x, tokenizer, max_len=CFG.generation_steps,
+                                                                 top_k=0, top_p=1)
+            speed.append(time.time() - t0)
+            vertex_coords, confs = postprocess(batch_preds, batch_confs, tokenizer)
+
+            all_coords.extend(vertex_coords)
+            all_confs.extend(confs)
+
+            coords = []
+            for i in range(len(all_coords)):
+                if all_coords[i] is not None:
+                    coord = torch.from_numpy(all_coords[i])
+                else:
+                    coord = torch.tensor([])
+
+                padd = torch.ones((CFG.N_VERTICES - len(coord), 2)).fill_(CFG.PAD_IDX)
+                coord = torch.cat([coord, padd], dim=0)
+                coords.append(coord)
+            # batch_polygons = permutations_to_polygons(perm_preds, coords, out='torch')  # [0, 224]
+            pred_polygons = permutations_to_polygons(perm_preds, coords, out='coco')  # [0, 224]
+            predictions.append(pred_polygons)
+
+
+
+            # for ip, pp in enumerate(batch_polygons):
+            #     for p in pp:
+            #         p = torch.fliplr(p)
+            #         p = p[p[:, 0] != CFG.PAD_IDX]
+            #         p = p * (CFG.IMG_SIZE / CFG.INPUT_WIDTH)
+            #         p = p.view(-1).tolist()
+            #         if len(p) > 0:
+            #             predictions.append(single_annotation(idx[ip], [p]))
+
+            # B, C, H, W = x.shape
+            #
+            # polygons_mask = np.zeros((B, 1, H, W))
+            # for b in range(len(batch_polygons)):
+            #     for c in range(len(batch_polygons[b])):
+            #         poly = batch_polygons[b][c]
+            #         poly = poly[poly[:, 0] != CFG.PAD_IDX]
+            #         cnt = np.flip(np.int32(poly.cpu()), 1)
+            #         if len(cnt) > 0:
+            #             cv2.fillPoly(polygons_mask[b, 0], pts=[cnt], color=1.)
+            # polygons_mask = torch.from_numpy(polygons_mask)
+            #
+            # batch_miou = mean_iou_metric(polygons_mask, y_mask)
+            # batch_macc = mean_acc_metric(polygons_mask, y_mask)
+            #
+            # cumulative_miou.append(batch_miou)
+            # cumulative_macc.append(batch_macc)
+            #
+            # pred_grid = make_grid(polygons_mask).permute(1, 2, 0)
+            # gt_grid = make_grid(y_mask).permute(1, 2, 0)
+            # plt.subplot(211), plt.imshow(pred_grid), plt.title("Predicted Polygons"), plt.axis('off')
+            # plt.subplot(212), plt.imshow(gt_grid), plt.title("Ground Truth"), plt.axis('off')
+            #
+            # if not os.path.exists(os.path.join(f"runs/{EXPERIMENT_NAME}", 'val_preds', DATASET, PART_DESC, ckpt_desc)):
+            #     os.makedirs(os.path.join(f"runs/{EXPERIMENT_NAME}", 'val_preds', DATASET, PART_DESC, ckpt_desc))
+            # plt.savefig(f"runs/{EXPERIMENT_NAME}/val_preds/{DATASET}/{PART_DESC}/{ckpt_desc}/batch_{i_batch}.png")
+            # plt.close()
+
+        # print("Average model speed: ", np.mean(speed) / CFG.BATCH_SIZE, " [s / image]")
+        #
+        # print(f"Average Mean IOU: {torch.tensor(cumulative_miou).nanmean()}")
+        # print(f"Average Mean Acc: {torch.tensor(cumulative_macc).nanmean()}")
+
+    # with open(outfile, "w") as fp:
+    #     fp.write(json.dumps(predictions))
+
+    # with open(f"runs/{EXPERIMENT_NAME}/val_metrics_{DATASET}_{PART_DESC}_{ckpt_desc}.txt", 'w') as ff:
+    #     print(f"Average Mean IOU: {torch.tensor(cumulative_miou).nanmean()}", file=ff)
+    #     print(f"Average Mean Acc: {torch.tensor(cumulative_macc).nanmean()}", file=ff)
+    return predictions
+
+def predict(checkpoint_file, outpath):
+
     seed_everything(42)
 
     valid_transforms = A.Compose(
@@ -149,100 +237,22 @@ def predict():
     model.to(CFG.DEVICE)
     model.eval()
 
-    checkpoint = torch.load(CHECKPOINT_PATH)
+    checkpoint = torch.load(checkpoint_file)
     model.load_state_dict(checkpoint['state_dict'])
     epoch = checkpoint['epochs_run']
 
     print(f"Model loaded from epoch: {epoch}")
     ckpt_desc = f"epoch_{epoch}"
-    if "best_valid_loss" in os.path.basename(CHECKPOINT_PATH):
+    if "best_valid_loss" in os.path.basename(checkpoint_file):
         ckpt_desc = f"epoch_{epoch}_bestValLoss"
-    elif "best_valid_metric" in os.path.basename(CHECKPOINT_PATH):
+    elif "best_valid_metric" in os.path.basename(checkpoint_file):
         ckpt_desc = f"epoch_{epoch}_bestValMetric"
     else:
         pass
 
-    mean_iou_metric = BinaryJaccardIndex()
-    mean_acc_metric = BinaryAccuracy()
+    predict_to_coco(model,tokenizer,val_loader,outpath)
 
 
-    with torch.no_grad():
-        cumulative_miou = []
-        cumulative_macc = []
-        speed = []
-        predictions = []
-        for i_batch, (x, y_mask, y_corner_mask, y, y_perm, idx) in enumerate(tqdm(val_loader)):
-            all_coords = []
-            all_confs = []
-            t0 = time.time()
-            batch_preds, batch_confs, perm_preds = test_generate(model, x, tokenizer, max_len=CFG.generation_steps, top_k=0, top_p=1)
-            speed.append(time.time() - t0)
-            vertex_coords, confs = postprocess(batch_preds, batch_confs, tokenizer)
-
-            all_coords.extend(vertex_coords)
-            all_confs.extend(confs)
-
-            coords = []
-            for i in range(len(all_coords)):
-                if all_coords[i] is not None:
-                    coord = torch.from_numpy(all_coords[i])
-                else:
-                    coord = torch.tensor([])
-
-                padd = torch.ones((CFG.N_VERTICES - len(coord), 2)).fill_(CFG.PAD_IDX)
-                coord = torch.cat([coord, padd], dim=0)
-                coords.append(coord)
-            batch_polygons = permutations_to_polygons(perm_preds, coords, out='torch')  # [0, 224]
-            # pred_polygons = permutations_to_polygons(perm_preds, coords, out='coco')  # [0, 224]
-
-            for ip, pp in enumerate(batch_polygons):
-                for p in pp:
-                    p = torch.fliplr(p)
-                    p = p[p[:, 0] != CFG.PAD_IDX]
-                    p = p * (CFG.IMG_SIZE / CFG.INPUT_WIDTH)
-                    p = p.view(-1).tolist()
-                    if len(p) > 0:
-                        predictions.append(single_annotation(idx[ip], [p]))
-
-            B, C, H, W = x.shape
-
-            polygons_mask = np.zeros((B, 1, H, W))
-            for b in range(len(batch_polygons)):
-                for c in range(len(batch_polygons[b])):
-                    poly = batch_polygons[b][c]
-                    poly = poly[poly[:, 0] != CFG.PAD_IDX]
-                    cnt = np.flip(np.int32(poly.cpu()), 1)
-                    if len(cnt) > 0:
-                        cv2.fillPoly(polygons_mask[b, 0], pts=[cnt], color=1.)
-            polygons_mask = torch.from_numpy(polygons_mask)
-
-            batch_miou = mean_iou_metric(polygons_mask, y_mask)
-            batch_macc = mean_acc_metric(polygons_mask, y_mask)
-
-            cumulative_miou.append(batch_miou)
-            cumulative_macc.append(batch_macc)
-
-            pred_grid = make_grid(polygons_mask).permute(1, 2, 0)
-            gt_grid = make_grid(y_mask).permute(1, 2, 0)
-            plt.subplot(211), plt.imshow(pred_grid) ,plt.title("Predicted Polygons") ,plt.axis('off')
-            plt.subplot(212), plt.imshow(gt_grid) ,plt.title("Ground Truth") ,plt.axis('off')
-
-            if not os.path.exists(os.path.join(f"runs/{EXPERIMENT_NAME}", 'val_preds', DATASET, PART_DESC, ckpt_desc)):
-                os.makedirs(os.path.join(f"runs/{EXPERIMENT_NAME}", 'val_preds', DATASET, PART_DESC, ckpt_desc))
-            plt.savefig(f"runs/{EXPERIMENT_NAME}/val_preds/{DATASET}/{PART_DESC}/{ckpt_desc}/batch_{i_batch}.png")
-            plt.close()
-
-        print("Average model speed: ", np.mean(speed) / CFG.BATCH_SIZE, " [s / image]")
-
-        print(f"Average Mean IOU: {torch.tensor(cumulative_miou).nanmean()}")
-        print(f"Average Mean Acc: {torch.tensor(cumulative_macc).nanmean()}")
-
-    with open(f"runs/{EXPERIMENT_NAME}/predictions_{DATASET}_{PART_DESC}_{ckpt_desc}.json", "w") as fp:
-        fp.write(json.dumps(predictions))
-
-    with open(f"runs/{EXPERIMENT_NAME}/val_metrics_{DATASET}_{PART_DESC}_{ckpt_desc}.txt", 'w') as ff:
-        print(f"Average Mean IOU: {torch.tensor(cumulative_miou).nanmean()}", file=ff)
-        print(f"Average Mean Acc: {torch.tensor(cumulative_macc).nanmean()}", file=ff)
 
 
 if __name__ == "__main__":
@@ -261,6 +271,8 @@ if __name__ == "__main__":
 
     EXPERIMENT_NAME = os.path.basename(os.path.realpath(args.experiment_path))
     CHECKPOINT_PATH = f"runs/{EXPERIMENT_NAME}/logs/checkpoints/{args.checkpoint_name}.pth"
+
+    outpath = args.output_dir
 
 
     predict(CHECKPOINT_PATH, outpath)
