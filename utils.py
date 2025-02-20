@@ -227,12 +227,10 @@ def postprocess(batch_preds, batch_confs, tokenizer):
 
 
 def save_single_predictions_as_images(
-    loader, model, tokenizer, epoch, writer, folder="saved_outputs/", device="cuda"
+    loader, model, tokenizer, epoch, wandb_dict, folder
 ):
-    print(f"=> Saving val predictions...")
-    if not os.path.exists(folder):
-        print(f"==> Creating output subdirectory...")
-        os.makedirs(folder)
+    os.makedirs(folder, exist_ok=True)
+    print(f"=> Saving val predictions to {folder}...")
 
     model.eval()
 
@@ -320,22 +318,10 @@ def save_single_predictions_as_images(
         poly_out.float()/255, f"{folder}/pred_polygons/polygons_{idx}_{epoch}.png"
     )
 
-    batch_miou = binary_jaccard_index(polygons, y_mask)
-    batch_biou = binary_jaccard_index(polygons, y_mask, ignore_index=0)
-    batch_macc = binary_accuracy(polygons, y_mask)
-    batch_bacc = binary_accuracy(polygons, y_mask, ignore_index=0)
-
-    writer.add_scalar('Val_Metrics/Mean_IoU', batch_miou, epoch)
-    writer.add_scalar('Val_Metrics/Building_IoU', batch_biou, epoch)
-    writer.add_scalar('Val_Metrics/Mean_Accuracy', batch_macc, epoch)
-    writer.add_scalar('Val_Metrics/Building_Accuracy', batch_bacc, epoch)
-
-    metrics_dict = {
-        "miou": batch_miou,
-        "biou": batch_biou,
-        "macc": batch_macc,
-        "bacc": batch_bacc
-    }
+    wandb_dict['miou'] = binary_jaccard_index(polygons, y_mask)
+    wandb_dict['biou'] = binary_jaccard_index(polygons, y_mask, ignore_index=0)
+    wandb_dict['macc'] = binary_accuracy(polygons, y_mask)
+    wandb_dict['bacc'] = binary_accuracy(polygons, y_mask, ignore_index=0)
 
     torchvision.utils.save_image(x, f"{folder}/image_{idx}.png")
     ymask_out = torch.zeros_like(x)
@@ -355,4 +341,3 @@ def save_single_predictions_as_images(
     torchvision.utils.save_image(y_corner_mask*255, f"{folder}/gt_corners_{idx}.png")
     torchvision.utils.save_image(y_perm[:, None, :, :]*255, f"{folder}/gt_perm_matrix_{idx}.png")
 
-    return metrics_dict

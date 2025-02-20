@@ -1,6 +1,7 @@
 # Directories
 __pycache__
 data
+outputs
 runs
 .vscode
 preds*

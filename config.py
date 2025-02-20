@@ -11,8 +11,8 @@ class CFG:
     - whu_buildings_224_coco
     - mass_roads_224
     """
-    DATASET = f"inria_coco_224_negAug"
-    # DATASET = "lidar_poly"
+    # DATASET = f"inria_coco_224_negAug"
+    DATASET = "lidar_poly"
     if "coco" in DATASET:
         TRAIN_DATASET_DIR = f"./data/{DATASET}/train"
         VAL_DATASET_DIR = f"./data/{DATASET}/val"
@@ -22,15 +22,16 @@ class CFG:
         VAL_DATASET_DIR = f"./data/{DATASET}/valid"
         TEST_IMAGES_DIR = f"./data/{DATASET}/test/images"
     elif "lidar_poly" in DATASET:
-        TRAIN_DATASET_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed"
-        VAL_DATASET_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed"
-        TEST_IMAGES_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed"
+        TRAIN_DATASET_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed_512"
+        VAL_DATASET_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed_512"
+        TEST_IMAGES_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed_512"
 
     TRAIN_DDP = False
     NUM_WORKERS = 0
     PIN_MEMORY = True
     LOAD_MODEL = False
 
+    ## see here for setting this: https://github.com/yeshwanth95/Pix2Poly/issues/3#issuecomment-2643670731
     if "inria" in DATASET:
         N_VERTICES = 192  # maximum number of vertices per image in dataset.
     elif "spacenet" in DATASET:
@@ -84,18 +85,22 @@ class CFG:
     run_eval = False
 
     # EXPERIMENT_NAME = f"debug_run_Pix2Poly224_Bins{NUM_BINS}_fullRotateAugs_permLossWeight{perm_loss_weight}_LR{LR}__{NUM_EPOCHS}epochs"
-    EXPERIMENT_NAME = f"train_Pix2Poly_{DATASET}_run1_{MODEL_NAME}_AffineRotaugs0.8_LinearWarmupLRS_{vertex_loss_weight}xVertexLoss_{perm_loss_weight}xPermLoss__2xScoreNet_initialLR_{LR}_bs_{BATCH_SIZE}_Nv_{N_VERTICES}_Nbins{NUM_BINS}_{NUM_EPOCHS}epochs"
+    # EXPERIMENT_NAME = f"train_Pix2Poly_{DATASET}_run1_{MODEL_NAME}_AffineRotaugs0.8_LinearWarmupLRS_{vertex_loss_weight}xVertexLoss_{perm_loss_weight}xPermLoss__2xScoreNet_initialLR_{LR}_bs_{BATCH_SIZE}_Nv_{N_VERTICES}_Nbins{NUM_BINS}_{NUM_EPOCHS}epochs"
+    #
+    # if "debug" in EXPERIMENT_NAME:
+    #     BATCH_SIZE = 10
+    #     NUM_WORKERS = 0
+    #     SAVE_BEST = False
+    #     SAVE_LATEST = False
+    #     SAVE_EVERY = NUM_EPOCHS
+    #     VAL_EVERY = 50
+    #
+    # if LOAD_MODEL:
+    #     CHECKPOINT_PATH = f"runs/{EXPERIMENT_NAME}/logs/checkpoints/latest.pth"  # full path to checkpoint to be loaded if LOAD_MODEL=True
+    # else:
+    #     CHECKPOINT_PATH = ""
+    CHECKPOINT_PATH = ""
 
-    if "debug" in EXPERIMENT_NAME:
-        BATCH_SIZE = 10
-        NUM_WORKERS = 0
-        SAVE_BEST = False
-        SAVE_LATEST = False
-        SAVE_EVERY = NUM_EPOCHS
-        VAL_EVERY = 50
-
-    if LOAD_MODEL:
-        CHECKPOINT_PATH = f"runs/{EXPERIMENT_NAME}/logs/checkpoints/latest.pth"  # full path to checkpoint to be loaded if LOAD_MODEL=True
-    else:
-        CHECKPOINT_PATH = ""
+    config = "debug"
+    OUTPATH = f"./outputs/{DATASET}/{config}/"
 

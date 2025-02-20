@@ -102,7 +102,8 @@ def get_lidar_poly_loaders(
         dataset_dir=val_dataset_dir,
         transform=val_transform,
         tokenizer=tokenizer,
-        shuffle_tokens=shuffle_tokens
+        shuffle_tokens=shuffle_tokens,
+        n_polygon_vertices=n_vertices
     )
 
     valid_loader = DataLoader(
