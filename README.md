@@ -59,7 +59,7 @@ dependencies:
 
 ## Datasets preparation
 
-See [datasets preprocessing](datasets) for instructions on preparing the various datasets for training/inference.
+See [datasets preprocessing](data_preprocess) for instructions on preparing the various datasets for training/inference.
 
 ## Configurations
 
@@ -113,7 +113,7 @@ python predict_mass_roads_test_set.py -e <path_to_exp_folder> \
 --batch_size 24 \  # modify according to resources
 ```
 
-## Evaluation
+## Evaluation (buildings datasets)
 
 Once predictions are made, metrics can be computed for the predicted files as follows:
 
@@ -122,6 +122,14 @@ python evaluation.py --gt-file path/to/ground/truth/annotation.json --dt-file pa
 ```
 
 where `metric_type` can be one of the following: `ciou`, `angle`, `polis`, `topdig`.
+
+## Evaluation (Massachusetts Roads Dataset)
+
+Once raster predictions are made for the Massachusetts Roads dataset, metrics can be computed for the predicted files as follows:
+
+```bash
+python evaluate_mass_roads_predictions.py --gt-dir data/mass_roads_1500/test/map --dt-dir path/to/predicted/raster/masks/folder
+```
 
 ## Citation
 
