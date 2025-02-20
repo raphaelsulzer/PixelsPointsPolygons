@@ -1,5 +1,5 @@
 from tqdm import tqdm
-import torch
+import torch, os
 from copy import deepcopy
 
 from utils import (
@@ -50,7 +50,6 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
 
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
-        # nn.utils.clip_grad_norm_(model.module.parameters(), max_norm=0.1)
         optimizer.step()
 
         if lr_scheduler is not None:
@@ -71,10 +70,9 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
 
         iter_idx += 1
 
-        # if iter_idx % 5 == 0:
-        #     break
-        # prof.step()
-    # prof.stop()
+        if iter_idx % 2000 == 0:
+            break
+
     print(f"Total train loss: {loss_meter.avg}\n\n")
     loss_dict = {
         'total_loss': loss_meter.avg,
@@ -170,29 +168,27 @@ def train_eval(
             writer
         )
 
-        wandb_dict = deepcopy(train_loss_dict)
+        wandb_dict ={}
         wandb_dict['epoch'] = epoch
+        for k, v in train_loss_dict.items():
+            wandb_dict[f"train_{k}"] = v
 
-        if is_main_process():
-            writer.add_scalar('Train_Losses/Total_Loss', train_loss_dict['total_loss'], epoch)
-            writer.add_scalar('Train_Losses/Vertex_Loss', train_loss_dict['vertex_loss'], epoch)
-            writer.add_scalar('Train_Losses/Perm_Loss', train_loss_dict['perm_loss'], epoch)
-
-        valid_loss_dict = valid_one_epoch(
+        val_loss_dict = valid_one_epoch(
             epoch,
             model,
             valid_loader,
             vertex_loss_fn,
             perm_loss_fn,
-        )  # TODO: add eval metrics to validation function?
-        if is_main_process():
-            print(f"Valid loss: {valid_loss_dict['total_loss']:.3f}\n\n")
+        )
+
+        for k, v in val_loss_dict.items():
+            wandb_dict[f"val_{k}"] = v
 
         # Save best validation loss epoch.
-        if valid_loss_dict['total_loss'] < best_loss and CFG.SAVE_BEST and is_main_process():
-            best_loss = valid_loss_dict['total_loss']
+        if val_loss_dict['total_loss'] < best_loss and CFG.SAVE_BEST and is_main_process():
+            best_loss = val_loss_dict['total_loss']
             checkpoint = {
-                "state_dict": model.module.state_dict(),
+                "state_dict": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
                 "scheduler": lr_scheduler.state_dict(),
                 "epochs_run": epoch,
@@ -200,16 +196,15 @@ def train_eval(
             }
             save_checkpoint(
                 checkpoint,
-                folder=f"runs/{CFG.EXPERIMENT_NAME}/logs/checkpoints/",
-                filename="best_valid_loss.pth"
+                folder=os.path.join(CFG.OUTPATH,"logs","checkpoints"),
+                filename="validation_best.pth"
             )
-            # torch.save(model.state_dict(), 'best_valid_loss.pth')
             print(f"Saved best val loss model.")
 
         # Save latest checkpoint every epoch.
         if CFG.SAVE_LATEST and is_main_process():
             checkpoint = {
-                    "state_dict": model.module.state_dict(),
+                    "state_dict": model.state_dict(),
                     "optimizer": optimizer.state_dict(),
                     "scheduler": lr_scheduler.state_dict(),
                     "epochs_run": epoch,
@@ -217,13 +212,13 @@ def train_eval(
                 }
             save_checkpoint(
                 checkpoint,
-                folder=f"runs/{CFG.EXPERIMENT_NAME}/logs/checkpoints/",
+                folder=os.path.join(CFG.OUTPATH,"logs","checkpoints"),
                 filename="latest.pth"
             )
 
-        if (epoch + 1) % CFG.SAVE_EVERY == 0 and is_main_process():
+        if (epoch + 1) % CFG.SAVE_EVERY == 0:
             checkpoint = {
-                "state_dict": model.module.state_dict(),
+                "state_dict": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
                 "scheduler": lr_scheduler.state_dict(),
                 "epochs_run": epoch,
@@ -231,43 +226,42 @@ def train_eval(
             }
             save_checkpoint(
                 checkpoint,
-                folder=f"runs/{CFG.EXPERIMENT_NAME}/logs/checkpoints/",
+                folder=os.path.join(CFG.OUTPATH,"logs","checkpoints"),
                 filename=f"epoch_{epoch}.pth"
             )
 
-        if is_main_process():
-            writer.add_scalar('Val_Losses/Total_Loss', valid_loss_dict['total_loss'], epoch)
-            writer.add_scalar('Val_Losses/Vertex_Loss', valid_loss_dict['vertex_loss'], epoch)
-            writer.add_scalar('Val_Losses/Perm_Loss', valid_loss_dict['perm_loss'], epoch)
-
         # output examples to a folder
-        if (epoch + 1) % CFG.VAL_EVERY == 0 and is_main_process():
-            val_metrics_dict = save_single_predictions_as_images(
-                test_loader,
-                model,
-                tokenizer,
-                epoch,
-                writer,
-                folder=f"runs/{CFG.EXPERIMENT_NAME}/runtime_outputs/",
-                device=CFG.DEVICE
-            )
-            for metric, value in zip(val_metrics_dict.keys(), val_metrics_dict.values()):
-                print(f"{metric}: {value}")
+        if (epoch + 1) % CFG.VAL_EVERY == 0:
 
-            # Save best single batch validation metric epoch.
-            if val_metrics_dict["miou"] > best_metric and CFG.SAVE_BEST and is_main_process():
-                best_metric = val_metrics_dict["miou"]
-                checkpoint = {
-                    "state_dict": model.module.state_dict(),
-                    "optimizer": optimizer.state_dict(),
-                    "scheduler": lr_scheduler.state_dict(),
-                    "epochs_run": epoch,
-                    "loss": train_loss_dict["total_loss"]
-                }
-                save_checkpoint(
-                    checkpoint,
-                    folder=f"runs/{CFG.EXPERIMENT_NAME}/logs/checkpoints/",
-                    filename="best_valid_metric.pth"
-                )
-                print(f"Saved best val metric model.")
+
+
+            # save_single_predictions_as_images(
+            #     test_loader,
+            #     model,
+            #     tokenizer,
+            #     epoch,
+            #     wandb_dict,
+            #     folder=os.path.join(CFG.OUTPATH,"runtime_outputs")
+            # )
+            #
+            # # Save best single batch validation metric epoch.
+            # if wandb_dict["miou"] > best_metric and CFG.SAVE_BEST:
+            #     best_metric = wandb_dict["miou"]
+            #     checkpoint = {
+            #         "state_dict": model.state_dict(),
+            #         "optimizer": optimizer.state_dict(),
+            #         "scheduler": lr_scheduler.state_dict(),
+            #         "epochs_run": epoch,
+            #         "loss": train_loss_dict["total_loss"]
+            #     }
+            #     save_checkpoint(
+            #         checkpoint,
+            #         folder=os.path.join(CFG.OUTPATH, "logs", "checkpoints"),
+            #         filename="validation_best.pth"
+            #     )
+            #     print(f"Saved best val metric model.")
+
+        for k,v in wandb_dict.items():
+            print(f"{k}: {v}")
+
 

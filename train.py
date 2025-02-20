@@ -27,7 +27,7 @@ def main():
 
     train_transforms = A.ReplayCompose([
         A.D4(p=1.0),
-        # A.Resize(height=CFG.INPUT_HEIGHT, width=CFG.INPUT_WIDTH),
+        A.Resize(height=CFG.INPUT_HEIGHT, width=CFG.INPUT_WIDTH),
         # A.RandomRotate90(p=1.),
         # A.RandomBrightnessContrast(p=0.5), # ColorJitter already does that
         A.ColorJitter(p=0.5),
@@ -40,7 +40,7 @@ def main():
     )
 
     val_transforms = A.Compose([
-        # A.Resize(height=CFG.INPUT_HEIGHT, width=CFG.INPUT_WIDTH),
+        A.Resize(height=CFG.INPUT_HEIGHT, width=CFG.INPUT_WIDTH),
         A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0),
         ToTensorV2(),
     ],
