@@ -15,19 +15,21 @@ from torchvision.utils import make_grid
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
-from test_config import CFG
+from config import CFG
 from tokenizer import Tokenizer
-from utils import (
+from utils_ori import (
     seed_everything,
     load_checkpoint,
     test_generate,
+    test_generate_arno,
     postprocess,
     permutations_to_polygons,
 )
 from models.model import (
     Encoder,
     Decoder,
-    EncoderDecoder
+    EncoderDecoder,
+    EncoderDecoderWithAlreadyEncodedImages,
 )
 
 from torch.utils.data import DataLoader
@@ -50,12 +52,12 @@ torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 
 DATASET = f"{args.dataset}"
-VAL_DATASET_DIR = f"./data/{DATASET}/val"
+VAL_DATASET_DIR = os.path.join(DATASET,"val")
 # PART_DESC = "val_images"
 PART_DESC = f"{args.output_dir}"
 
 EXPERIMENT_NAME = os.path.basename(os.path.realpath(args.experiment_path))
-CHECKPOINT_PATH = f"runs/{EXPERIMENT_NAME}/logs/checkpoints/{args.checkpoint_name}.pth"
+CHECKPOINT_PATH = args.checkpoint_name
 BATCH_SIZE = 24
 
 
@@ -151,19 +153,46 @@ def main():
         collate_fn=partial(collate_fn, max_len=CFG.MAX_LEN, pad_idx=CFG.PAD_IDX),
         num_workers=2
     )
-
+    
     encoder = Encoder(model_name=CFG.MODEL_NAME, pretrained=True, out_dim=256)
     decoder = Decoder(
-        cfg=CFG,
         vocab_size=tokenizer.vocab_size,
         encoder_len=CFG.NUM_PATCHES,
         dim=256,
         num_heads=8,
-        num_layers=6
+        num_layers=6,
+        max_len=CFG.MAX_LEN,
+        pad_idx=CFG.PAD_IDX,
     )
-    model = EncoderDecoder(cfg=CFG, encoder=encoder, decoder=decoder)
+    model = EncoderDecoder(
+        encoder=encoder,
+        decoder=decoder,
+        n_vertices=CFG.N_VERTICES,
+        sinkhorn_iterations=CFG.SINKHORN_ITERATIONS,
+    )
     model.to(CFG.DEVICE)
     model.eval()
+    model_taking_encoded_images = EncoderDecoderWithAlreadyEncodedImages(model)
+    model_taking_encoded_images.to(CFG.DEVICE)
+    model_taking_encoded_images.eval()
+
+    # encoder = Encoder(model_name=CFG.MODEL_NAME, pretrained=True, out_dim=256)
+    # decoder = Decoder(
+    #     cfg=CFG,
+    #     vocab_size=tokenizer.vocab_size,
+    #     encoder_len=CFG.NUM_PATCHES,
+    #     dim=256,
+    #     num_heads=8,
+    #     num_layers=6
+    # )
+    # model = EncoderDecoder(cfg=CFG, encoder=encoder, decoder=decoder)
+    # model.to(CFG.DEVICE)
+    # model.eval()
+    
+    # # Arno stuff
+    # model_taking_encoded_images = EncoderDecoderWithAlreadyEncodedImages(model)
+    # model_taking_encoded_images.to(CFG.DEVICE)
+    # model_taking_encoded_images.eval()
 
     checkpoint = torch.load(CHECKPOINT_PATH)
     model.load_state_dict(checkpoint['state_dict'])
@@ -191,7 +220,18 @@ def main():
             all_coords = []
             all_confs = []
             t0 = time.time()
-            batch_preds, batch_confs, perm_preds = test_generate(model, x, tokenizer, max_len=CFG.generation_steps, top_k=0, top_p=1)
+            # batch_preds, batch_confs, perm_preds = test_generate(model.encoder, x, tokenizer, max_len=CFG.generation_steps, top_k=0, top_p=1)
+            
+            batch_preds, batch_confs, perm_preds = test_generate_arno(
+                model.encoder,
+                model_taking_encoded_images,
+                x,
+                tokenizer,
+                max_len=CFG.generation_steps,
+                top_k=0,
+                top_p=1,
+            )
+            
             speed.append(time.time() - t0)
             vertex_coords, confs = postprocess(batch_preds, batch_confs, tokenizer)
 
@@ -243,9 +283,9 @@ def main():
             plt.subplot(211), plt.imshow(pred_grid) ,plt.title("Predicted Polygons") ,plt.axis('off')
             plt.subplot(212), plt.imshow(gt_grid) ,plt.title("Ground Truth") ,plt.axis('off')
 
-            if not os.path.exists(os.path.join(f"runs/{EXPERIMENT_NAME}", 'val_preds', DATASET, PART_DESC, ckpt_desc)):
-                os.makedirs(os.path.join(f"runs/{EXPERIMENT_NAME}", 'val_preds', DATASET, PART_DESC, ckpt_desc))
-            plt.savefig(f"runs/{EXPERIMENT_NAME}/val_preds/{DATASET}/{PART_DESC}/{ckpt_desc}/batch_{i_batch}.png")
+            # if not os.path.exists(os.path.join(f"runs/{EXPERIMENT_NAME}", 'val_preds', DATASET, PART_DESC, ckpt_desc)):
+            #     os.makedirs(os.path.join(f"runs/{EXPERIMENT_NAME}", 'val_preds', DATASET, PART_DESC, ckpt_desc))
+            plt.savefig(os.path.join(args.output_dir, f"val_preds_{i_batch}.png"))
             plt.close()
 
         print("Average model speed: ", np.mean(speed) / BATCH_SIZE, " [s / image]")

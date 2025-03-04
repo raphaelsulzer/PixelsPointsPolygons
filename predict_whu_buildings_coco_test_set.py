@@ -15,14 +15,14 @@ from albumentations.pytorch import ToTensorV2
 
 from test_config import CFG
 from tokenizer import Tokenizer
-from utils import (
+from utils_ori import (
     seed_everything,
     load_checkpoint,
     test_generate,
     postprocess,
     permutations_to_polygons,
 )
-from models.model import (
+from models.model_ori import (
     Encoder,
     Decoder,
     EncoderDecoder

@@ -13,12 +13,12 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from tokenizer import Tokenizer
 from test_config import CFG
-from models.model import (
+from models.model_ori import (
     Encoder,
     Decoder,
     EncoderDecoder,
 )
-from utils import (
+from utils_ori import (
     seed_everything,
     test_generate,
     postprocess,
