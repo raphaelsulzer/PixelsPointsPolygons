@@ -9,10 +9,10 @@ import wandb
 
 from config import CFG
 from tokenizer import Tokenizer
-from utils import seed_everything, load_checkpoint
+from utils_ori import seed_everything, load_checkpoint
 from ddp_utils import get_lidar_poly_loaders, get_inria_loaders
 
-from models.model import Encoder, Decoder, EncoderDecoder
+from models.model_ori import Encoder, Decoder, EncoderDecoder
 from engine import train_eval
 
 def main():

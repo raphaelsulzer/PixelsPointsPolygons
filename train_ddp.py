@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from config import CFG
 from tokenizer import Tokenizer
-from utils import (
+from utils_ori import (
     seed_everything,
     load_checkpoint,
 )
@@ -23,7 +23,7 @@ from ddp_utils import (
     get_mass_roads_loaders,
 )
 
-from models.model import (
+from models.model_ori import (
     Encoder,
     Decoder,
     EncoderDecoder

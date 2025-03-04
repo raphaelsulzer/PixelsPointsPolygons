@@ -9,7 +9,7 @@ import sys
 sys.path.insert(1, os.getcwd())
 
 from config import CFG
-from utils import (
+from utils_ori import (
     create_mask,
 )
 
@@ -91,7 +91,7 @@ class ScoreNet(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, model_name: str, out_dim=256, pretrained=False) -> None:
+    def __init__(self, model_name='deit3_small_patch16_384_in21ft1k', pretrained=False, out_dim=256) -> None:
         super().__init__()
         self.model = timm.create_model(
             model_name=model_name,
@@ -107,25 +107,13 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(
-        self,
-        vocab_size: int,
-        encoder_len: int,
-        dim: int,
-        num_heads: int,
-        num_layers: int,
-        max_len: int,
-        pad_idx: int,
-    ):
+    def __init__(self, cfg, vocab_size, encoder_len, dim, num_heads, num_layers):
         super().__init__()
+        self.cfg = cfg
         self.dim = dim
-        self.max_len = max_len
-        self.pad_idx = pad_idx
 
         self.embedding = nn.Embedding(vocab_size, dim)
-        self.decoder_pos_embed = nn.Parameter(
-            torch.randn(1, self.max_len - 1, dim) * 0.02
-        )
+        self.decoder_pos_embed = nn.Parameter(torch.randn(1, self.cfg.MAX_LEN-1, dim) * .02)
         self.decoder_pos_drop = nn.Dropout(p=0.05)
 
         decoder_layer = nn.TransformerDecoderLayer(d_model=dim, nhead=num_heads)
@@ -140,7 +128,7 @@ class Decoder(nn.Module):
     def init_weights(self):
         for name, p in self.named_parameters():
             if 'encoder_pos_embed' in name or 'decoder_pos_embed' in name:
-                print("Skipping initialization of pos embed layers...")
+                print(f"Skipping initialization of pos embed layers...")
                 continue
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
@@ -154,7 +142,7 @@ class Decoder(nn.Module):
         tgt shape: (N, L)
         """
 
-        tgt_mask, tgt_padding_mask = create_mask(tgt, self.pad_idx, device=next(self.parameters()).device)
+        tgt_mask, tgt_padding_mask = create_mask(tgt, self.cfg.PAD_IDX)
         tgt_embedding = self.embedding(tgt)
         tgt_embedding = self.decoder_pos_drop(
             tgt_embedding + self.decoder_pos_embed
@@ -177,17 +165,11 @@ class Decoder(nn.Module):
         preds = preds.transpose(0, 1)
         return self.output(preds), preds
 
-    def predict(self, encoder_out, tgt, device):
+    def predict(self, encoder_out, tgt):
         length = tgt.size(1)
-        padding = (
-            torch.ones((tgt.size(0), self.max_len - length - 1), device=tgt.device)
-            .fill_(self.pad_idx)
-            .long()
-        )
+        padding = torch.ones((tgt.size(0), self.cfg.MAX_LEN-length-1), device=tgt.device).fill_(self.cfg.PAD_IDX).long()
         tgt = torch.cat([tgt, padding], dim=1)
-        tgt_mask, tgt_padding_mask = create_mask(
-            tgt, self.pad_idx, next(self.parameters()).device
-        )
+        tgt_mask, tgt_padding_mask = create_mask(tgt, self.cfg.PAD_IDX)
         tgt_embedding = self.embedding(tgt)
         tgt_embedding = self.decoder_pos_drop(
             tgt_embedding + self.decoder_pos_embed
@@ -212,21 +194,15 @@ class Decoder(nn.Module):
 
 
 class EncoderDecoder(nn.Module):
-    def __init__(
-        self,
-        encoder: nn.Module,
-        decoder: nn.Module,
-        n_vertices: int,
-        sinkhorn_iterations: int,
-    ):
+    def __init__(self, cfg, encoder, decoder):
         super().__init__()
+        self.cfg = cfg
         self.encoder = encoder
         self.decoder = decoder
-        self.n_vertices = n_vertices
-        self.sinkhorn_iterations = sinkhorn_iterations
-        self.scorenet1 = ScoreNet(self.n_vertices)
-        self.scorenet2 = ScoreNet(self.n_vertices)
-        self.bin_score = torch.nn.Parameter(torch.tensor(1.0))
+        self.scorenet1 = ScoreNet(self.cfg.N_VERTICES)
+        self.scorenet2 = ScoreNet(self.cfg.N_VERTICES)
+        bin_score = torch.nn.Parameter(torch.tensor(1.))
+        self.register_parameter('bin_score', bin_score)
 
     def forward(self, image, tgt):
         encoder_out = self.encoder(image)
@@ -235,20 +211,16 @@ class EncoderDecoder(nn.Module):
         perm_mat2 = self.scorenet2(feats)
         perm_mat = perm_mat1 + torch.transpose(perm_mat2, 1, 2)
 
-        perm_mat = log_optimal_transport(
-            perm_mat, self.bin_score, self.sinkhorn_iterations
-        )[:, : perm_mat.shape[1], : perm_mat.shape[2]]
-        perm_mat = F.softmax(perm_mat, dim=-1)
+        perm_mat = log_optimal_transport(perm_mat, self.bin_score, self.cfg.SINKHORN_ITERATIONS)[:, :perm_mat.shape[1], :perm_mat.shape[2]]
+        perm_mat = F.softmax(perm_mat, dim=-1)  # NOTE: perhaps try gumbel softmax here?
+        # perm_mat = F.gumbel_softmax(perm_mat, tau=1.0, hard=False)
 
         return preds, perm_mat
 
     def predict(self, image, tgt):
         encoder_out = self.encoder(image)
-        preds, feats = self.decoder.predict(
-            encoder_out, tgt, next(self.parameters()).device
-        )
+        preds, feats = self.decoder.predict(encoder_out, tgt)
         return preds, feats
-    
 
 class EncoderDecoderWithAlreadyEncodedImages(nn.Module):
     """This class is used to avoid recomputing the encoder output when the images are already encoded.
@@ -284,142 +256,96 @@ class EncoderDecoderWithAlreadyEncodedImages(nn.Module):
 
 
 if __name__ == "__main__":
+    # run this script as main for debugging.
     from tokenizer import Tokenizer
     from torch.nn.utils.rnn import pad_sequence
     import numpy as np
     import torch
     from torch import nn
-    from dataclasses import dataclass
 
-    @dataclass
-    class DebugConfig:
-        input_height: int = 224
-        input_width: int = 224
-        img_size: int = 224
-        num_bins: int = 224
-        max_len: int = 386
-        n_vertices: int = 192
-        sinkhorn_iterations: int = 100
-        model_name: str = "vit_small_patch8_224_dino"
-        num_patches: int = 784
-        device: str = "cuda"
+    image = torch.randn(1, 3, CFG.INPUT_HEIGHT, CFG.INPUT_WIDTH).to('cuda')
 
-    def run_debug(config: DebugConfig):
-        # Create sample input
-        image = torch.randn(1, 3, config.input_height, config.input_width).to(
-            config.device
-        )
+    n_vertices = 192
+    gt_coords = np.random.randint(size=(n_vertices, 2), low=0, high=CFG.IMG_SIZE).astype(np.float32)
+    # in dataset
+    tokenizer = Tokenizer(num_classes=1, num_bins=CFG.NUM_BINS, width=CFG.IMG_SIZE, height=CFG.IMG_SIZE, max_len=CFG.MAX_LEN)
+    gt_seqs, rand_idxs = tokenizer(gt_coords)
+    # in dataloader collate
+    gt_seqs = [torch.LongTensor(gt_seqs)]
+    gt_seqs = pad_sequence(gt_seqs, batch_first=True, padding_value=tokenizer.PAD_code)
+    pad = torch.ones(gt_seqs.size(0), CFG.MAX_LEN - gt_seqs.size(1)).fill_(tokenizer.PAD_code).long()
+    gt_seqs = torch.cat([gt_seqs, pad], dim=1).to('cuda')
+    # in train fn
+    gt_seqs_input = gt_seqs[:, :-1]
+    gt_seqs_expected = gt_seqs[:, 1:]
+    CFG.PAD_IDX = tokenizer.PAD_code
 
-        # Generate random ground truth coordinates
-        gt_coords = np.random.randint(
-            size=(config.n_vertices, 2), low=0, high=config.img_size
-        ).astype(np.float32)
+    encoder = Encoder(model_name=CFG.MODEL_NAME, pretrained=False, out_dim=256)
+    decoder = Decoder(vocab_size=tokenizer.vocab_size, encoder_len=CFG.NUM_PATCHES, dim=256, num_heads=8, num_layers=6)
+    model = EncoderDecoder(encoder, decoder).to('cuda')
+    vertex_loss_fn = nn.CrossEntropyLoss(ignore_index=CFG.PAD_IDX)
 
-        # Initialize tokenizer and process coordinates
-        tokenizer = Tokenizer(
-            num_classes=1,
-            num_bins=config.num_bins,
-            width=config.img_size,
-            height=config.img_size,
-            max_len=config.max_len,
-        )
-        gt_seqs, rand_idxs = tokenizer(gt_coords)
+    # Forward pass during training.
+    preds_f, perm_mat, batch_polygons = model(image, gt_seqs_input)
+    loss = vertex_loss_fn(preds_f.reshape(-1, preds_f.shape[-1]), gt_seqs_expected.reshape(-1))
 
-        # Prepare sequences for training
-        gt_seqs = [torch.LongTensor(gt_seqs)]
-        gt_seqs = pad_sequence(
-            gt_seqs, batch_first=True, padding_value=tokenizer.PAD_code
-        )
-        pad = (
-            torch.ones(gt_seqs.size(0), config.max_len - gt_seqs.size(1))
-            .fill_(tokenizer.PAD_code)
-            .long()
-        )
-        gt_seqs = torch.cat([gt_seqs, pad], dim=1).to(config.device)
+    # Sequence generation during prediction.
+    batch_preds = torch.ones(image.size(0), 1).fill_(tokenizer.BOS_code).long().to(CFG.DEVICE)
+    batch_feats = torch.ones(image.size(0), 1).fill_(tokenizer.BOS_code).long().to(CFG.DEVICE)
+    sample = lambda preds: torch.softmax(preds, dim=-1).argmax(dim=-1).view(-1, 1)
 
-        gt_seqs_input = gt_seqs[:, :-1]
-        gt_seqs_expected = gt_seqs[:, 1:]
+    out_coords = []
+    out_confs = []
 
-        # Initialize model components
-        encoder = Encoder(model_name=config.model_name, pretrained=False, out_dim=256)
-        decoder = Decoder(
-            vocab_size=tokenizer.vocab_size,
-            encoder_len=config.num_patches,
-            dim=256,
-            num_heads=8,
-            num_layers=6,
-            max_len=config.max_len,
-            pad_idx=tokenizer.PAD_code,
-        )
-        model = EncoderDecoder(
-            encoder=encoder,
-            decoder=decoder,
-            n_vertices=config.n_vertices,
-            sinkhorn_iterations=config.sinkhorn_iterations,
-        ).to(config.device)
+    confs = []
+    with torch.no_grad():
+        for i in range(1 + n_vertices*2):
+            try:
+                print(i)
+                preds_p, feats_p = model.predict(image, batch_preds)
+                # print(preds_p.shape, feats_p.shape)
+                if i % 2 == 0:
+                    confs_ = torch.softmax(preds_p, dim=-1).sort(axis=-1, descending=True)[0][:, 0].cpu()
+                    confs.append(confs_)
+                preds_p = sample(preds_p)
+                batch_preds = torch.cat([batch_preds, preds_p], dim=1)
+            except:
+                print(f"Error at iteration: {i}")
+        perm_pred = model.scorenet(feats_p)
 
-        vertex_loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.PAD_code)
+        # Postprocessing.
+        EOS_idxs = (batch_preds == tokenizer.EOS_code).float().argmax(dim=-1)
+        invalid_idxs = ((EOS_idxs - 1) % 2 != 0).nonzero().view(-1)  # sanity check
+        EOS_idxs[invalid_idxs] = 0
 
-        # Forward pass
-        preds_f, perm_mat = model(image, gt_seqs_input)
-        loss = vertex_loss_fn(
-            preds_f.reshape(-1, preds_f.shape[-1]), gt_seqs_expected.reshape(-1)
-        )
+        all_coords = []
+        all_confs = []
+        for i, EOS_idx in enumerate(EOS_idxs.tolist()):
+            if EOS_idx == 0:
+                all_coords.append(None)
+                all_confs.append(None)
+                continue
+            coords = tokenizer.decode(batch_preds[i, :EOS_idx+1])
+            confs = [round(confs[j][i].item(), 3) for j in range(len(coords))]
 
-        # Test sequence generation
-        batch_preds = (
-            torch.ones(image.size(0), 1)
-            .fill_(tokenizer.BOS_code)
-            .long()
-            .to(config.device)
-        )
+            all_coords.append(coords)
+            all_confs.append(confs)
 
-        def sample(preds):
-            return torch.softmax(preds, dim=-1).argmax(dim=-1).view(-1, 1)
+        out_coords.extend(all_coords)
+        out_confs.extend(out_confs)
 
-        confs = []
-        with torch.no_grad():
-            for i in range(1 + config.n_vertices * 2):
-                try:
-                    print(f"Generation step: {i}")
-                    preds_p, feats_p = model.predict(image, batch_preds)
-                    if i % 2 == 0:
-                        confs_ = (
-                            torch.softmax(preds_p, dim=-1)
-                            .sort(axis=-1, descending=True)[0][:, 0]
-                            .cpu()
-                        )
-                        confs.append(confs_)
-                    preds_p = sample(preds_p)
-                    batch_preds = torch.cat([batch_preds, preds_p], dim=1)
-                except Exception as e:
-                    print(f"Error at iteration {i}: {e}")
-                    break
+    print(f"preds_f shape: {preds_f.shape}")
+    print(f"preds_f grad: {preds_f.requires_grad}")
+    print(f"preds_f min: {preds_f.min()}, max: {preds_f.max()}")
 
-            # Process results
-            EOS_idxs = (batch_preds == tokenizer.EOS_code).float().argmax(dim=-1)
-            invalid_idxs = ((EOS_idxs - 1) % 2 != 0).nonzero().view(-1)
-            EOS_idxs[invalid_idxs] = 0
+    print(f"perm_mat shape: {perm_mat.shape}")
+    print(f"perm_mat grad: {perm_mat.requires_grad}")
+    print(f"perm_mat min: {perm_mat.min()}, max: {preds_f.max()}")
 
-            all_coords = []
-            all_confs = []
-            for i, EOS_idx in enumerate(EOS_idxs.tolist()):
-                if EOS_idx == 0:
-                    all_coords.append(None)
-                    all_confs.append(None)
-                    continue
-                coords = tokenizer.decode(batch_preds[i, : EOS_idx + 1])
-                conf_vals = [round(confs[j][i].item(), 3) for j in range(len(coords))]
-                all_coords.append(coords)
-                all_confs.append(conf_vals)
+    print(f"batch_preds shape: {batch_preds.shape}")
+    print(f"batch_preds grad: {batch_preds.requires_grad}")
+    print(f"batch_preds min: {batch_preds.min()}, max: {batch_preds.max()}")
 
-        # Print debug info
-        print("\nResults:")
-        print(f"Predictions shape: {preds_f.shape}")
-        print(f"Predictions require grad: {preds_f.requires_grad}")
-        print(f"Predictions range: [{preds_f.min():.2f}, {preds_f.max():.2f}]")
-        print(f"Permutation matrix shape: {perm_mat.shape}")
-        print(f"Loss value: {loss.item():.4f}")
+    print(f"loss : {loss}")
+    print(f"loss grad: {loss.requires_grad}")
 
-    debug_config = DebugConfig()
-    run_debug(debug_config)
