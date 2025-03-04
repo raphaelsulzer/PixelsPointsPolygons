@@ -263,7 +263,7 @@ def save_single_predictions_as_images(
     vertex_mask = np.zeros((B, 1, H, W))
     for b in range(len(all_coords)):
         if all_coords[b] is not None:
-            print(f"Vertices found!")
+            # print(f"Vertices found!")
             for i in range(len(all_coords[b])):
                 coord = all_coords[b][i]
                 cx, cy = coord
