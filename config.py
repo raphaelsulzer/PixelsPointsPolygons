@@ -22,12 +22,15 @@ class CFG:
         VAL_DATASET_DIR = f"./data/{DATASET}/valid"
         TEST_IMAGES_DIR = f"./data/{DATASET}/test/images"
     elif "lidar_poly" in DATASET:
-        TRAIN_DATASET_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed_512"
-        VAL_DATASET_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed_512"
-        TEST_IMAGES_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed_512"
+        # TRAIN_DATASET_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed_512"
+        # VAL_DATASET_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed_512"
+        # TEST_IMAGES_DIR = "/home/rsulzer/data/LIDAR_POLY/Switzerland/processed_512"
+        TRAIN_DATASET_DIR = "/data/rsulzer/Pix2Poly_data/lidar_poly"
+        VAL_DATASET_DIR = "/data/rsulzer/Pix2Poly_data/lidar_poly"
+        TEST_IMAGES_DIR = "/data/rsulzer/Pix2Poly_data/lidar_poly"
 
     TRAIN_DDP = False
-    NUM_WORKERS = 0
+    NUM_WORKERS = 8
     PIN_MEMORY = True
     LOAD_MODEL = False
 
@@ -54,7 +57,7 @@ class CFG:
     elif "mass_roads" in DATASET:
         IMG_SIZE = 224
     elif "lidar_poly" in DATASET:
-        IMG_SIZE = 512
+        IMG_SIZE = 224
 
     INPUT_SIZE = 224
     PATCH_SIZE = 8
@@ -66,9 +69,9 @@ class CFG:
     perm_loss_weight = 10.0
     SHUFFLE_TOKENS = False  # order gt vertex tokens randomly every time
 
-    BATCH_SIZE = 2  # batch size per gpu; effective batch size = BATCH_SIZE * NUM_GPUs
+    BATCH_SIZE = 24  # batch size per gpu; effective batch size = BATCH_SIZE * NUM_GPUs
     START_EPOCH = 0
-    NUM_EPOCHS = 500
+    NUM_EPOCHS = 100
     MILESTONE = 0
     SAVE_BEST = True
     SAVE_LATEST = True
@@ -101,6 +104,10 @@ class CFG:
     #     CHECKPOINT_PATH = ""
     CHECKPOINT_PATH = ""
 
-    config = "debug"
-    OUTPATH = f"./outputs/{DATASET}/{config}/"
+    RUN_NAME = "image_only_bs24"
+    OUTPATH = f"./outputs/{DATASET}/{RUN_NAME}/"
+
+    LOG_TO_WANDB = False
+    LOG_TO_WANDB = True
+
 

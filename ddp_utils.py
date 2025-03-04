@@ -77,7 +77,6 @@ def get_lidar_poly_loaders(
     pin_memory=True,
 ):
 
-
     from lidar_poly_dataloader import TrainDataset, ValDataset
 
     train_ds = TrainDataset(
@@ -95,7 +94,8 @@ def get_lidar_poly_loaders(
         collate_fn=partial(collate_fn, max_len=max_len, pad_idx=pad_idx),
         num_workers=num_workers,
         pin_memory=pin_memory,
-        drop_last=True
+        drop_last=True,
+        shuffle=True
     )
 
     valid_ds = ValDataset(

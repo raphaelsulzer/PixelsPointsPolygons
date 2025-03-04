@@ -19,15 +19,9 @@ def main():
     # Set random seeds for reproducibility
     seed_everything(42)
 
-
-    # Initialize Weights & Biases
-    # cfg_dict = {key: value for key, value in vars(CFG).items() if not key.startswith('__') and not callable(value)}
-    # wandb.init(project="your_project_name", name=CFG.EXPERIMENT_NAME, config=cfg_dict)
-    # wandb.run.log_code(".")
-
     train_transforms = A.ReplayCompose([
         A.D4(p=1.0),
-        A.Resize(height=CFG.INPUT_HEIGHT, width=CFG.INPUT_WIDTH),
+        # A.Resize(height=CFG.INPUT_HEIGHT, width=CFG.INPUT_WIDTH),
         # A.RandomRotate90(p=1.),
         # A.RandomBrightnessContrast(p=0.5), # ColorJitter already does that
         A.ColorJitter(p=0.5),
@@ -36,15 +30,15 @@ def main():
         A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0),
         ToTensorV2(),
     ],
-        keypoint_params=A.KeypointParams(format='xy')
+        keypoint_params=A.KeypointParams(format='yx')
     )
 
     val_transforms = A.Compose([
-        A.Resize(height=CFG.INPUT_HEIGHT, width=CFG.INPUT_WIDTH),
+        # A.Resize(height=CFG.INPUT_HEIGHT, width=CFG.INPUT_WIDTH),
         A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0),
         ToTensorV2(),
     ],
-        keypoint_params=A.KeypointParams(format='xy')
+        keypoint_params=A.KeypointParams(format='yx')
     )
 
     tokenizer = Tokenizer(
@@ -127,14 +121,12 @@ def main():
         model,
         train_loader,
         val_loader,
-        val_loader,
         tokenizer,
         vertex_loss_fn,
         perm_loss_fn,
         optimizer,
         lr_scheduler=lr_scheduler,
-        step='batch',
-        writer=None
+        step='batch'
     )
 
     # wandb.finish()
