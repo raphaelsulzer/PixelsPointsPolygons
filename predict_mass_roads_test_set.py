@@ -150,8 +150,8 @@ def main(args):
 
     SPLIT = args.split  # 'val' or 'test'
 
-    test_image_dir = f"data/mass_roads/test/sat"
-    val_image_dir = f"data/mass_roads/val/sat"
+    test_image_dir = f"data/mass_roads_1500/test/sat"
+    val_image_dir = f"data/mass_roads_1500/val/sat"
 
     if SPLIT == "test":
         test_images = []
