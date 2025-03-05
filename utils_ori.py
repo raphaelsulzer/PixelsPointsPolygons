@@ -216,7 +216,7 @@ def test_generate_arno(
         encoder_out = encoder_out.to(torch.device('cpu'))
         torch.cuda.empty_cache()
 
-        print(torch.cuda.memory_summary())
+        # print(torch.cuda.memory_summary())
 
         if isinstance(model_taking_encoded_images.encoderdecoder, torch.nn.parallel.DistributedDataParallel):
             perm_preds = model_taking_encoded_images.encoderdecoder.module.scorenet1(feats) + torch.transpose(model_taking_encoded_images.encoderdecoder.module.scorenet2(feats), 1, 2)
