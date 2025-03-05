@@ -9,8 +9,8 @@ import argparse
 
 from functools import partial
 import torch
-from torch import nn
-from torch.utils.data.distributed import DistributedSampler
+from torch.utils.data import Subset
+
 from torchvision.utils import make_grid
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
@@ -40,47 +40,11 @@ import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-d", "--dataset", help="Dataset to use for evaluation.")
-parser.add_argument("-e", "--experiment_path", help="path to experiment folder to evaluate.")
-parser.add_argument("-c", "--checkpoint_name", help="Choice of checkpoint to evaluate in experiment.")
-parser.add_argument("-o", "--output_dir", help="Name of output subdirectory to store part predictions.")
-args = parser.parse_args()
+# torch.backends.cuda.matmul.allow_tf32 = True
+# torch.backends.cudnn.allow_tf32 = True
 
 
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
-
-DATASET = f"{args.dataset}"
-VAL_DATASET_DIR = os.path.join(DATASET,"val")
-# PART_DESC = "val_images"
-PART_DESC = f"{args.output_dir}"
-
-EXPERIMENT_NAME = os.path.basename(os.path.realpath(args.experiment_path))
-CHECKPOINT_PATH = args.checkpoint_name
-BATCH_SIZE = 24
-
-
-def bounding_box_from_points(points):
-    points = np.array(points).flatten()
-    even_locations = np.arange(points.shape[0]/2) * 2
-    odd_locations = even_locations + 1
-    X = np.take(points, even_locations.tolist())
-    Y = np.take(points, odd_locations.tolist())
-    bbox = [X.min(), Y.min(), X.max()-X.min(), Y.max()-Y.min()]
-    bbox = [int(b) for b in bbox]
-    return bbox
-
-
-def single_annotation(image_id, poly):
-    _result = {}
-    _result["image_id"] = int(image_id)
-    _result["category_id"] = 100 
-    _result["score"] = 1
-    _result["segmentation"] = poly
-    _result["bbox"] = bounding_box_from_points(_result["segmentation"])
-    return _result
-
+from lidar_poly_dataset.utils import generate_coco_ann
 
 def collate_fn(batch, max_len, pad_idx):
     """
@@ -114,10 +78,8 @@ def collate_fn(batch, max_len, pad_idx):
     idx_batch = torch.stack(idx_batch)
     return image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, idx_batch
 
-
-def main():
-    seed_everything(42)
-
+def get_val_loader(tokenizer):
+    
     valid_transforms = A.Compose(
         [
             A.Resize(height=CFG.INPUT_HEIGHT, width=CFG.INPUT_WIDTH),
@@ -130,30 +92,29 @@ def main():
         ],
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
     )
-
-    tokenizer = Tokenizer(
-        num_classes=1,
-        num_bins=CFG.NUM_BINS,
-        width=CFG.INPUT_WIDTH,
-        height=CFG.INPUT_HEIGHT,
-        max_len=CFG.MAX_LEN
-    )
-    CFG.PAD_IDX = tokenizer.PAD_code
-
+    
+    
     val_ds = InriaCocoDataset_val(
         cfg=CFG,
-        dataset_dir=VAL_DATASET_DIR,
+        dataset_dir=args.dataset_dir,
         transform=valid_transforms,
         tokenizer=tokenizer,
         shuffle_tokens=CFG.SHUFFLE_TOKENS
     )
+    
+    indices = list(range(4))
+    val_ds = Subset(val_ds, indices)
+    
     val_loader = DataLoader(
         val_ds,
-        batch_size=BATCH_SIZE,
+        batch_size=args.batch_size,
         collate_fn=partial(collate_fn, max_len=CFG.MAX_LEN, pad_idx=CFG.PAD_IDX),
-        num_workers=2
+        num_workers=CFG.NUM_WORKERS
     )
     
+    return val_loader
+
+def get_model(tokenizer):
     encoder = Encoder(model_name=CFG.MODEL_NAME, pretrained=True, out_dim=256)
     decoder = Decoder(
         vocab_size=tokenizer.vocab_size,
@@ -175,37 +136,31 @@ def main():
     model_taking_encoded_images = EncoderDecoderWithAlreadyEncodedImages(model)
     model_taking_encoded_images.to(CFG.DEVICE)
     model_taking_encoded_images.eval()
-
-    # encoder = Encoder(model_name=CFG.MODEL_NAME, pretrained=True, out_dim=256)
-    # decoder = Decoder(
-    #     cfg=CFG,
-    #     vocab_size=tokenizer.vocab_size,
-    #     encoder_len=CFG.NUM_PATCHES,
-    #     dim=256,
-    #     num_heads=8,
-    #     num_layers=6
-    # )
-    # model = EncoderDecoder(cfg=CFG, encoder=encoder, decoder=decoder)
-    # model.to(CFG.DEVICE)
-    # model.eval()
     
-    # # Arno stuff
-    # model_taking_encoded_images = EncoderDecoderWithAlreadyEncodedImages(model)
-    # model_taking_encoded_images.to(CFG.DEVICE)
-    # model_taking_encoded_images.eval()
+    return model, model_taking_encoded_images
 
-    checkpoint = torch.load(CHECKPOINT_PATH)
+
+
+def main(args):
+    seed_everything(42)
+
+    tokenizer = Tokenizer(
+        num_classes=1,
+        num_bins=CFG.NUM_BINS,
+        width=CFG.INPUT_WIDTH,
+        height=CFG.INPUT_HEIGHT,
+        max_len=CFG.MAX_LEN
+    )
+    CFG.PAD_IDX = tokenizer.PAD_code
+
+    val_loader = get_val_loader(tokenizer)
+    model, model_taking_encoded_images = get_model(tokenizer)
+
+    checkpoint = torch.load(args.checkpoint)
     model.load_state_dict(checkpoint['state_dict'])
     epoch = checkpoint['epochs_run']
 
     print(f"Model loaded from epoch: {epoch}")
-    ckpt_desc = f"epoch_{epoch}"
-    if "best_valid_loss" in os.path.basename(CHECKPOINT_PATH):
-        ckpt_desc = f"epoch_{epoch}_bestValLoss"
-    elif "best_valid_metric" in os.path.basename(CHECKPOINT_PATH):
-        ckpt_desc = f"epoch_{epoch}_bestValMetric"
-    else:
-        pass
 
     mean_iou_metric = BinaryJaccardIndex()
     mean_acc_metric = BinaryAccuracy()
@@ -221,7 +176,6 @@ def main():
             all_confs = []
             t0 = time.time()
             # batch_preds, batch_confs, perm_preds = test_generate(model.encoder, x, tokenizer, max_len=CFG.generation_steps, top_k=0, top_p=1)
-            
             batch_preds, batch_confs, perm_preds = test_generate_arno(
                 model.encoder,
                 model_taking_encoded_images,
@@ -248,17 +202,16 @@ def main():
                 padd = torch.ones((CFG.N_VERTICES - len(coord), 2)).fill_(CFG.PAD_IDX)
                 coord = torch.cat([coord, padd], dim=0)
                 coords.append(coord)
-            batch_polygons = permutations_to_polygons(perm_preds, coords, out='torch')  # [0, 224]
-            # pred_polygons = permutations_to_polygons(perm_preds, coords, out='coco')  # [0, 224]
+            batch_polygons = permutations_to_polygons(perm_preds, coords, out='torch')  # [0, 224]     
 
             for ip, pp in enumerate(batch_polygons):
+                polys = []
                 for p in pp:
                     p = torch.fliplr(p)
                     p = p[p[:, 0] != CFG.PAD_IDX]
                     p = p * (CFG.IMG_SIZE / CFG.INPUT_WIDTH)
-                    p = p.view(-1).tolist()
-                    if len(p) > 0:
-                        predictions.append(single_annotation(idx[ip], [p]))
+                    polys.append(p)
+                predictions.extend(generate_coco_ann(polys,idx[ip].item()))
 
             B, C, H, W = x.shape
 
@@ -282,25 +235,39 @@ def main():
             gt_grid = make_grid(y_mask).permute(1, 2, 0)
             plt.subplot(211), plt.imshow(pred_grid) ,plt.title("Predicted Polygons") ,plt.axis('off')
             plt.subplot(212), plt.imshow(gt_grid) ,plt.title("Ground Truth") ,plt.axis('off')
-
-            # if not os.path.exists(os.path.join(f"runs/{EXPERIMENT_NAME}", 'val_preds', DATASET, PART_DESC, ckpt_desc)):
-            #     os.makedirs(os.path.join(f"runs/{EXPERIMENT_NAME}", 'val_preds', DATASET, PART_DESC, ckpt_desc))
-            plt.savefig(os.path.join(args.output_dir, f"val_preds_{i_batch}.png"))
+            
+            img_outfile = os.path.join(args.output_dir, "images", f"predictions_{i_batch}.png")
+            os.makedirs(os.path.dirname(img_outfile), exist_ok=True)
+            plt.savefig(img_outfile)
             plt.close()
 
-        print("Average model speed: ", np.mean(speed) / BATCH_SIZE, " [s / image]")
+        print("Average model speed: ", np.mean(speed) / args.batch_size, " [s / image]")
 
         print(f"Average Mean IOU: {torch.tensor(cumulative_miou).nanmean()}")
         print(f"Average Mean Acc: {torch.tensor(cumulative_macc).nanmean()}")
 
-    with open(f"runs/{EXPERIMENT_NAME}/predictions_{DATASET}_{PART_DESC}_{ckpt_desc}.json", "w") as fp:
+    checkpoint_name = os.path.split(args.checkpoint)[-1][:-4]
+    prediction_outfile = os.path.join(args.output_dir, f"predictions_{checkpoint_name}.json")
+    with open(prediction_outfile, "w") as fp:
         fp.write(json.dumps(predictions))
 
-    with open(f"runs/{EXPERIMENT_NAME}/val_metrics_{DATASET}_{PART_DESC}_{ckpt_desc}.txt", 'w') as ff:
+    eval_outfile = os.path.join(args.output_dir, f"metrics_{checkpoint_name}.json")
+    with open(eval_outfile, 'w') as ff:
         print(f"Average Mean IOU: {torch.tensor(cumulative_miou).nanmean()}", file=ff)
         print(f"Average Mean Acc: {torch.tensor(cumulative_macc).nanmean()}", file=ff)
 
 
 if __name__ == "__main__":
-    main()
+    
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--dataset_dir", help="Dataset to use for evaluation.")
+    parser.add_argument("-c", "--checkpoint", help="Choice of checkpoint to evaluate in experiment.")
+    parser.add_argument("-o", "--output_dir", help="Name of output subdirectory to store part predictions.")
+    parser.add_argument("--batch_size", type=int, default=2, help="Set batch size.")
+    args = parser.parse_args()
+
+
+
+    main(args)
 

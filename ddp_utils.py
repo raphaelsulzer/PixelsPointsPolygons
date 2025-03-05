@@ -77,7 +77,7 @@ def get_lidar_poly_loaders(
     pin_memory=True,
 ):
 
-    from lidar_poly_dataloader import TrainDataset, ValDataset
+    from lidar_poly_dataset import TrainDataset, ValDataset
 
     train_ds = TrainDataset(
         dataset_dir=train_dataset_dir,
