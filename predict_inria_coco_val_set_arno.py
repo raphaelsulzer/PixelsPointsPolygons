@@ -29,7 +29,7 @@ from models.model_ori import (
     EncoderDecoderWithAlreadyEncodedImages,
 )
 from tokenizer import Tokenizer
-from utils_ori import (
+from utils import (
     permutations_to_polygons,
     postprocess,
     seed_everything,

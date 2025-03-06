@@ -15,7 +15,7 @@ from albumentations.pytorch import ToTensorV2
 
 from test_config import CFG
 from tokenizer import Tokenizer
-from utils_ori import (
+from utils import (
     seed_everything,
     load_checkpoint,
     test_generate,

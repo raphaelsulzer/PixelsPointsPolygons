@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from config import CFG
 from tokenizer import Tokenizer
-from utils_ori import (
+from utils import (
     seed_everything,
     load_checkpoint,
 )

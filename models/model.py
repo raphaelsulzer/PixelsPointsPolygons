@@ -186,7 +186,7 @@ class Decoder(nn.Module):
         )
         tgt = torch.cat([tgt, padding], dim=1)
         tgt_mask, tgt_padding_mask = create_mask(
-            tgt, self.pad_idx, next(self.parameters()).device
+            tgt, self.pad_idx
         )
         tgt_embedding = self.embedding(tgt)
         tgt_embedding = self.decoder_pos_drop(
