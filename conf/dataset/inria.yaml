@@ -1,0 +1,10 @@
+path: /data/rsulzer/${model.name}_data/inria/
+train:
+  annotations: ${..path}/train/annotations.json
+  images: ${..path}/train/images/
+val:
+  annotations: ${..path}/val/annotations.json
+  images: ${..path}/val/images/
+test:
+  annotations: ${..path}/test/annotations.json  
+  images: ${..path}/test/images/
