@@ -2,6 +2,8 @@ defaults:
   - model: pix2poly   # Default model
   - dataset: inria   # Default dataset
 
-somevar: somevalue
-someothervar: ${somevar}/add_something
-yetanother: ${someothervar}/add_something_else
+device: 'cuda'
+checkpoint: /data/rsulzer/${.model.name}_outputs/${.dataset.name}/best_valid_metric.pth
+output_dir: /data/rsulzer/${.model.name}_outputs/${.dataset.name}
+
+subset: null

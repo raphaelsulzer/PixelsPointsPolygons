@@ -18,7 +18,7 @@ from models.model_ori import (
     Decoder,
     EncoderDecoder,
 )
-from utils_ori import (
+from utils import (
     seed_everything,
     test_generate,
     postprocess,

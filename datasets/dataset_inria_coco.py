@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 
 
-class InriaCocoDataset(Dataset):
+class InriaCocoDatasetTrain(Dataset):
     def __init__(self, dataset_dir, transform=None, tokenizer=None, shuffle_tokens=False):
         image_dir = osp.join(dataset_dir, "images")
         self.image_dir = image_dir
@@ -204,17 +204,17 @@ class InriaCocoDataset(Dataset):
         return image, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix
 
 
-class InriaCocoDataset_val(Dataset):
-    def __init__(self, cfg, dataset_dir, transform=None, tokenizer=None, shuffle_tokens=False):
-        self.CFG = cfg
-        image_dir = osp.join(dataset_dir, "images")
-        self.image_dir = image_dir
-        self.annotations_path = osp.join(dataset_dir, "annotation.json")
+class InriaCocoDatasetVal(Dataset):
+    def __init__(self, cfg, transform=None, tokenizer=None):
+
+        self.image_dir = cfg.dataset.val.images
+
         self.transform = transform
         self.tokenizer = tokenizer
-        self.shuffle_tokens = shuffle_tokens
+        self.shuffle_tokens = cfg.model.tokenizer.shuffle_tokens
+        self.n_vertices = cfg.model.tokenizer.n_vertices
         # self.images = os.listdir(self.image_dir)
-        self.coco = COCO(self.annotations_path)
+        self.coco = COCO(cfg.dataset.val.annotations)
         # self.image_ids = self.coco.getImgIds(catIds=self.coco.getCatIds())
         self.images = [file for file in os.listdir(self.image_dir) if osp.isfile(osp.join(self.image_dir, file))]
         self.image_ids = [int(im.split('-')[-1].split('.')[0]) for im in self.images]
@@ -240,7 +240,7 @@ class InriaCocoDataset_val(Dataset):
         return new_perm
 
     def __getitem__(self, index):
-        n_vertices = self.CFG.N_VERTICES
+        
         img_id = self.image_ids[index]
         img = self.coco.loadImgs(img_id)[0]
         img_path = osp.join(self.image_dir, img["file_name"])
@@ -252,7 +252,7 @@ class InriaCocoDataset_val(Dataset):
         mask = np.zeros((img['width'], img['height']))
         corner_coords = []
         corner_mask = np.zeros((img['width'], img['height']), dtype=np.float32)
-        perm_matrix = np.zeros((n_vertices, n_vertices), dtype=np.float32)
+        perm_matrix = np.zeros((self.n_vertices, self.n_vertices), dtype=np.float32)
         for ins in annotations:
             segmentations = ins['segmentation']
             for i, segm in enumerate(segmentations):
@@ -279,16 +279,16 @@ class InriaCocoDataset_val(Dataset):
                 points = segm[:-1]
                 for i in range(len(points)):
                     j = (i + 1) % len(points)
-                    if v_count+i > n_vertices - 1 or v_count+j > n_vertices-1:
+                    if v_count+i > self.n_vertices - 1 or v_count+j > self.n_vertices-1:
                         break
                     perm_matrix[v_count+i, v_count+j] = 1.
                 v_count += len(points)
 
-        for i in range(v_count, n_vertices):
+        for i in range(v_count, self.n_vertices):
             perm_matrix[i, i] = 1.
 
         # Workaround for open contours:
-        for i in range(n_vertices):
+        for i in range(self.n_vertices):
             row = perm_matrix[i, :]
             col = perm_matrix[:, i]
             if np.sum(row) == 0 or np.sum(col) == 0:
@@ -298,8 +298,8 @@ class InriaCocoDataset_val(Dataset):
 
         masks = [mask, corner_mask]
 
-        if len(corner_coords) > self.CFG.N_VERTICES:
-            corner_coords = corner_coords[:self.CFG.N_VERTICES]
+        if len(corner_coords) > self.n_vertices:
+            corner_coords = corner_coords[:self.n_vertices]
 
         if self.transform is not None:
             augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
@@ -319,19 +319,24 @@ class InriaCocoDataset_val(Dataset):
         return image, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img['id']])
 
 
+
+
+
+
 def collate_fn(batch, max_len, pad_idx):
     """
     if max_len:
         the sequences will all be padded to that length.
     """
 
-    image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch = [], [], [], [], []
-    for image, mask, c_mask, seq, perm_mat in batch:
+    image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, idx_batch = [], [], [], [], [], []
+    for image, mask, c_mask, seq, perm_mat, idx in batch:
         image_batch.append(image)
         mask_batch.append(mask)
         coords_mask_batch.append(c_mask)
         coords_seq_batch.append(seq)
         perm_matrix_batch.append(perm_mat)
+        idx_batch.append(idx)
 
     coords_seq_batch = pad_sequence(
         coords_seq_batch,
@@ -347,24 +352,6 @@ def collate_fn(batch, max_len, pad_idx):
     mask_batch = torch.stack(mask_batch)
     coords_mask_batch = torch.stack(coords_mask_batch)
     perm_matrix_batch = torch.stack(perm_matrix_batch)
-    return image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch
+    idx_batch = torch.stack(idx_batch)
+    return image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, idx_batch
 
-
-class InriaCocoDatasetTest(Dataset):
-    def __init__(self, image_dir, transform=None):
-        self.image_dir = image_dir
-        self.transform = transform
-        self.images = [file for file in os.listdir(self.image_dir) if osp.isfile(osp.join(self.image_dir, file))]
-
-    def __getitem__(self, index):
-        img_path = osp.join(self.image_dir, self.images[index])
-        image = np.array(Image.open(img_path).convert("RGB"))
-
-        if self.transform is not None:
-            image = self.transform(image=image)['image']
-
-        image = torch.FloatTensor(image)
-        return image
-
-    def __len__(self):
-        return len(self.images)

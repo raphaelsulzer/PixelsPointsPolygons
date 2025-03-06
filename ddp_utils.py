@@ -25,37 +25,6 @@ def get_rank():
 def is_main_process():
     return get_rank() == 0
 
-def collate_fn(batch, max_len, pad_idx):
-    """
-    if max_len:
-        the sequences will all be padded to that length.
-    """
-
-    image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, idx_batch = [], [], [], [], [], []
-    for image, mask, c_mask, seq, perm_mat, idx in batch:
-        image_batch.append(image)
-        mask_batch.append(mask)
-        coords_mask_batch.append(c_mask)
-        coords_seq_batch.append(seq)
-        perm_matrix_batch.append(perm_mat)
-        idx_batch.append(idx)
-
-    coords_seq_batch = pad_sequence(
-        coords_seq_batch,
-        padding_value=pad_idx,
-        batch_first=True
-    )
-
-    if max_len:
-        pad = torch.ones(coords_seq_batch.size(0), max_len - coords_seq_batch.size(1)).fill_(pad_idx).long()
-        coords_seq_batch = torch.cat([coords_seq_batch, pad], dim=1)
-
-    image_batch = torch.stack(image_batch)
-    mask_batch = torch.stack(mask_batch)
-    coords_mask_batch = torch.stack(coords_mask_batch)
-    perm_matrix_batch = torch.stack(perm_matrix_batch)
-    idx_batch = torch.stack(idx_batch)
-    return image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, idx_batch
 
 
 # def collate_fn(batch, max_len, pad_idx):

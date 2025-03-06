@@ -1,19 +1,19 @@
 import os
+import cv2
 import random
-from pathlib import Path
+import numpy as np
+from scipy.optimize import linear_sum_assignment
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import cv2
-import numpy as np
 import torch
 import torchvision
-from scipy.optimize import linear_sum_assignment
-from torchmetrics.functional.classification import binary_accuracy, binary_jaccard_index
+from transformers import top_k_top_p_filtering
+from torchmetrics.functional.classification import binary_jaccard_index, binary_accuracy
+from config import CFG
+
 from tqdm import tqdm
-from transformers.generation.utils import top_k_top_p_filtering
 
-
-def seed_everything(seed: int = 1234) -> None:
+def seed_everything(seed=1234):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
     np.random.seed(seed)
@@ -22,23 +22,14 @@ def seed_everything(seed: int = 1234) -> None:
     torch.backends.cudnn.deterministic = True
 
 
-def save_checkpoint(
-    state: Dict[str, Any],
-    folder: Union[str, Path] = "logs/checkpoint/run1",
-    filename: str = "my_checkpoint.pth.tar",
-) -> None:
+def save_checkpoint(state, folder="logs/checkpoint/run1", filename="my_checkpoint.pth.tar"):
     print("=> Saving checkpoint")
-    folder = Path(folder)
-    folder.mkdir(parents=True, exist_ok=True)
-    torch.save(state, folder / filename)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    torch.save(state, os.path.join(folder, filename))
 
 
-def load_checkpoint(
-    checkpoint: Dict[str, Any],
-    model: torch.nn.Module,
-    optimizer: torch.optim.Optimizer,
-    scheduler: torch.optim.lr_scheduler._LRScheduler,
-) -> int:
+def load_checkpoint(checkpoint, model, optimizer, scheduler):
     print("=> Loading checkpoint")
     model.load_state_dict(checkpoint["state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer"])
@@ -47,37 +38,37 @@ def load_checkpoint(
     return checkpoint["epochs_run"]
 
 
-def generate_square_subsequent_mask(sz: int, device: torch.device) -> torch.Tensor:
-    mask = (torch.triu(torch.ones((sz, sz), device=device)) == 1).transpose(0, 1)
+def generate_square_subsequent_mask(sz,device):
+    mask = (
+        torch.triu(torch.ones((sz, sz), device=device)) == 1
+    ).transpose(0, 1)
 
     mask = mask.float().masked_fill(mask==0, float('-inf')).masked_fill(mask==1, float(0.0))
 
     return mask
 
 
-def create_mask(
-    tgt: torch.Tensor, pad_idx: int, device: torch.device
-) -> Tuple[torch.Tensor, torch.Tensor]:
+def create_mask(tgt, pad_idx):
     """
     tgt shape: (N, L)
     """
 
     tgt_seq_len = tgt.size(1)
-    tgt_mask = generate_square_subsequent_mask(tgt_seq_len, device)
+    tgt_mask = generate_square_subsequent_mask(tgt_seq_len,device=tgt.device)
     tgt_padding_mask = (tgt == pad_idx)
 
     return tgt_mask, tgt_padding_mask
 
 
 class AverageMeter:
-    def __init__(self, name: str = "Metric") -> None:
+    def __init__(self, name="Metric"):
         self.name = name
         self.reset()
 
-    def reset(self) -> None:
+    def reset(self):
         self.avg, self.sum, self.count = [0]*3
 
-    def update(self, val: float, count: int = 1) -> None:
+    def update(self, val, count=1):
         self.count += count
         self.sum += val * count
         self.avg = self.sum / self.count
@@ -87,12 +78,12 @@ class AverageMeter:
         return text
 
 
-def get_lr(optimizer: torch.optim.Optimizer) -> float:
+def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
 
 
-def scores_to_permutations(scores: torch.Tensor) -> torch.Tensor:
+def scores_to_permutations(scores):
     """
     Input a batched array of scores and returns the hungarian optimized 
     permutation matrices.
@@ -108,9 +99,7 @@ def scores_to_permutations(scores: torch.Tensor) -> torch.Tensor:
 
 
 # TODO: add permalink to polyworld repo
-def permutations_to_polygons(
-    perm: torch.Tensor, graph: torch.Tensor, out: str = "torch"
-) -> List[List[torch.Tensor]]:
+def permutations_to_polygons(perm, graph, out='torch'):
     B, N, N = perm.shape
     device = perm.device
 
@@ -183,8 +172,7 @@ def permutations_to_polygons(
 
     return batch
 
-
-def test_generate(
+def test_generate_arno(
     encoder: torch.nn.Module,
     model_taking_encoded_images: torch.nn.Module,
     x: torch.Tensor,
@@ -228,7 +216,7 @@ def test_generate(
         encoder_out = encoder_out.to(torch.device('cpu'))
         torch.cuda.empty_cache()
 
-        print(torch.cuda.memory_summary())
+        # print(torch.cuda.memory_summary())
 
         if isinstance(model_taking_encoded_images.encoderdecoder, torch.nn.parallel.DistributedDataParallel):
             perm_preds = model_taking_encoded_images.encoderdecoder.module.scorenet1(feats) + torch.transpose(model_taking_encoded_images.encoderdecoder.module.scorenet2(feats), 1, 2)
@@ -240,9 +228,40 @@ def test_generate(
     return batch_preds.cpu(), confs, perm_preds
 
 
-def postprocess(
-    batch_preds: torch.Tensor, batch_confs: List[torch.Tensor], tokenizer: Any
-) -> Tuple[List[Optional[np.ndarray]], List[Optional[List[float]]]]:
+def test_generate(model, x, tokenizer, max_len=50, top_k=0, top_p=1):
+    x = x.to(CFG.DEVICE)
+    batch_preds = torch.ones((x.size(0), 1), device=CFG.DEVICE).fill_(tokenizer.BOS_code).long()
+    confs = []
+
+    if top_k != 0 or top_p != 1:
+        sample = lambda preds: torch.softmax(preds, dim=-1).multinomial(num_samples=1).view(-1, 1)
+    else:
+        sample = lambda preds: torch.softmax(preds, dim=-1).argmax(dim=-1).view(-1, 1)
+
+    with torch.no_grad():
+        for i in range(max_len):
+            if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+                preds, feats = model.module.predict(x, batch_preds)
+            else:
+                preds, feats = model.predict(x, batch_preds)
+            preds = top_k_top_p_filtering(preds, top_k=top_k, top_p=top_p)  # if top_k and top_p are set to default, this line does nothing.
+            if i % 2 == 0:
+                confs_ = torch.softmax(preds, dim=-1).sort(axis=-1, descending=True)[0][:, 0].cpu()
+                confs.append(confs_)
+            preds = sample(preds)
+            batch_preds = torch.cat([batch_preds, preds], dim=1)
+
+        if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+            perm_preds = model.module.scorenet1(feats) + torch.transpose(model.module.scorenet2(feats), 1, 2)
+        else:
+            perm_preds = model.scorenet1(feats) + torch.transpose(model.scorenet2(feats), 1, 2)
+
+        perm_preds = scores_to_permutations(perm_preds)
+
+    return batch_preds.cpu(), confs, perm_preds
+
+
+def postprocess(batch_preds, batch_confs, tokenizer):
     EOS_idxs = (batch_preds == tokenizer.EOS_code).float().argmax(dim=-1)
     ## sanity check
     invalid_idxs = ((EOS_idxs - 1) % 2 != 0).nonzero().view(-1)
@@ -265,20 +284,10 @@ def postprocess(
 
 
 def save_single_predictions_as_images(
-    loader: torch.utils.data.DataLoader,
-    model: torch.nn.Module,
-    tokenizer: Any,
-    epoch: int,
-    writer: Any,
-    n_vertices: int,
-    generation_steps: int,
-    folder: Union[str, Path] = "saved_outputs/",
-    device: Union[str, torch.device] = "cuda",
-) -> Dict[str, torch.Tensor]:
-    print("=> Saving val predictions...")
-    if not os.path.exists(folder):
-        print("==> Creating output subdirectory...")
-        os.makedirs(folder)
+    loader, model, tokenizer, epoch, wandb_dict, folder
+):
+    os.makedirs(folder, exist_ok=True)
+    print(f"=> Saving val predictions to {folder}...")
 
     model.eval()
 
@@ -288,15 +297,7 @@ def save_single_predictions_as_images(
     with torch.no_grad():
         loader_iterator = iter(loader)
         idx, (x, y_mask, y_corner_mask, y, y_perm) = 0, next(loader_iterator)
-        batch_preds, batch_confs, perm_preds = test_generate(
-            model,
-            x,
-            tokenizer,
-            max_len=generation_steps,  # Changed from CFG.generation_steps
-            top_k=0,
-            top_p=1,
-            device=device,
-        )
+        batch_preds, batch_confs, perm_preds = test_generate(model, x, tokenizer, max_len=CFG.generation_steps, top_k=0, top_p=1)
         vertex_coords, confs = postprocess(batch_preds, batch_confs, tokenizer)
 
         all_coords.extend(vertex_coords)
@@ -308,9 +309,7 @@ def save_single_predictions_as_images(
                 coord = torch.from_numpy(all_coords[i])
             else:
                 coord = torch.tensor([])
-            padd = torch.ones((n_vertices - len(coord), 2)).fill_(
-                tokenizer.PAD_code
-            )  # Changed from CFG.N_VERTICES
+            padd = torch.ones((CFG.N_VERTICES - len(coord), 2)).fill_(tokenizer.PAD_code)
             coord = torch.cat((coord, padd), dim=0)
             coords.append(coord)
         batch_polygons = permutations_to_polygons(perm_preds, coords, out='torch')  # list of polygon coordinate tensors
@@ -320,7 +319,7 @@ def save_single_predictions_as_images(
     vertex_mask = np.zeros((B, 1, H, W))
     for b in range(len(all_coords)):
         if all_coords[b] is not None:
-            print("Vertices found!")
+            # print(f"Vertices found!")
             for i in range(len(all_coords[b])):
                 coord = all_coords[b][i]
                 cx, cy = coord
@@ -376,22 +375,10 @@ def save_single_predictions_as_images(
         poly_out.float()/255, f"{folder}/pred_polygons/polygons_{idx}_{epoch}.png"
     )
 
-    batch_miou = binary_jaccard_index(polygons, y_mask)
-    batch_biou = binary_jaccard_index(polygons, y_mask, ignore_index=0)
-    batch_macc = binary_accuracy(polygons, y_mask)
-    batch_bacc = binary_accuracy(polygons, y_mask, ignore_index=0)
-
-    writer.add_scalar('Val_Metrics/Mean_IoU', batch_miou, epoch)
-    writer.add_scalar('Val_Metrics/Building_IoU', batch_biou, epoch)
-    writer.add_scalar('Val_Metrics/Mean_Accuracy', batch_macc, epoch)
-    writer.add_scalar('Val_Metrics/Building_Accuracy', batch_bacc, epoch)
-
-    metrics_dict = {
-        "miou": batch_miou,
-        "biou": batch_biou,
-        "macc": batch_macc,
-        "bacc": batch_bacc
-    }
+    wandb_dict['miou'] = binary_jaccard_index(polygons, y_mask)
+    wandb_dict['biou'] = binary_jaccard_index(polygons, y_mask, ignore_index=0)
+    wandb_dict['macc'] = binary_accuracy(polygons, y_mask)
+    wandb_dict['bacc'] = binary_accuracy(polygons, y_mask, ignore_index=0)
 
     torchvision.utils.save_image(x, f"{folder}/image_{idx}.png")
     ymask_out = torch.zeros_like(x)
@@ -411,4 +398,3 @@ def save_single_predictions_as_images(
     torchvision.utils.save_image(y_corner_mask*255, f"{folder}/gt_corners_{idx}.png")
     torchvision.utils.save_image(y_perm[:, None, :, :]*255, f"{folder}/gt_perm_matrix_{idx}.png")
 
-    return metrics_dict

@@ -1,10 +1,11 @@
-path: /data/rsulzer/${model.name}_data/inria/
+name: inria
+path: /data/rsulzer/${model.name}_data/${.name}
 train:
-  annotations: ${..path}/train/annotations.json
+  annotations: ${..path}/train/annotation.json
   images: ${..path}/train/images/
 val:
-  annotations: ${..path}/val/annotations.json
+  annotations: ${..path}/val/annotation.json
   images: ${..path}/val/images/
 test:
-  annotations: ${..path}/test/annotations.json  
+  annotations: ${..path}/test/annotation.json  
   images: ${..path}/test/images/

@@ -8,20 +8,16 @@ import matplotlib.pyplot as plt
 import hydra
 from omegaconf import OmegaConf
 
-from functools import partial
 import torch
-from torch.utils.data import Subset
-
 from torchvision.utils import make_grid
-
+from torchmetrics.classification import BinaryJaccardIndex, BinaryAccuracy
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy("file_system")
 
 from config import CFG
 from tokenizer import Tokenizer
-from ddp_utils import collate_fn
-from utils_ori import (
+from utils import (
     seed_everything,
-    load_checkpoint,
-    test_generate,
     test_generate_arno,
     postprocess,
     permutations_to_polygons,
@@ -32,41 +28,36 @@ from models.model import (
     EncoderDecoder,
     EncoderDecoderWithAlreadyEncodedImages,
 )
-
-from torch.utils.data import DataLoader
-from datasets.dataset_inria_coco import InriaCocoDataset_val
-from torch.nn.utils.rnn import pad_sequence
-from torchmetrics.classification import BinaryJaccardIndex, BinaryAccuracy
-import torch.multiprocessing
-torch.multiprocessing.set_sharing_strategy("file_system")
-
-# torch.backends.cuda.matmul.allow_tf32 = True
-# torch.backends.cudnn.allow_tf32 = True
+from datasets.build_datasets import get_val_loader
 
 from lidar_poly_dataset.utils import generate_coco_ann
 
 
-def get_model(tokenizer):
-    encoder = Encoder(model_name=CFG.MODEL_NAME, pretrained=True, out_dim=256)
+def get_model(cfg,tokenizer):
+    
+    cfg.model.tokenizer.max_len = cfg.model.tokenizer.n_vertices*2+2
+    cfg.model.num_patches = int((cfg.model.input_size // cfg.model.patch_size) ** 2)
+    
+    encoder = Encoder(model_name=cfg.model.type, pretrained=True, out_dim=256)
     decoder = Decoder(
         vocab_size=tokenizer.vocab_size,
-        encoder_len=CFG.NUM_PATCHES,
+        encoder_len=cfg.model.num_patches,
         dim=256,
         num_heads=8,
         num_layers=6,
-        max_len=CFG.MAX_LEN,
-        pad_idx=CFG.PAD_IDX,
+        max_len=cfg.model.tokenizer.max_len,
+        pad_idx=cfg.model.tokenizer.pad_idx,
     )
     model = EncoderDecoder(
         encoder=encoder,
         decoder=decoder,
-        n_vertices=CFG.N_VERTICES,
+        n_vertices=cfg.model.tokenizer.n_vertices,
         sinkhorn_iterations=CFG.SINKHORN_ITERATIONS,
     )
-    model.to(CFG.DEVICE)
+    model.to(cfg.device)
     model.eval()
     model_taking_encoded_images = EncoderDecoderWithAlreadyEncodedImages(model)
-    model_taking_encoded_images.to(CFG.DEVICE)
+    model_taking_encoded_images.to(cfg.device)
     model_taking_encoded_images.eval()
     
     return model, model_taking_encoded_images
@@ -77,15 +68,15 @@ def run_prediction(cfg):
 
     tokenizer = Tokenizer(
         num_classes=1,
-        num_bins=CFG.NUM_BINS,
-        width=CFG.INPUT_WIDTH,
-        height=CFG.INPUT_HEIGHT,
-        max_len=CFG.MAX_LEN
+        num_bins=cfg.model.tokenizer.num_bins,
+        width=cfg.model.input_width,
+        height=cfg.model.input_height,
+        max_len=cfg.model.tokenizer.max_len
     )
-    CFG.PAD_IDX = tokenizer.PAD_code
+    cfg.model.tokenizer.pad_idx = tokenizer.PAD_code
 
-    val_loader = get_val_loader(tokenizer)
-    model, model_taking_encoded_images = get_model(tokenizer)
+    val_loader = get_val_loader(cfg,tokenizer)
+    model, model_taking_encoded_images = get_model(cfg,tokenizer)
 
     checkpoint = torch.load(cfg.checkpoint)
     model.load_state_dict(checkpoint['state_dict'])
@@ -130,7 +121,7 @@ def run_prediction(cfg):
                 else:
                     coord = torch.tensor([])
 
-                padd = torch.ones((CFG.N_VERTICES - len(coord), 2)).fill_(CFG.PAD_IDX)
+                padd = torch.ones((cfg.model.tokenizer.n_vertices - len(coord), 2)).fill_(cfg.model.tokenizer.pad_idx)
                 coord = torch.cat([coord, padd], dim=0)
                 coords.append(coord)
             batch_polygons = permutations_to_polygons(perm_preds, coords, out='torch')  # [0, 224]     
@@ -139,8 +130,7 @@ def run_prediction(cfg):
                 polys = []
                 for p in pp:
                     p = torch.fliplr(p)
-                    p = p[p[:, 0] != CFG.PAD_IDX]
-                    p = p * (CFG.IMG_SIZE / CFG.INPUT_WIDTH)
+                    p = p[p[:, 0] != cfg.model.tokenizer.pad_idx]
                     polys.append(p)
                 predictions.extend(generate_coco_ann(polys,idx[ip].item()))
 
@@ -192,14 +182,9 @@ def run_prediction(cfg):
 @hydra.main(config_path="conf", config_name="config")
 def main(cfg):
     OmegaConf.resolve(cfg)
-    print("\nFinal Configuration:")
+    print("\nConfiguration:")
     print(OmegaConf.to_yaml(cfg))
 
-    # Accessing nested values
-    print(f"\nModel: {cfg.model.name}")
-    # print(f"Layers: {cfg.model.architecture.num_layers}")
-    # print(f"Pretrained on: {cfg.model.pretrained.dataset}")
-    # print(f"Fine-tuning enabled: {cfg.model.pretrained.fine_tune.enabled}")
     run_prediction(cfg)
 
 if __name__ == "__main__":

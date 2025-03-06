@@ -9,7 +9,7 @@ import sys
 sys.path.insert(1, os.getcwd())
 
 from config import CFG
-from utils_ori import (
+from utils import (
     create_mask,
 )
 
