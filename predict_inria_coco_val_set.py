@@ -102,7 +102,7 @@ def get_val_loader(tokenizer):
         shuffle_tokens=CFG.SHUFFLE_TOKENS
     )
     
-    indices = list(range(4))
+    indices = list(range(1000))
     val_ds = Subset(val_ds, indices)
     
     val_loader = DataLoader(
@@ -260,13 +260,22 @@ def main(args):
 if __name__ == "__main__":
     
     
+    
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dataset_dir", help="Dataset to use for evaluation.")
-    parser.add_argument("-c", "--checkpoint", help="Choice of checkpoint to evaluate in experiment.")
-    parser.add_argument("-o", "--output_dir", help="Name of output subdirectory to store part predictions.")
-    parser.add_argument("--batch_size", type=int, default=2, help="Set batch size.")
+    parser.add_argument("-d", "--dataset_dir",
+                        default="/data/rsulzer/pix2poly_data/inria/val", 
+                        help="Dataset to use for evaluation.")
+    parser.add_argument("-c", "--checkpoint",
+                        default="/data/rsulzer/pix2poly_outputs/inria/logs/checkpoints/best_valid_metric.pth", 
+                        help="Choice of checkpoint to evaluate in experiment.")
+    parser.add_argument("-o", "--output_dir", 
+                        default="/data/rsulzer/pix2poly_outputs/inria",
+                        help="Name of output subdirectory to store part predictions.")
+    parser.add_argument("--batch_size", type=int, default=8, help="Set batch size.")
     args = parser.parse_args()
-
+    
+    args.dataset_dir = "/data/rsulzer/pix2poly_data/lidar_poly/val"
+    args.output_dir = "/data/rsulzer/pix2poly_outputs/lidar_poly"
 
 
     main(args)
