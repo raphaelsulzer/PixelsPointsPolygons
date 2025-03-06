@@ -6,4 +6,6 @@ device: 'cuda'
 checkpoint: /data/rsulzer/${.model.name}_outputs/${.dataset.name}/best_valid_metric.pth
 output_dir: /data/rsulzer/${.model.name}_outputs/${.dataset.name}
 
-subset: null
+model:
+  batch_size: 64
+subset: 300

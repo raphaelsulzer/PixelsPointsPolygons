@@ -63,6 +63,32 @@ def get_model(cfg,tokenizer):
     return model, model_taking_encoded_images
 
 
+def make_pixel_mask_from_prediction(x,batch_polygons,cfg):
+    B, C, H, W = x.shape
+
+    polygons_mask = np.zeros((B, 1, H, W))
+    for b in range(len(batch_polygons)):
+        for c in range(len(batch_polygons[b])):
+            poly = batch_polygons[b][c]
+            poly = poly[poly[:, 0] != cfg.model.tokenizer.pad_idx]
+            cnt = np.flip(np.int32(poly.cpu()), 1)
+            if len(cnt) > 0:
+                cv2.fillPoly(polygons_mask[b, 0], pts=[cnt], color=1.)
+    return torch.from_numpy(polygons_mask)
+    
+
+def plot_predictions(polygon_mask, y_mask, outfile):
+
+    pred_grid = make_grid(polygon_mask).permute(1, 2, 0)
+    gt_grid = make_grid(y_mask).permute(1, 2, 0)
+    plt.subplot(211), plt.imshow(pred_grid) ,plt.title("Predicted Polygons") ,plt.axis('off')
+    plt.subplot(212), plt.imshow(gt_grid) ,plt.title("Ground Truth") ,plt.axis('off')
+    
+    os.makedirs(os.path.dirname(outfile), exist_ok=True)
+    plt.savefig(outfile)
+    plt.close()
+
+
 def run_prediction(cfg):
     seed_everything(42)
 
@@ -134,35 +160,16 @@ def run_prediction(cfg):
                     polys.append(p)
                 predictions.extend(generate_coco_ann(polys,idx[ip].item()))
 
-            B, C, H, W = x.shape
-
-            polygons_mask = np.zeros((B, 1, H, W))
-            for b in range(len(batch_polygons)):
-                for c in range(len(batch_polygons[b])):
-                    poly = batch_polygons[b][c]
-                    poly = poly[poly[:, 0] != CFG.PAD_IDX]
-                    cnt = np.flip(np.int32(poly.cpu()), 1)
-                    if len(cnt) > 0:
-                        cv2.fillPoly(polygons_mask[b, 0], pts=[cnt], color=1.)
-            polygons_mask = torch.from_numpy(polygons_mask)
-
+            polygons_mask = make_pixel_mask_from_prediction(x,batch_polygons,cfg)
             batch_miou = mean_iou_metric(polygons_mask, y_mask)
             batch_macc = mean_acc_metric(polygons_mask, y_mask)
+            # outfile = os.path.join(cfg.output_dir, "images", f"predictions_{i_batch}.png")
+            # plot_predictions(polygons_mask, y_mask, outfile)
 
             cumulative_miou.append(batch_miou)
             cumulative_macc.append(batch_macc)
 
-            pred_grid = make_grid(polygons_mask).permute(1, 2, 0)
-            gt_grid = make_grid(y_mask).permute(1, 2, 0)
-            plt.subplot(211), plt.imshow(pred_grid) ,plt.title("Predicted Polygons") ,plt.axis('off')
-            plt.subplot(212), plt.imshow(gt_grid) ,plt.title("Ground Truth") ,plt.axis('off')
-            
-            img_outfile = os.path.join(cfg.output_dir, "images", f"predictions_{i_batch}.png")
-            os.makedirs(os.path.dirname(img_outfile), exist_ok=True)
-            plt.savefig(img_outfile)
-            plt.close()
-
-        print("Average model speed: ", np.mean(speed) / cfg.batch_size, " [s / image]")
+        print("Average model speed: ", np.mean(speed) / cfg.model.batch_size, " [s / image]")
 
         print(f"Average Mean IOU: {torch.tensor(cumulative_miou).nanmean()}")
         print(f"Average Mean Acc: {torch.tensor(cumulative_macc).nanmean()}")
