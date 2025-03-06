@@ -5,18 +5,19 @@ from tqdm import tqdm
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-import argparse
+import hydra
+from omegaconf import OmegaConf
 
 from functools import partial
 import torch
 from torch.utils.data import Subset
 
 from torchvision.utils import make_grid
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
+
 
 from config import CFG
 from tokenizer import Tokenizer
+from ddp_utils import collate_fn
 from utils_ori import (
     seed_everything,
     load_checkpoint,
@@ -39,80 +40,11 @@ from torchmetrics.classification import BinaryJaccardIndex, BinaryAccuracy
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 
-
 # torch.backends.cuda.matmul.allow_tf32 = True
 # torch.backends.cudnn.allow_tf32 = True
 
-
 from lidar_poly_dataset.utils import generate_coco_ann
 
-def collate_fn(batch, max_len, pad_idx):
-    """
-    if max_len:
-        the sequences will all be padded to that length.
-    """
-
-    image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, idx_batch = [], [], [], [], [], []
-    for image, mask, c_mask, seq, perm_mat, idx in batch:
-        image_batch.append(image)
-        mask_batch.append(mask)
-        coords_mask_batch.append(c_mask)
-        coords_seq_batch.append(seq)
-        perm_matrix_batch.append(perm_mat)
-        idx_batch.append(idx)
-
-    coords_seq_batch = pad_sequence(
-        coords_seq_batch,
-        padding_value=pad_idx,
-        batch_first=True
-    )
-
-    if max_len:
-        pad = torch.ones(coords_seq_batch.size(0), max_len - coords_seq_batch.size(1)).fill_(pad_idx).long()
-        coords_seq_batch = torch.cat([coords_seq_batch, pad], dim=1)
-
-    image_batch = torch.stack(image_batch)
-    mask_batch = torch.stack(mask_batch)
-    coords_mask_batch = torch.stack(coords_mask_batch)
-    perm_matrix_batch = torch.stack(perm_matrix_batch)
-    idx_batch = torch.stack(idx_batch)
-    return image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, idx_batch
-
-def get_val_loader(tokenizer):
-    
-    valid_transforms = A.Compose(
-        [
-            A.Resize(height=CFG.INPUT_HEIGHT, width=CFG.INPUT_WIDTH),
-            A.Normalize(
-                mean=[0.0, 0.0, 0.0],
-                std=[1.0, 1.0, 1.0],
-                max_pixel_value=255.0
-            ),
-            ToTensorV2(),
-        ],
-        keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
-    )
-    
-    
-    val_ds = InriaCocoDataset_val(
-        cfg=CFG,
-        dataset_dir=args.dataset_dir,
-        transform=valid_transforms,
-        tokenizer=tokenizer,
-        shuffle_tokens=CFG.SHUFFLE_TOKENS
-    )
-    
-    indices = list(range(1000))
-    val_ds = Subset(val_ds, indices)
-    
-    val_loader = DataLoader(
-        val_ds,
-        batch_size=args.batch_size,
-        collate_fn=partial(collate_fn, max_len=CFG.MAX_LEN, pad_idx=CFG.PAD_IDX),
-        num_workers=CFG.NUM_WORKERS
-    )
-    
-    return val_loader
 
 def get_model(tokenizer):
     encoder = Encoder(model_name=CFG.MODEL_NAME, pretrained=True, out_dim=256)
@@ -140,8 +72,7 @@ def get_model(tokenizer):
     return model, model_taking_encoded_images
 
 
-
-def main(args):
+def run_prediction(cfg):
     seed_everything(42)
 
     tokenizer = Tokenizer(
@@ -156,7 +87,7 @@ def main(args):
     val_loader = get_val_loader(tokenizer)
     model, model_taking_encoded_images = get_model(tokenizer)
 
-    checkpoint = torch.load(args.checkpoint)
+    checkpoint = torch.load(cfg.checkpoint)
     model.load_state_dict(checkpoint['state_dict'])
     epoch = checkpoint['epochs_run']
 
@@ -236,47 +167,40 @@ def main(args):
             plt.subplot(211), plt.imshow(pred_grid) ,plt.title("Predicted Polygons") ,plt.axis('off')
             plt.subplot(212), plt.imshow(gt_grid) ,plt.title("Ground Truth") ,plt.axis('off')
             
-            img_outfile = os.path.join(args.output_dir, "images", f"predictions_{i_batch}.png")
+            img_outfile = os.path.join(cfg.output_dir, "images", f"predictions_{i_batch}.png")
             os.makedirs(os.path.dirname(img_outfile), exist_ok=True)
             plt.savefig(img_outfile)
             plt.close()
 
-        print("Average model speed: ", np.mean(speed) / args.batch_size, " [s / image]")
+        print("Average model speed: ", np.mean(speed) / cfg.batch_size, " [s / image]")
 
         print(f"Average Mean IOU: {torch.tensor(cumulative_miou).nanmean()}")
         print(f"Average Mean Acc: {torch.tensor(cumulative_macc).nanmean()}")
 
-    checkpoint_name = os.path.split(args.checkpoint)[-1][:-4]
-    prediction_outfile = os.path.join(args.output_dir, f"predictions_{checkpoint_name}.json")
+    checkpoint_name = os.path.split(cfg.checkpoint)[-1][:-4]
+    prediction_outfile = os.path.join(cfg.output_dir, f"predictions_{checkpoint_name}.json")
     with open(prediction_outfile, "w") as fp:
         fp.write(json.dumps(predictions))
 
-    eval_outfile = os.path.join(args.output_dir, f"metrics_{checkpoint_name}.json")
+    eval_outfile = os.path.join(cfg.output_dir, f"metrics_{checkpoint_name}.json")
     with open(eval_outfile, 'w') as ff:
         print(f"Average Mean IOU: {torch.tensor(cumulative_miou).nanmean()}", file=ff)
         print(f"Average Mean Acc: {torch.tensor(cumulative_macc).nanmean()}", file=ff)
 
 
+
+@hydra.main(config_path="conf", config_name="config")
+def main(cfg):
+    OmegaConf.resolve(cfg)
+    print("\nFinal Configuration:")
+    print(OmegaConf.to_yaml(cfg))
+
+    # Accessing nested values
+    print(f"\nModel: {cfg.model.name}")
+    # print(f"Layers: {cfg.model.architecture.num_layers}")
+    # print(f"Pretrained on: {cfg.model.pretrained.dataset}")
+    # print(f"Fine-tuning enabled: {cfg.model.pretrained.fine_tune.enabled}")
+    run_prediction(cfg)
+
 if __name__ == "__main__":
-    
-    
-    
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dataset_dir",
-                        default="/data/rsulzer/pix2poly_data/inria/val", 
-                        help="Dataset to use for evaluation.")
-    parser.add_argument("-c", "--checkpoint",
-                        default="/data/rsulzer/pix2poly_outputs/inria/logs/checkpoints/best_valid_metric.pth", 
-                        help="Choice of checkpoint to evaluate in experiment.")
-    parser.add_argument("-o", "--output_dir", 
-                        default="/data/rsulzer/pix2poly_outputs/inria",
-                        help="Name of output subdirectory to store part predictions.")
-    parser.add_argument("--batch_size", type=int, default=8, help="Set batch size.")
-    args = parser.parse_args()
-    
-    args.dataset_dir = "/data/rsulzer/pix2poly_data/lidar_poly/val"
-    args.output_dir = "/data/rsulzer/pix2poly_outputs/lidar_poly"
-
-
-    main(args)
-
+    main()

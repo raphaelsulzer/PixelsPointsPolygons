@@ -257,22 +257,24 @@ def predict(checkpoint_file, outpath):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dataset", help="Dataset to use for evaluation.")
-    parser.add_argument("-e", "--experiment_path", help="path to experiment folder to evaluate.")
-    parser.add_argument("-c", "--checkpoint_name", help="Choice of checkpoint to evaluate in experiment.")
-    parser.add_argument("-o", "--output_dir", help="Name of output subdirectory to store part predictions.")
-    args = parser.parse_args()
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("-d", "--dataset", help="Dataset to use for evaluation.")
+    # parser.add_argument("-e", "--experiment_path", help="path to experiment folder to evaluate.")
+    # parser.add_argument("-c", "--checkpoint_name", help="Choice of checkpoint to evaluate in experiment.")
+    # parser.add_argument("-o", "--output_dir", help="Name of output subdirectory to store part predictions.")
+    # args = parser.parse_args()
 
-    DATASET = f"{args.dataset}"
-    VAL_DATASET_DIR = f"./data/{DATASET}/val"
-    # PART_DESC = "val_images"
-    PART_DESC = f"{args.output_dir}"
+    # DATASET = f"{args.dataset}"
+    # VAL_DATASET_DIR = f"./data/{DATASET}/val"
+    # # PART_DESC = "val_images"
+    # PART_DESC = f"{args.output_dir}"
 
-    EXPERIMENT_NAME = os.path.basename(os.path.realpath(args.experiment_path))
-    CHECKPOINT_PATH = f"runs/{EXPERIMENT_NAME}/logs/checkpoints/{args.checkpoint_name}.pth"
+    # EXPERIMENT_NAME = os.path.basename(os.path.realpath(args.experiment_path))
+    # CHECKPOINT_PATH = f"runs/{EXPERIMENT_NAME}/logs/checkpoints/{args.checkpoint_name}.pth"
 
-    outpath = args.output_dir
+    # outpath = args.output_dir
+    
+    
 
 
     predict(CHECKPOINT_PATH, outpath)

@@ -1,0 +1,7 @@
+defaults:
+  - model: pix2poly   # Default model
+  - dataset: inria   # Default dataset
+
+somevar: somevalue
+someothervar: ${somevar}/add_something
+yetanother: ${someothervar}/add_something_else

@@ -47,6 +47,7 @@ conda install conda-forge::tensorboard -y
 conda install conda-forge::wandb -y
 conda install conda-forge::timm=0.9.12 -y
 pip install matplotlib==3.7.0
+pip install hydra-core
 pip install -r requirements.txt
 
 # problem with torch:tms? do this:
