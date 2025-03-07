@@ -101,11 +101,13 @@ def plot_prediction_as_mask(polygon_mask, y_mask, outfile):
     plt.close()
 
 
-def plot_prediction_as_polygons(polygons, img, id=0):
+def plot_prediction_as_polygons(polygons, img):
+    
+    if not len(polygons):
+        return
     
     from lidar_poly_dataset.utils import plot_polygons
-    img = img[id].permute(1, 2, 0).cpu().numpy()
-    polygons = polygons[id]
+    img = img.permute(1, 2, 0).cpu().numpy()
     plot_polygons(polygons, img)
     
 
@@ -178,14 +180,15 @@ def run_prediction(cfg):
                 for p in pp:
                     p = torch.fliplr(p)
                     p = p[p[:, 0] != cfg.model.tokenizer.pad_idx]
-                    polys.append(p)
+                    if len(p) > 0:
+                        polys.append(p)
                 predictions.extend(generate_coco_ann(polys,idx[ip].item()))
 
             polygons_mask = make_pixel_mask_from_prediction(x,batch_polygons,cfg)
             batch_miou = mean_iou_metric(polygons_mask, y_mask)
             batch_macc = mean_acc_metric(polygons_mask, y_mask)
 
-            plot_prediction_as_polygons(batch_polygons, x)
+            # plot_prediction_as_polygons(polys, x[-1])
             # outfile = os.path.join(cfg.output_dir, "images", f"predictions_{i_batch}.png")
             # plot_prediction_as_mask(polygons_mask, y_mask, outfile)
 

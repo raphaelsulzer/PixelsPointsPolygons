@@ -1,12 +1,12 @@
 defaults:
   - model: pix2poly   # Default model
-  - dataset: inria   # Default dataset
+  - dataset: lidarpoly   # Default dataset
   - run_type: release   # Default run_type
   - _self_
 
 device: 'cuda'
-checkpoint: /data/rsulzer/pix2poly_outputs/lidar_poly/image_only_bs24/logs/checkpoints/validation_best.pth
-# checkpoint: /data/rsulzer/${.model.name}_outputs/${.dataset.name}/best_valid_metric.pth
+# checkpoint: /data/rsulzer/pix2poly_outputs/lidar_poly/image_only_bs24/logs/checkpoints/epoch_89.pth
+checkpoint: /data/rsulzer/${.model.name}_outputs/${.dataset.name}/best_valid_metric.pth
 output_dir: /data/rsulzer/${.model.name}_outputs/${.dataset.name}
 
 
