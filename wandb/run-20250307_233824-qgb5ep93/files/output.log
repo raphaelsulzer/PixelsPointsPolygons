@@ -1,4 +1,0 @@
-[34m[1mwandb[0m: [33mWARNING[0m No relevant files were detected in the specified directory. No code will be logged to your run.
-  0%|                                                                                                          | 0/100 [00:00<?, ?it/s]
-Error executing job with overrides: ['run_type=debug']
-Backend tkagg is interactive backend. Turning interactive mode on.
