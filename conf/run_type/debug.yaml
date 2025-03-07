@@ -1,5 +1,6 @@
 name: debug
-batch_size: 4
+batch_size: 2
 subset: 8
 logging: DEBUG
 num_workers: 1
+log_to_wandb: False

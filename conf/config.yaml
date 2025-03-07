@@ -5,13 +5,14 @@ defaults:
   - _self_
 
 
-exp_name: inria_trained
+exp_name: images_only
 
 device: 'cuda'
 # checkpoint: /data/rsulzer/pix2poly_outputs/lidar_poly/image_only_bs24/logs/checkpoints/epoch_89.pth
-checkpoint: /data/rsulzer/${.model.name}_outputs/${.dataset.name}/best_valid_metric.pth
+# checkpoint: /data/rsulzer/${.model.name}_outputs/${.dataset.name}/best_valid_metric.pth
+checkpoint: null
 output_dir: /data/rsulzer/${.model.name}_outputs/${.dataset.name}/${.exp_name}
-
+log_to_wandb: ${.run_type.log_to_wandb}
 
 model:
   batch_size: ${..run_type.batch_size}

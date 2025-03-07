@@ -16,6 +16,14 @@ def get_val_loader(cfg,tokenizer):
     else:
         raise NotImplementedError
 
+def get_train_loader(cfg,tokenizer):
+    if cfg.dataset.name == 'inria':
+        raise NotImplementedError
+    elif cfg.dataset.name == 'lidarpoly':
+        return get_train_loader_lidarpoly(cfg,tokenizer)
+    else:
+        raise NotImplementedError
+
 
 def collate_fn_lidarpoly(batch, max_len, pad_idx):
     """
@@ -49,19 +57,47 @@ def collate_fn_lidarpoly(batch, max_len, pad_idx):
     idx_batch = torch.stack(idx_batch)
     return image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, idx_batch
 
+
+def get_train_loader_lidarpoly(cfg,tokenizer):
+    
+    from lidar_poly_dataset import TrainDataset
+
+    train_transforms = A.ReplayCompose([
+        A.D4(p=1.0),
+        A.Resize(height=cfg.model.input_height, width=cfg.model.input_width),
+        A.ColorJitter(p=0.5),
+        A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0),
+        ToTensorV2(),
+    ],
+        keypoint_params=A.KeypointParams(format='yx')
+    )
+    
+    train_ds = TrainDataset(
+        dataset_dir=cfg.dataset.path,
+        transform=train_transforms,
+        tokenizer=tokenizer,
+        shuffle_tokens=cfg.model.tokenizer.shuffle_tokens,
+        n_polygon_vertices=cfg.model.tokenizer.n_vertices
+    )
+
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=cfg.model.batch_size,
+        collate_fn=partial(collate_fn_lidarpoly, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
+        num_workers=cfg.num_workers
+    )
+    
+    return train_loader
+
 def get_val_loader_lidarpoly(cfg,tokenizer):
     
     
-    from lidar_poly_dataset import TrainDataset, ValDataset
+    from lidar_poly_dataset import ValDataset
     
-    val_transform = A.Compose(
+    val_transforms = A.Compose(
         [
             A.Resize(height=cfg.model.input_height, width=cfg.model.input_width),
-            A.Normalize(
-                mean=[0.0, 0.0, 0.0],
-                std=[1.0, 1.0, 1.0],
-                max_pixel_value=255.0
-            ),
+            A.Normalize(mean=[0.0, 0.0, 0.0],std=[1.0, 1.0, 1.0],max_pixel_value=255.0),
             ToTensorV2(),
         ],
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
@@ -69,7 +105,7 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
         
     val_ds = ValDataset(
         dataset_dir=cfg.dataset.path,
-        transform=val_transform,
+        transform=val_transforms,
         tokenizer=tokenizer,
         shuffle_tokens=cfg.model.tokenizer.shuffle_tokens,
         n_polygon_vertices=cfg.model.tokenizer.n_vertices

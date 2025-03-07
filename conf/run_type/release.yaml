@@ -3,3 +3,4 @@ batch_size: 64
 subset: null
 logging: INFO
 num_workers: 16
+log_to_wandb: True
