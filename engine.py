@@ -3,17 +3,11 @@ import torch, os
 from predict_lidarpoly_coco import predict_to_coco
 from postprocess_coco_parts import *
 
-from utils import (
-    AverageMeter,
-    get_lr,
-    save_checkpoint,
-    save_single_predictions_as_images
-)
+from utils import AverageMeter, get_lr, save_checkpoint, save_single_predictions_as_images
+
 from config import CFG
 
-from ddp_utils import is_main_process
-
-from lidar_poly_dataloader.metrics import compute_IoU_cIoU
+from lidar_poly_dataset.metrics import compute_IoU_cIoU
 
 import wandb
 
@@ -95,8 +89,7 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
     perm_loss_meter = AverageMeter()
 
     loader = train_loader
-    if is_main_process():
-        loader = tqdm(train_loader, total=len(train_loader))
+    loader = tqdm(train_loader, total=len(train_loader))
 
     for x, y_mask, y_corner_mask, y, y_perm in loader:
         x = x.to(CFG.DEVICE, non_blocking=True)

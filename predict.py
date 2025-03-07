@@ -4,7 +4,6 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
-
 import time
 import json
 from tqdm import tqdm
@@ -21,18 +20,8 @@ import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 from tokenizer import Tokenizer
-from utils import (
-    seed_everything,
-    test_generate_arno,
-    postprocess,
-    permutations_to_polygons,
-)
-from models.model import (
-    Encoder,
-    Decoder,
-    EncoderDecoder,
-    EncoderDecoderWithAlreadyEncodedImages,
-)
+from utils import seed_everything, test_generate_arno, postprocess, permutations_to_polygons
+from models.model import Encoder, Decoder, EncoderDecoder, EncoderDecoderWithAlreadyEncodedImages
 from datasets.build_datasets import get_val_loader
 
 from lidar_poly_dataset.utils import generate_coco_ann
@@ -45,8 +34,6 @@ def compute_dynamic_cfg_vars(cfg,tokenizer):
     cfg.model.tokenizer.generation_steps = cfg.model.tokenizer.n_vertices*2+1
     cfg.model.num_patches = int((cfg.model.input_size // cfg.model.patch_size) ** 2)
     
-    
-
 
 def get_model(cfg,tokenizer):
     

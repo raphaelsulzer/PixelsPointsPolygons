@@ -8,10 +8,7 @@ import os
 import sys
 sys.path.insert(1, os.getcwd())
 
-from config import CFG
-from utils import (
-    create_mask,
-)
+from utils import create_mask
 
 
 # Borrowed from https://github.com/magicleap/SuperGluePretrainedNetwork/blob/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/superglue.py#L143
