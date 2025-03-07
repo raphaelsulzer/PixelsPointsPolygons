@@ -1,0 +1,5 @@
+name: debug
+batch_size: 4
+subset: 8
+logging: DEBUG
+num_workers: 1

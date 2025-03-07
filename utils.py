@@ -7,7 +7,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
 import torchvision
-from transformers import top_k_top_p_filtering
+# from transformers import top_k_top_p_filtering
+from transformers.generation.utils import top_k_top_p_filtering
 from torchmetrics.functional.classification import binary_jaccard_index, binary_accuracy
 from config import CFG
 

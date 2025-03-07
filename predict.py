@@ -1,4 +1,10 @@
+# disable annoying transfromers and albumentation warnings
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
+os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
+
+
 import time
 import json
 from tqdm import tqdm
@@ -14,7 +20,6 @@ from torchmetrics.classification import BinaryJaccardIndex, BinaryAccuracy
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 
-from config import CFG
 from tokenizer import Tokenizer
 from utils import (
     seed_everything,
@@ -33,10 +38,17 @@ from datasets.build_datasets import get_val_loader
 from lidar_poly_dataset.utils import generate_coco_ann
 
 
-def get_model(cfg,tokenizer):
+def compute_dynamic_cfg_vars(cfg,tokenizer):
     
+    cfg.model.tokenizer.pad_idx = tokenizer.PAD_code
     cfg.model.tokenizer.max_len = cfg.model.tokenizer.n_vertices*2+2
+    cfg.model.tokenizer.generation_steps = cfg.model.tokenizer.n_vertices*2+1
     cfg.model.num_patches = int((cfg.model.input_size // cfg.model.patch_size) ** 2)
+    
+    
+
+
+def get_model(cfg,tokenizer):
     
     encoder = Encoder(model_name=cfg.model.type, pretrained=True, out_dim=256)
     decoder = Decoder(
@@ -52,7 +64,7 @@ def get_model(cfg,tokenizer):
         encoder=encoder,
         decoder=decoder,
         n_vertices=cfg.model.tokenizer.n_vertices,
-        sinkhorn_iterations=CFG.SINKHORN_ITERATIONS,
+        sinkhorn_iterations=cfg.model.sinkhorn_iterations
     )
     model.to(cfg.device)
     model.eval()
@@ -77,7 +89,7 @@ def make_pixel_mask_from_prediction(x,batch_polygons,cfg):
     return torch.from_numpy(polygons_mask)
     
 
-def plot_predictions(polygon_mask, y_mask, outfile):
+def plot_prediction_as_mask(polygon_mask, y_mask, outfile):
 
     pred_grid = make_grid(polygon_mask).permute(1, 2, 0)
     gt_grid = make_grid(y_mask).permute(1, 2, 0)
@@ -89,6 +101,14 @@ def plot_predictions(polygon_mask, y_mask, outfile):
     plt.close()
 
 
+def plot_prediction_as_polygons(polygons, img, id=0):
+    
+    from lidar_poly_dataset.utils import plot_polygons
+    img = img[id].permute(1, 2, 0).cpu().numpy()
+    polygons = polygons[id]
+    plot_polygons(polygons, img)
+    
+
 def run_prediction(cfg):
     seed_everything(42)
 
@@ -99,7 +119,8 @@ def run_prediction(cfg):
         height=cfg.model.input_height,
         max_len=cfg.model.tokenizer.max_len
     )
-    cfg.model.tokenizer.pad_idx = tokenizer.PAD_code
+    
+    compute_dynamic_cfg_vars(cfg,tokenizer)
 
     val_loader = get_val_loader(cfg,tokenizer)
     model, model_taking_encoded_images = get_model(cfg,tokenizer)
@@ -119,17 +140,17 @@ def run_prediction(cfg):
         cumulative_macc = []
         speed = []
         predictions = []
-        for i_batch, (x, y_mask, y_corner_mask, y, y_perm, idx) in enumerate(tqdm(val_loader)):
+        for x, y_mask, y_corner_mask, y, y_perm, idx in tqdm(val_loader):
             all_coords = []
             all_confs = []
             t0 = time.time()
-            # batch_preds, batch_confs, perm_preds = test_generate(model.encoder, x, tokenizer, max_len=CFG.generation_steps, top_k=0, top_p=1)
+
             batch_preds, batch_confs, perm_preds = test_generate_arno(
                 model.encoder,
                 model_taking_encoded_images,
                 x,
                 tokenizer,
-                max_len=CFG.generation_steps,
+                max_len=cfg.model.tokenizer.generation_steps,
                 top_k=0,
                 top_p=1,
             )
@@ -163,8 +184,10 @@ def run_prediction(cfg):
             polygons_mask = make_pixel_mask_from_prediction(x,batch_polygons,cfg)
             batch_miou = mean_iou_metric(polygons_mask, y_mask)
             batch_macc = mean_acc_metric(polygons_mask, y_mask)
+
+            plot_prediction_as_polygons(batch_polygons, x)
             # outfile = os.path.join(cfg.output_dir, "images", f"predictions_{i_batch}.png")
-            # plot_predictions(polygons_mask, y_mask, outfile)
+            # plot_prediction_as_mask(polygons_mask, y_mask, outfile)
 
             cumulative_miou.append(batch_miou)
             cumulative_macc.append(batch_macc)
@@ -186,7 +209,7 @@ def run_prediction(cfg):
 
 
 
-@hydra.main(config_path="conf", config_name="config")
+@hydra.main(config_path="conf", config_name="config", version_base="1.3")
 def main(cfg):
     OmegaConf.resolve(cfg)
     print("\nConfiguration:")
