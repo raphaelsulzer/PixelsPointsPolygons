@@ -1,0 +1,43 @@
+{
+  "os":  "Linux-6.9.5-200.fc40.x86_64-x86_64-with-glibc2.39",
+  "python":  "CPython 3.11.11",
+  "startedAt":  "2025-03-07T22:38:25.098891Z",
+  "args":  [
+    "run_type=debug"
+  ],
+  "program":  "/user/rsulzer/home/remote_python/Pix2Poly/train.py",
+  "git":  {
+    "remote":  "git@github.com:raphaelsulzer/Pix2Poly.git",
+    "commit":  "3df17c4dcbee347f7f3cc6692bf890d6b3a0d39d"
+  },
+  "email":  "raphael.sulzer.1@gmail.com",
+  "root":  "/run/netsop/u/home-sam/home/rsulzer/remote_python/Pix2Poly",
+  "host":  "gin",
+  "executable":  "/data/rsulzer/miniconda3/envs/pix2poly/bin/python",
+  "cpu_count":  52,
+  "cpu_count_logical":  104,
+  "gpu":  "NVIDIA RTX A6000",
+  "gpu_count":  1,
+  "disk":  {
+    "/":  {
+      "total":  "4086965469184",
+      "used":  "1378587058176"
+    }
+  },
+  "memory":  {
+    "total":  "540631433216"
+  },
+  "cpu":  {
+    "count":  52,
+    "countLogical":  104
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "NVIDIA RTX A6000",
+      "memoryTotal":  "51527024640",
+      "cudaCores":  10752,
+      "architecture":  "Ampere"
+    }
+  ],
+  "cudaVersion":  "12.4"
+}

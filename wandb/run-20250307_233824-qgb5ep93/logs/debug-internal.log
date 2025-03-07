@@ -1,0 +1,7 @@
+{"time":"2025-03-07T23:38:25.099893057+01:00","level":"INFO","msg":"stream: starting","core version":"0.19.6","symlink path":"/run/netsop/u/home-sam/home/rsulzer/remote_python/Pix2Poly/wandb/run-20250307_233824-qgb5ep93/logs/debug-core.log"}
+{"time":"2025-03-07T23:38:25.227123349+01:00","level":"INFO","msg":"created new stream","id":"qgb5ep93"}
+{"time":"2025-03-07T23:38:25.227173575+01:00","level":"INFO","msg":"stream: started","id":"qgb5ep93"}
+{"time":"2025-03-07T23:38:25.227272604+01:00","level":"INFO","msg":"writer: Do: started","stream_id":"qgb5ep93"}
+{"time":"2025-03-07T23:38:25.227373666+01:00","level":"INFO","msg":"handler: started","stream_id":"qgb5ep93"}
+{"time":"2025-03-07T23:38:25.227488449+01:00","level":"INFO","msg":"sender: started","stream_id":"qgb5ep93"}
+{"time":"2025-03-07T23:38:25.51263638+01:00","level":"INFO","msg":"Starting system monitor"}

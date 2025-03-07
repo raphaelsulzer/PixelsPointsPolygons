@@ -14,6 +14,15 @@ from config import CFG
 
 from tqdm import tqdm
 
+def compute_dynamic_cfg_vars(cfg,tokenizer):
+    
+    cfg.model.tokenizer.pad_idx = tokenizer.PAD_code
+    cfg.model.tokenizer.max_len = cfg.model.tokenizer.n_vertices*2+2
+    cfg.model.tokenizer.generation_steps = cfg.model.tokenizer.n_vertices*2+1
+    cfg.model.num_patches = int((cfg.model.input_size // cfg.model.patch_size) ** 2)
+    
+
+
 def seed_everything(seed=1234):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)

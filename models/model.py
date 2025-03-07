@@ -151,7 +151,7 @@ class Decoder(nn.Module):
         tgt shape: (N, L)
         """
 
-        tgt_mask, tgt_padding_mask = create_mask(tgt, self.pad_idx, device=next(self.parameters()).device)
+        tgt_mask, tgt_padding_mask = create_mask(tgt, self.pad_idx)
         tgt_embedding = self.embedding(tgt)
         tgt_embedding = self.decoder_pos_drop(
             tgt_embedding + self.decoder_pos_embed
@@ -182,9 +182,7 @@ class Decoder(nn.Module):
             .long()
         )
         tgt = torch.cat([tgt, padding], dim=1)
-        tgt_mask, tgt_padding_mask = create_mask(
-            tgt, self.pad_idx
-        )
+        tgt_mask, tgt_padding_mask = create_mask(tgt, self.pad_idx)
         tgt_embedding = self.embedding(tgt)
         tgt_embedding = self.decoder_pos_drop(
             tgt_embedding + self.decoder_pos_embed

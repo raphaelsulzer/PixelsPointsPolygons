@@ -20,20 +20,13 @@ import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 from tokenizer import Tokenizer
-from utils import seed_everything, test_generate_arno, postprocess, permutations_to_polygons
+from utils import seed_everything, test_generate_arno, postprocess, permutations_to_polygons, compute_dynamic_cfg_vars
 from models.model import Encoder, Decoder, EncoderDecoder, EncoderDecoderWithAlreadyEncodedImages
 from datasets.build_datasets import get_val_loader
 
 from lidar_poly_dataset.utils import generate_coco_ann
 
 
-def compute_dynamic_cfg_vars(cfg,tokenizer):
-    
-    cfg.model.tokenizer.pad_idx = tokenizer.PAD_code
-    cfg.model.tokenizer.max_len = cfg.model.tokenizer.n_vertices*2+2
-    cfg.model.tokenizer.generation_steps = cfg.model.tokenizer.n_vertices*2+1
-    cfg.model.num_patches = int((cfg.model.input_size // cfg.model.patch_size) ** 2)
-    
 
 def get_model(cfg,tokenizer):
     

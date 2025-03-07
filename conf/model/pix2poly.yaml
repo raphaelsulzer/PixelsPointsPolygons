@@ -14,3 +14,18 @@ tokenizer:
     pad_idx: null
     generation_steps: null
 batch_size: 32
+
+label_smoothing: 0.0
+vertex_loss_weight: 1.0
+perm_loss_weight: 10.0
+
+start_epoch: 0
+num_epochs: 100
+milestone: 0
+save_best: True
+save_latest: True
+save_every: 10
+val_every: 1
+
+learning_rate: 1e-4
+weight_decay: 1e-4
