@@ -4,10 +4,13 @@ defaults:
   - run_type: release   # Default run_type
   - _self_
 
+
+exp_name: inria_trained
+
 device: 'cuda'
 # checkpoint: /data/rsulzer/pix2poly_outputs/lidar_poly/image_only_bs24/logs/checkpoints/epoch_89.pth
 checkpoint: /data/rsulzer/${.model.name}_outputs/${.dataset.name}/best_valid_metric.pth
-output_dir: /data/rsulzer/${.model.name}_outputs/${.dataset.name}
+output_dir: /data/rsulzer/${.model.name}_outputs/${.dataset.name}/${.exp_name}
 
 
 model:

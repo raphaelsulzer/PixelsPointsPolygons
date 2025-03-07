@@ -6,16 +6,48 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from transformers import get_linear_schedule_with_warmup
 import wandb
+import hydra
+from omegaconf import OmegaConf
 
 from config import CFG
 from tokenizer import Tokenizer
 from utils import seed_everything, load_checkpoint
 from ddp_utils import get_lidar_poly_loaders, get_inria_loaders
 
-from models.model_ori import Encoder, Decoder, EncoderDecoder
+from models.model import Encoder, Decoder, EncoderDecoder
 from engine import train_eval
 
-def main():
+
+
+def get_model(cfg,tokenizer):
+    
+    encoder = Encoder(model_name=cfg.model.type, pretrained=True, out_dim=256)
+    decoder = Decoder(
+        vocab_size=tokenizer.vocab_size,
+        encoder_len=cfg.model.num_patches,
+        dim=256,
+        num_heads=8,
+        num_layers=6,
+        max_len=cfg.model.tokenizer.max_len,
+        pad_idx=cfg.model.tokenizer.pad_idx,
+    )
+    model = EncoderDecoder(
+        encoder=encoder,
+        decoder=decoder,
+        n_vertices=cfg.model.tokenizer.n_vertices,
+        sinkhorn_iterations=cfg.model.sinkhorn_iterations
+    )
+    model.to(cfg.device)
+    model.eval()
+    model_taking_encoded_images = EncoderDecoderWithAlreadyEncodedImages(model)
+    model_taking_encoded_images.to(cfg.device)
+    model_taking_encoded_images.eval()
+    
+    return model, model_taking_encoded_images
+
+
+
+def run_training(cfg):
     # Set random seeds for reproducibility
     seed_everything(42)
 
@@ -130,6 +162,14 @@ def main():
     )
 
     # wandb.finish()
+
+@hydra.main(config_path="conf", config_name="config", version_base="1.3")
+def main(cfg):
+    OmegaConf.resolve(cfg)
+    print("\nConfiguration:")
+    print(OmegaConf.to_yaml(cfg))
+
+    run_training(cfg)
 
 if __name__ == "__main__":
     main()
