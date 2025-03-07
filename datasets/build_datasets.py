@@ -38,15 +38,15 @@ def get_val_loader_inria(cfg,tokenizer):
         tokenizer=tokenizer,
     )
     
-    if cfg.subset is not None:
-        indices = list(range(cfg.subset))
+    if cfg.dataset.subset is not None:
+        indices = list(range(cfg.dataset.subset))
         val_ds = Subset(val_ds, indices)
     
     val_loader = DataLoader(
         val_ds,
         batch_size=cfg.model.batch_size,
         collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
-        num_workers=cfg.model.num_workers
+        num_workers=cfg.num_workers
     )
     
     return val_loader

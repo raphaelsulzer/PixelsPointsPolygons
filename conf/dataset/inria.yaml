@@ -9,3 +9,4 @@ val:
 test:
   annotations: ${..path}/test/annotation.json  
   images: ${..path}/test/images/
+subset: null

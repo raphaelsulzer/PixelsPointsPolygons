@@ -1,15 +1,16 @@
 name: pix2poly
-type: vit_small_patch${.patch_size}_${.input_size}_dino
+type: vit_small_patch${.patch_size}_${.input_size}.dino
 input_size: 224
 input_height: ${.input_size}
 input_width: ${.input_size}
 patch_size: 8
 num_patches: null
+sinkhorn_iterations: 100
 tokenizer: 
     num_bins: ${..input_size}
     shuffle_tokens: false
     n_vertices: 192
     max_len: null
     pad_idx: null
+    generation_steps: null
 batch_size: 32
-num_workers: 1
