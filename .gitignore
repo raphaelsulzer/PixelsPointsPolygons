@@ -8,6 +8,7 @@ preds*
 crowdai_visualizations
 scratch
 .idea
+wandb/*
 
 # Files
 *.jpg
