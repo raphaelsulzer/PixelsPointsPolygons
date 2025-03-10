@@ -306,7 +306,7 @@ def save_single_predictions_as_images(
 
     with torch.no_grad():
         loader_iterator = iter(loader)
-        idx, (x, y_mask, y_corner_mask, y, y_perm) = 0, next(loader_iterator)
+        idx, (x, y_mask, y_corner_mask, y, y_perm, img_ids) = 0, next(loader_iterator)
         batch_preds, batch_confs, perm_preds = test_generate(model, x, tokenizer, max_len=CFG.generation_steps, top_k=0, top_p=1)
         vertex_coords, confs = postprocess(batch_preds, batch_confs, tokenizer)
 
