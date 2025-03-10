@@ -18,7 +18,7 @@ def get_val_loader(cfg,tokenizer):
 
 def get_train_loader(cfg,tokenizer):
     if cfg.dataset.name == 'inria':
-        raise NotImplementedError
+        return get_train_loader_inria(cfg,tokenizer)
     elif cfg.dataset.name == 'lidarpoly':
         return get_train_loader_lidarpoly(cfg,tokenizer)
     else:
@@ -121,9 +121,38 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
     return val_loader
 
 
+
+def get_train_loader_inria(cfg,tokenizer):
+    from datasets.dataset_inria_coco import InriaCocoDatasetTrain, collate_fn
+
+    train_transforms = A.ReplayCompose([
+        # A.D4(p=1.0),
+        A.Resize(height=cfg.model.input_height, width=cfg.model.input_width),
+        A.ColorJitter(p=0.5),
+        A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0),
+        ToTensorV2(),
+    ],
+        keypoint_params=A.KeypointParams(format='yx')
+    )
+        
+    train_ds = InriaCocoDatasetTrain(
+        cfg=cfg,
+        transform=train_transforms,
+        tokenizer=tokenizer,
+    )
+
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=cfg.model.batch_size,
+        collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
+        num_workers=cfg.num_workers
+    )
+    
+    return train_loader
+
 def get_val_loader_inria(cfg,tokenizer):
     
-    from datasets.dataset_inria_coco import InriaCocoDatasetTrain, InriaCocoDatasetVal, collate_fn
+    from datasets.dataset_inria_coco import InriaCocoDatasetVal, collate_fn
     
     val_transforms = A.Compose(
         [

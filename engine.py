@@ -101,10 +101,9 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
         # outfile = os.path.join(cfg.output_dir,"vis",f"gt_corners_{img_ids[debug_idx].item()}.png")
         # torchvision.utils.save_image(y_corner_mask[debug_idx]*255, outfile)
         
-        debug_idx = 0
         # plot_image(x[debug_idx])
         # plot_mask(y_mask[debug_idx])
-        plot_batch(x,y_mask,y_corner_mask)
+        plot_pix2poly(x,y_mask,y_corner_mask)
         # plot_corners
         
         

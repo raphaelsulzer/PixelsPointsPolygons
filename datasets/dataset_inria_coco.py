@@ -11,18 +11,36 @@ from torch.nn.utils.rnn import pad_sequence
 
 
 class InriaCocoDatasetTrain(Dataset):
-    def __init__(self, dataset_dir, transform=None, tokenizer=None, shuffle_tokens=False):
-        image_dir = osp.join(dataset_dir, "images")
-        self.image_dir = image_dir
-        self.annotations_path = osp.join(dataset_dir, "annotation.json")
+    # def __init__(self, dataset_dir, transform=None, tokenizer=None, shuffle_tokens=False):
+    #     image_dir = osp.join(dataset_dir, "images")
+    #     self.image_dir = image_dir
+    #     self.annotations_path = osp.join(dataset_dir, "annotation.json")
+    #     self.transform = transform
+    #     self.tokenizer = tokenizer
+    #     self.shuffle_tokens = shuffle_tokens
+    #     # self.images = os.listdir(self.image_dir)
+    #     self.coco = COCO(self.annotations_path)
+    #     # self.image_ids = self.coco.getImgIds(catIds=self.coco.getCatIds())
+    #     self.images = [file for file in os.listdir(self.image_dir) if osp.isfile(osp.join(self.image_dir, file))]
+    #     self.image_ids = [int(im.split('-')[-1].split('.')[0]) for im in self.images if im.split('-')[0] not in ['kitsap4', 'kitsap5']]
+        
+    
+    def __init__(self, cfg, transform=None, tokenizer=None):
+        super().__init__()
+
+        self.image_dir = cfg.dataset.train.images
+
         self.transform = transform
         self.tokenizer = tokenizer
-        self.shuffle_tokens = shuffle_tokens
+        self.shuffle_tokens = cfg.model.tokenizer.shuffle_tokens
+        self.n_vertices = cfg.model.tokenizer.n_vertices
         # self.images = os.listdir(self.image_dir)
-        self.coco = COCO(self.annotations_path)
+        self.coco = COCO(cfg.dataset.train.annotations)
         # self.image_ids = self.coco.getImgIds(catIds=self.coco.getCatIds())
         self.images = [file for file in os.listdir(self.image_dir) if osp.isfile(osp.join(self.image_dir, file))]
         self.image_ids = [int(im.split('-')[-1].split('.')[0]) for im in self.images if im.split('-')[0] not in ['kitsap4', 'kitsap5']]
+    
+    
 
     def __len__(self):
         return len(self.image_ids)
@@ -201,12 +219,13 @@ class InriaCocoDatasetTrain(Dataset):
 
 
 
-        return image, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix
+        return image, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img['id']])
 
 
 class InriaCocoDatasetVal(Dataset):
     def __init__(self, cfg, transform=None, tokenizer=None):
-
+        super().__init__()
+        
         self.image_dir = cfg.dataset.val.images
 
         self.transform = transform
