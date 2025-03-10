@@ -1,6 +1,6 @@
 defaults:
   - model: pix2poly   # Default model
-  - dataset: lidarpoly   # Default dataset
+  - dataset: inria   # Default dataset
   - run_type: release   # Default run_type
   - _self_
 
