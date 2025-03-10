@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import torch
 
 def plot_polygons(polygon_vertices, image=None, point_cloud=None, pointsize=3, linewidth=2):
 
@@ -14,7 +15,7 @@ def plot_polygons(polygon_vertices, image=None, point_cloud=None, pointsize=3, l
     # Assign a different color to each polygon
     colors = list(mcolors.TABLEAU_COLORS.values())
 
-    fig, ax = plt.subplots(dpi=200)
+    fig, ax = plt.subplots(figsize=(5, 5), dpi=100)
 
     if image is not None:
         ax.imshow(image)
@@ -42,14 +43,85 @@ def plot_polygons(polygon_vertices, image=None, point_cloud=None, pointsize=3, l
         # Draw polygon vertices
         ax.scatter(poly[:, 0], poly[:, 1], color=color, zorder=3, s=pointsize)
 
-    plt.show()
+    plt.show(block=False)
 
 
-def plot_mask(mask):
+def plot_mask(image, alpha=1.0, ax=None, show_axis='off', show=False):
+    
+    if isinstance(image, torch.Tensor):
+        image = image.permute(1, 2, 0).cpu().numpy()
 
-    fig, ax = plt.subplots()
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(5, 5), dpi=50)
+    ax.axis(show_axis)
 
     # Plot the image
-    ax.imshow((1 - mask) * 255, cmap='gray')
+    ax.imshow((1 - image) * 255, cmap='gray', alpha=alpha)
 
-    plt.show()
+    if show:
+        plt.show(block=False)
+
+
+def plot_image(image, ax=None, show_axis='off', show=False):
+    
+    if isinstance(image, torch.Tensor):
+        image = image.permute(1, 2, 0).cpu().numpy()
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(5, 5), dpi=50)
+    ax.axis(show_axis)
+
+    # Plot the image
+    ax.imshow(image)
+
+    if show:
+        plt.show(block=False)
+    
+
+def plot_corners(corner_image, ax=None, show_axis='off', show=False):
+    
+    if isinstance(corner_image, torch.Tensor):
+        corner_image = corner_image.permute(1, 2, 0).cpu().numpy()
+        
+    
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(5, 5), dpi=100)
+        
+    ax.axis(show_axis)
+
+    # Get the coordinates of all 1 values
+    ones_coords = np.argwhere(corner_image == 1)
+    
+    # Plot a red cross at each 1 value
+    for y, x, _ in ones_coords:
+        ax.plot(x,y, color='red', linewidth=25, marker='x')
+
+    if show:
+        plt.show(block=False)
+    
+    
+def plot_batch(image_batch,mask_batch=None,corner_image_batch=None):
+    
+    fig, ax = plt.subplots(4,4,figsize=(8, 8), dpi=150)
+    ax = ax.flatten()
+
+    image_batch = image_batch.permute(0, 2, 3, 1).cpu().numpy()
+    
+    if mask_batch is not None:
+        mask_batch = mask_batch.permute(0, 2, 3, 1).cpu().numpy()
+    
+    if corner_image_batch is not None:
+        corner_image_batch = corner_image_batch.permute(0, 2, 3, 1).cpu().numpy()
+    
+    for i in range(image_batch.shape[0]):
+        plot_image(image_batch[i], show=False, ax=ax[i])
+        if mask_batch is not None:
+            plot_mask(mask_batch[i], alpha=0.5 , show=False, ax=ax[i])
+        if corner_image_batch is not None:
+            plot_corners(corner_image_batch[i], show=False, ax=ax[i])
+    
+    plt.tight_layout()
+    plt.show(block=False)
+    
+    a=5
+

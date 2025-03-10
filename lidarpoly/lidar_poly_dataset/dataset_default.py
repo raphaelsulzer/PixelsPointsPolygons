@@ -14,7 +14,7 @@ from shapely.geometry import Polygon
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import default_collate
 
-from lidar_poly_dataloader.logger import make_logger
+from lidar_poly_dataset.logger import make_logger
 
 def affine_transform(pt, t):
     new_pt = np.array([pt[0], pt[1], 1.], dtype=np.float32).T
@@ -23,7 +23,7 @@ def affine_transform(pt, t):
 
 
 class DefaultDataset(Dataset):
-    def __init__(self, dataset_dir, split, model_type="Pix2Poly",
+    def __init__(self, dataset_dir, split, model_type="pix2poly",
                  load_lidar=False, load_images=True,
                  augment=False, transform=None,
                  logging_level=logging.INFO,
@@ -235,25 +235,25 @@ class DefaultDataset(Dataset):
 
 
     def get_image_file(self, coco_info):
-        filename = os.path.join(self.dataset_dir, 'images', self.split, coco_info['image_path'])
+        filename = os.path.join(self.dataset_dir, coco_info['image_path'])
         if not os.path.isfile(filename):
-            raise FileNotFoundError
+            raise FileNotFoundError(filename)
         return filename
 
     def get_lidar_file(self, coco_info):
-        filename = os.path.join(self.dataset_dir, 'lidar', self.split, coco_info['image_path'])
+        filename = os.path.join(self.dataset_dir, coco_info['lidar_path'])
         if not os.path.isfile(filename):
-            raise FileNotFoundError
+            raise FileNotFoundError(filename)
         return filename
 
     def __getitem__(self, idx):
 
-        if self.model_type == 'HiSup':
+        if self.model_type == 'hisup':
             pass
-        elif self.model_type == 'Pix2Poly':
+        elif self.model_type == 'pix2poly':
             return self.__getitem__pix2poly(idx)
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"Model type {self.model_type} not implemented.")
 
     def __getitem__pix2poly(self, index):
 
@@ -364,30 +364,30 @@ class DefaultDataset(Dataset):
         else:
             coords_seqs = corner_coords
 
-        return image, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix
+        return image, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
 
     def __len__(self):
         return self.num_samples
 
-def collate_fn(batches, use_lidar, use_images):
-    if use_images and not use_lidar:
-        return (default_collate([b[0] for b in batches]), None, [b[2] for b in batches])
+# def collate_fn(batches, use_lidar, use_images):
+#     if use_images and not use_lidar:
+#         return (default_collate([b[0] for b in batches]), None, [b[2] for b in batches])
 
-    elif not use_images and use_lidar:
-        pcds = []
-        for batch in batches:
-            pcds.append(batch[1][0, :, :])
+#     elif not use_images and use_lidar:
+#         pcds = []
+#         for batch in batches:
+#             pcds.append(batch[1][0, :, :])
 
-        return (None, pcds, [b[2] for b in batches])
+#         return (None, pcds, [b[2] for b in batches])
 
-    elif use_images and use_lidar:
-        pcds = []
-        for batch in batches:
-            pcds.append(batch[1][0, :, :])
+#     elif use_images and use_lidar:
+#         pcds = []
+#         for batch in batches:
+#             pcds.append(batch[1][0, :, :])
 
-        return (default_collate([b[0] for b in batches]),
-                pcds,
-                [b[2] for b in batches])
-    else:
-        raise NotImplementedError("You must either activate 'use_images' or 'use_lidar'")
+#         return (default_collate([b[0] for b in batches]),
+#                 pcds,
+#                 [b[2] for b in batches])
+#     else:
+#         raise NotImplementedError("You must either activate 'use_images' or 'use_lidar'")
 
