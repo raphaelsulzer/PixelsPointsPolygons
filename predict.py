@@ -168,8 +168,8 @@ def run_prediction(cfg):
             batch_miou = mean_iou_metric(polygons_mask, y_mask)
             batch_macc = mean_acc_metric(polygons_mask, y_mask)
 
-            # plot_prediction_as_polygons(polys, x[-1])
-            # outfile = os.path.join(cfg.output_dir, "images", f"predictions_{i_batch}.png")
+            plot_prediction_as_polygons(polys, x[-1])
+            # outfile = os.path.join(cfg.output_dir, "images", f"predictions_{idx}.png")
             # plot_prediction_as_mask(polygons_mask, y_mask, outfile)
 
             cumulative_miou.append(batch_miou)

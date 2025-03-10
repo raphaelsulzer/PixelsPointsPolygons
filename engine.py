@@ -1,14 +1,20 @@
 from tqdm import tqdm
-import torch, os
-from postprocess_coco_parts import *
+import torch, os, torchvision
+from omegaconf import OmegaConf
+import wandb
 
+from postprocess_coco_parts import *
 from utils import AverageMeter, get_lr, save_checkpoint, save_single_predictions_as_images
 
 from lidar_poly_dataset.metrics import compute_IoU_cIoU
+from lidar_poly_dataset.utils import *
 
-import wandb
 
 def setup_wandb(cfg):
+    
+    cfg_container = OmegaConf.to_container(
+        cfg, resolve=True, throw_on_missing=True
+    )
 
     log_outfile = os.path.join(cfg.output_dir, 'log.txt')
 
@@ -19,7 +25,7 @@ def setup_wandb(cfg):
         name=cfg.experiment_name,
         group="v1_pix2poly",
         # track hyperparameters and run metadata
-        config=cfg
+        config=cfg_container
     )
 
     wandb.run.log_code(log_outfile)
@@ -39,7 +45,7 @@ def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cf
     loader = tqdm(valid_loader, total=len(valid_loader))
 
     with torch.no_grad():
-        for x, y_mask, y_corner_mask, y, y_perm in loader:
+        for x, y_mask, y_corner_mask, y, y_perm, img_ids in loader:
             x = x.to(cfg.device, non_blocking=True)
             y = y.to(cfg.device, non_blocking=True)
             y_perm = y_perm.to(cfg.device, non_blocking=True)
@@ -85,7 +91,23 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
     loader = train_loader
     loader = tqdm(train_loader, total=len(train_loader))
 
-    for x, y_mask, y_corner_mask, y, y_perm, id in loader:
+    for x, y_mask, y_corner_mask, y, y_perm, img_ids in loader:
+        
+        
+        # ### debug vis
+        # outfile = os.path.join(cfg.output_dir,"vis",f"gt_mask_{img_ids[debug_idx].item()}.png")
+        # os.makedirs(os.path.dirname(outfile), exist_ok=True)
+        # torchvision.utils.save_image(y_mask[debug_idx]/255., outfile)
+        # outfile = os.path.join(cfg.output_dir,"vis",f"gt_corners_{img_ids[debug_idx].item()}.png")
+        # torchvision.utils.save_image(y_corner_mask[debug_idx]*255, outfile)
+        
+        debug_idx = 0
+        # plot_image(x[debug_idx])
+        # plot_mask(y_mask[debug_idx])
+        plot_batch(x,y_mask,y_corner_mask)
+        # plot_corners
+        
+        
         x = x.to(cfg.device, non_blocking=True)
         y = y.to(cfg.device, non_blocking=True)
         y_perm = y_perm.to(cfg.device, non_blocking=True)
@@ -161,7 +183,7 @@ def train_eval(
 ):
 
     if cfg.log_to_wandb:
-        setup_wandb()
+        setup_wandb(cfg)
 
     best_loss = float('inf')
     best_metric = float('-inf')
