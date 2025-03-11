@@ -1,5 +1,5 @@
 name: lidarpoly
-path: /data/rsulzer/${model.name}_data/${.name}
+path: ${host.data_root}/${.name}/${model.name}
 # train:
 #   annotations: ${..path}/annotations_train.json
 #   images: ${..path}/images/train/
