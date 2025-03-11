@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import Subset
 from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data.distributed import DistributedSampler
 
 
 def get_val_loader(cfg,tokenizer):
@@ -24,46 +25,13 @@ def get_train_loader(cfg,tokenizer):
     else:
         raise NotImplementedError
 
-
-def collate_fn_lidarpoly(batch, max_len, pad_idx):
-    """
-    if max_len:
-        the sequences will all be padded to that length.
-    """
-
-    image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, idx_batch = [], [], [], [], [], []
-    for image, mask, c_mask, seq, perm_mat, idx in batch:
-        image_batch.append(image)
-        mask_batch.append(mask)
-        coords_mask_batch.append(c_mask)
-        coords_seq_batch.append(seq)
-        perm_matrix_batch.append(perm_mat)
-        idx_batch.append(idx)
-
-    coords_seq_batch = pad_sequence(
-        coords_seq_batch,
-        padding_value=pad_idx,
-        batch_first=True
-    )
-
-    if max_len:
-        pad = torch.ones(coords_seq_batch.size(0), max_len - coords_seq_batch.size(1)).fill_(pad_idx).long()
-        coords_seq_batch = torch.cat([coords_seq_batch, pad], dim=1)
-
-    image_batch = torch.stack(image_batch)
-    mask_batch = torch.stack(mask_batch)
-    coords_mask_batch = torch.stack(coords_mask_batch)
-    perm_matrix_batch = torch.stack(perm_matrix_batch)
-    idx_batch = torch.stack(idx_batch)
-    return image_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, idx_batch
-
-
 def get_train_loader_lidarpoly(cfg,tokenizer):
     
     from lidar_poly_dataset import TrainDataset
+    from datasets.dataset_inria_coco import collate_fn
 
     train_transforms = A.ReplayCompose([
-        A.D4(p=1.0),
+        # A.D4(p=1.0),
         A.Resize(height=cfg.model.input_height, width=cfg.model.input_width),
         A.ColorJitter(p=0.5),
         A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0),
@@ -80,11 +48,19 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
         n_polygon_vertices=cfg.model.tokenizer.n_vertices
     )
 
+    if cfg.multi_gpu:
+        train_sampler = DistributedSampler(dataset=train_ds, shuffle=True)
+    else:
+        train_sampler = None
+
     train_loader = DataLoader(
         train_ds,
         batch_size=cfg.model.batch_size,
-        collate_fn=partial(collate_fn_lidarpoly, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
-        num_workers=cfg.num_workers
+        collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
+        sampler=train_sampler,
+        num_workers=cfg.num_workers,
+        pin_memory=True,
+        drop_last=True,
     )
     
     return train_loader
@@ -93,6 +69,8 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
     
     
     from lidar_poly_dataset import ValDataset
+    from datasets.dataset_inria_coco import collate_fn
+
     
     val_transforms = A.Compose(
         [
@@ -111,11 +89,18 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
         n_polygon_vertices=cfg.model.tokenizer.n_vertices
     )
 
+    if cfg.multi_gpu:
+        val_sampler = DistributedSampler(dataset=val_ds, shuffle=False)
+    else:
+        val_sampler = None
+        
     val_loader = DataLoader(
         val_ds,
         batch_size=cfg.model.batch_size,
-        collate_fn=partial(collate_fn_lidarpoly, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
-        num_workers=cfg.num_workers
+        collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
+        sampler=val_sampler,
+        num_workers=cfg.num_workers,
+        pin_memory=True
     )
     
     return val_loader
@@ -140,12 +125,19 @@ def get_train_loader_inria(cfg,tokenizer):
         transform=train_transforms,
         tokenizer=tokenizer,
     )
+    if cfg.multi_gpu:
+        train_sampler = DistributedSampler(dataset=train_ds, shuffle=True)
+    else:
+        train_sampler = None
 
     train_loader = DataLoader(
         train_ds,
         batch_size=cfg.model.batch_size,
         collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
-        num_workers=cfg.num_workers
+        sampler=train_sampler,
+        num_workers=cfg.num_workers,
+        pin_memory=True,
+        drop_last=True,
     )
     
     return train_loader
@@ -178,11 +170,18 @@ def get_val_loader_inria(cfg,tokenizer):
         indices = list(range(cfg.dataset.subset))
         val_ds = Subset(val_ds, indices)
     
+    if cfg.multi_gpu:
+        val_sampler = DistributedSampler(dataset=val_ds, shuffle=False)
+    else:
+        val_sampler = None
+        
     val_loader = DataLoader(
         val_ds,
         batch_size=cfg.model.batch_size,
         collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
-        num_workers=cfg.num_workers
+        sampler=val_sampler,
+        num_workers=cfg.num_workers,
+        pin_memory=True
     )
     
     return val_loader

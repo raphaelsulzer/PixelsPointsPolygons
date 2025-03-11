@@ -4,7 +4,6 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
-
 import torch
 from torch import nn
 from torch import optim
@@ -72,7 +71,7 @@ def run_training(cfg):
         init_distributed()
     
     os.makedirs(cfg.output_dir,exist_ok=True)
-        
+    
     seed_everything(42)
 
     tokenizer = Tokenizer(
@@ -89,8 +88,6 @@ def run_training(cfg):
     train_loader = get_train_loader(cfg,tokenizer)
     val_loader = get_val_loader(cfg,tokenizer)
     
-    os.makedirs(cfg.out)
-
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Model has {n_params/10**6:.2f}M parameters")
 
