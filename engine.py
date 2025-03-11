@@ -172,7 +172,8 @@ def train_eval(
 ):
 
     if cfg.log_to_wandb:
-        init_wandb(cfg)
+        if is_main_process():
+            init_wandb(cfg)
 
     best_loss = float('inf')
     best_metric = float('-inf')
@@ -301,6 +302,7 @@ def train_eval(
             #     print(f"Saved best val metric model.")
 
         if cfg.log_to_wandb:
-            wandb.log(wandb_dict)
+            if is_main_process():
+                wandb.log(wandb_dict)
 
 
