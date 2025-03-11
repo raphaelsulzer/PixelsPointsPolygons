@@ -13,7 +13,7 @@ from config import CFG
 
 from ddp_utils import is_main_process
 
-from lidar_poly_dataloader.metrics import compute_IoU_cIoU
+from lidar_poly_dataset.metrics import compute_IoU_cIoU
 
 import wandb
 

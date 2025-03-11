@@ -2,7 +2,7 @@
 set -e
 
 # Local variables
-ENV_NAME=pix2poly
+ENV_NAME=pix2poly2
 PYTHON=3.11.11
 
 # Installation script for Miniconda3 environments
@@ -13,6 +13,11 @@ CONDA_DIR=`realpath ~/miniconda3`
 if (test -z $CONDA_DIR) || [ ! -d $CONDA_DIR ]
 then
   CONDA_DIR=`realpath /opt/miniconda3`
+fi
+
+if (test -z $CONDA_DIR) || [ ! -d $CONDA_DIR ]
+then
+    CONDA_DIR=$(conda info | grep 'base environment' | awk '{print $4}')
 fi
 
 while (test -z $CONDA_DIR) || [ ! -d $CONDA_DIR ]
@@ -71,25 +76,36 @@ conda activate ${ENV_NAME}
 echo "________________ Install Required Packages _______________"
 echo
 
-# dependencies
-# pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-conda install conda-forge::transformers -y
-conda install conda-forge::pycocotools -y
-conda install conda-forge::torchmetrics -y
-conda install conda-forge::tensorboard -y
-conda install conda-forge::wandb -y
-conda install conda-forge::timm=0.9.12 -y
-pip install matplotlib==3.7.0
+pip install transformers==4.32
+pip install pycocotools
+pip install torchmetrics
+pip install wandb
+pip install timm
+pip install matplotlib
+pip install colorlog
+pip install albumentations
+pip install shapely
 
-# problem with torch:tms? do this:
-# https://github.com/huggingface/diffusers/issues/8958#issuecomment-2253055261
+# # dependencies
+# # pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+# pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# conda install conda-forge::transformers -y
+# conda install conda-forge::pycocotools -y
+# conda install conda-forge::torchmetrics -y
+# conda install conda-forge::tensorboard -y
+# conda install conda-forge::wandb -y
+# conda install conda-forge::timm=0.9.12 -y
+# pip install matplotlib==3.7.0
 
-## for inria_to_coco.py
-conda install conda-forge::imagecodecs -y
+# # problem with torch:tms? do this:
+# # https://github.com/huggingface/diffusers/issues/8958#issuecomment-2253055261
 
-## for lidar_poly_dataloader
-conda install conda-forge::gcc_linux-64=10 conda-forge::gxx_linux-64=10 -y # otherwise copclib install bugs
-pip install copclib
-conda install conda-forge::colorlog -y
-conda install conda-forge::descartes=1.1.0 -y
+# ## for inria_to_coco.py
+# conda install conda-forge::imagecodecs -y
+
+# ## for lidar_poly_dataloader
+# conda install conda-forge::gcc_linux-64=10 conda-forge::gxx_linux-64=10 -y # otherwise copclib install bugs
+# pip install copclib
+# conda install conda-forge::colorlog -y
+# conda install conda-forge::descartes=1.1.0 -y
