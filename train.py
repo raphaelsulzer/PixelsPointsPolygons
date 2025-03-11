@@ -70,6 +70,8 @@ def get_model(cfg,tokenizer):
 def run_training(cfg):
     if cfg.multi_gpu:
         init_distributed()
+    
+    os.makedirs(cfg.output_dir,exist_ok=True)
         
     seed_everything(42)
 
@@ -86,6 +88,8 @@ def run_training(cfg):
 
     train_loader = get_train_loader(cfg,tokenizer)
     val_loader = get_val_loader(cfg,tokenizer)
+    
+    os.makedirs(cfg.out)
 
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Model has {n_params/10**6:.2f}M parameters")
