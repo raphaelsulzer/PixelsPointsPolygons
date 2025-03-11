@@ -2,10 +2,7 @@ from functools import partial
 from torch import distributed as dist
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
-from torch.nn.utils.rnn import pad_sequence
-import torch
 
-from datasets.dataset_inria_coco import InriaCocoDataset, InriaCocoDatasetTest
 from datasets.dataset_spacenet_coco import SpacenetCocoDataset, SpacenetCocoDatasetTest
 from datasets.dataset_whu_buildings_coco import WHUBuildingsCocoDataset, WHUBuildingsCocoDatasetTest
 from datasets.dataset_mass_roads import MassRoadsDataset, MassRoadsDatasetTest

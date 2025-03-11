@@ -1,5 +1,5 @@
 name: inria
-path: /data/rsulzer/${model.name}_data/${.name}
+path: /data/rsulzer/${model.name}_data/${.name}_coco_224_negAug
 train:
   annotations: ${..path}/train/annotation.json
   images: ${..path}/train/images/

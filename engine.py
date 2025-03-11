@@ -5,12 +5,13 @@ import wandb
 
 from postprocess_coco_parts import *
 from utils import AverageMeter, get_lr, save_checkpoint, save_single_predictions_as_images
+from ddp_utils import is_main_process
 
 from lidar_poly_dataset.metrics import compute_IoU_cIoU
 from lidar_poly_dataset.utils import *
 
 
-def setup_wandb(cfg):
+def init_wandb(cfg):
     
     cfg_container = OmegaConf.to_container(
         cfg, resolve=True, throw_on_missing=True
@@ -93,19 +94,8 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
 
     for x, y_mask, y_corner_mask, y, y_perm, img_ids in loader:
         
-        
         # ### debug vis
-        # outfile = os.path.join(cfg.output_dir,"vis",f"gt_mask_{img_ids[debug_idx].item()}.png")
-        # os.makedirs(os.path.dirname(outfile), exist_ok=True)
-        # torchvision.utils.save_image(y_mask[debug_idx]/255., outfile)
-        # outfile = os.path.join(cfg.output_dir,"vis",f"gt_corners_{img_ids[debug_idx].item()}.png")
-        # torchvision.utils.save_image(y_corner_mask[debug_idx]*255, outfile)
-        
-        # plot_image(x[debug_idx])
-        # plot_mask(y_mask[debug_idx])
-        plot_pix2poly(x,y_mask,y_corner_mask)
-        # plot_corners
-        
+        # plot_pix2poly(x,y_mask,y_corner_mask)        
         
         x = x.to(cfg.device, non_blocking=True)
         y = y.to(cfg.device, non_blocking=True)
@@ -150,8 +140,8 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
 
         iter_idx += 1
 
-        # if iter_idx % 50 == 0:
-        #     break
+        if cfg.run_type.name=="debug" and iter_idx % 10 == 0:
+            break
 
     print(f"Total train loss: {loss_meter.avg}\n\n")
     loss_dict = {
@@ -182,7 +172,7 @@ def train_eval(
 ):
 
     if cfg.log_to_wandb:
-        setup_wandb(cfg)
+        init_wandb(cfg)
 
     best_loss = float('inf')
     best_metric = float('-inf')
@@ -205,11 +195,12 @@ def train_eval(
             perm_loss_fn,
             cfg=cfg
         )
-
-        wandb_dict ={}
-        wandb_dict['epoch'] = epoch
-        for k, v in train_loss_dict.items():
-            wandb_dict[f"train_{k}"] = v
+        if is_main_process():
+            wandb_dict ={}
+            wandb_dict['epoch'] = epoch
+            for k, v in train_loss_dict.items():
+                wandb_dict[f"train_{k}"] = v
+            wandb_dict['lr'] = get_lr(optimizer)
 
         val_loss_dict = valid_one_epoch(
             epoch,
@@ -219,9 +210,10 @@ def train_eval(
             perm_loss_fn,
             cfg=cfg
         )
-
-        for k, v in val_loss_dict.items():
-            wandb_dict[f"val_{k}"] = v
+        if is_main_process():
+            for k, v in val_loss_dict.items():
+                wandb_dict[f"val_{k}"] = v
+            print(f"Valid loss: {val_loss_dict['total_loss']:.3f}\n\n")
 
         # Save best validation loss epoch.
         if val_loss_dict['total_loss'] < best_loss and cfg.model.save_best:
@@ -272,14 +264,17 @@ def train_eval(
         # output examples to a folder
         if (epoch + 1) % cfg.model.val_every == 0:
 
-            save_single_predictions_as_images(
+            val_metrics_dict = save_single_predictions_as_images(
                 val_loader,
                 model,
                 tokenizer,
                 epoch,
-                wandb_dict,
-                folder=os.path.join(cfg.output_dir, "runtime_outputs")
+                folder=os.path.join(cfg.output_dir, "runtime_outputs"),
+                device=cfg.device
             )
+            for metric, value in val_metrics_dict.items():
+                print(f"{metric}: {value}")
+                wandb_dict[f"val_{metric}"] = value
 
             # batched_polygons = predict_to_coco(model, tokenizer, val_loader)
             # outfile = os.path.join(cfg.output_dir,"coco",f"validation_{epoch}.json")
@@ -304,9 +299,6 @@ def train_eval(
             #         filename="validation_best.pth"
             #     )
             #     print(f"Saved best val metric model.")
-
-        for k,v in wandb_dict.items():
-            print(f"{k}: {v}")
 
         if cfg.log_to_wandb:
             wandb.log(wandb_dict)

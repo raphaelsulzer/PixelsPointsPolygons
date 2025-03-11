@@ -182,65 +182,10 @@ def permutations_to_polygons(perm, graph, out='torch'):
 
     return batch
 
-def test_generate_arno(
-    encoder: torch.nn.Module,
-    model_taking_encoded_images: torch.nn.Module,
-    x: torch.Tensor,
-    tokenizer: Any,
-    max_len: int = 50,
-    top_k: int = 0,
-    top_p: float = 1.0,
-    device: Union[str, torch.device] = "cuda",
-) -> Tuple[torch.Tensor, List[torch.Tensor], torch.Tensor]:
-    x = x.to(device)
-    batch_preds = (
-        torch.ones((x.size(0), 1), device=device).fill_(tokenizer.BOS_code).long()
-    )
-    confs = []
-
-    if top_k != 0 or top_p != 1:
-
-        def sample(preds):
-            return torch.softmax(preds, dim=-1).multinomial(num_samples=1).view(-1, 1)
-
-    else:
-
-        def sample(preds):
-            return torch.softmax(preds, dim=-1).argmax(dim=-1).view(-1, 1)
-
-    encoder_out: None | torch.Tensor = None
-
-    with torch.no_grad():
-        encoder_out = encoder(x) if encoder_out is None else encoder_out.to(device)
-        for i in tqdm(range(max_len), desc="tokens"):
-            if isinstance(model_taking_encoded_images, torch.nn.parallel.DistributedDataParallel):
-                preds, feats = model_taking_encoded_images.module.predict(encoder_out, batch_preds)
-            else:
-                preds, feats = model_taking_encoded_images.predict(encoder_out, batch_preds)
-            preds = top_k_top_p_filtering(preds, top_k=top_k, top_p=top_p)  # if top_k and top_p are set to default, this line does nothing.
-            if i % 2 == 0:
-                confs_ = torch.softmax(preds, dim=-1).sort(axis=-1, descending=True)[0][:, 0].cpu()
-                confs.append(confs_)
-            preds = sample(preds)
-            batch_preds = torch.cat([batch_preds, preds], dim=1)
-        encoder_out = encoder_out.to(torch.device('cpu'))
-        torch.cuda.empty_cache()
-
-        # print(torch.cuda.memory_summary())
-
-        if isinstance(model_taking_encoded_images.encoderdecoder, torch.nn.parallel.DistributedDataParallel):
-            perm_preds = model_taking_encoded_images.encoderdecoder.module.scorenet1(feats) + torch.transpose(model_taking_encoded_images.encoderdecoder.module.scorenet2(feats), 1, 2)
-        else:
-            perm_preds = model_taking_encoded_images.encoderdecoder.scorenet1(feats) + torch.transpose(model_taking_encoded_images.encoderdecoder.scorenet2(feats), 1, 2)
-
-        perm_preds = scores_to_permutations(perm_preds)
-
-    return batch_preds.cpu(), confs, perm_preds
-
 
 def test_generate(model, x, tokenizer, max_len=50, top_k=0, top_p=1):
-    x = x.to(CFG.DEVICE)
-    batch_preds = torch.ones((x.size(0), 1), device=CFG.DEVICE).fill_(tokenizer.BOS_code).long()
+
+    batch_preds = torch.ones((x.size(0), 1), device=x.device).fill_(tokenizer.BOS_code).long()
     confs = []
 
     if top_k != 0 or top_p != 1:
@@ -249,11 +194,16 @@ def test_generate(model, x, tokenizer, max_len=50, top_k=0, top_p=1):
         sample = lambda preds: torch.softmax(preds, dim=-1).argmax(dim=-1).view(-1, 1)
 
     with torch.no_grad():
-        for i in range(max_len):
+        if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+            encoded_image = model.module.encoder(x)
+        else:
+            encoded_image = model.encoder(x)
+        for i in tqdm(range(max_len)):
             if isinstance(model, torch.nn.parallel.DistributedDataParallel):
-                preds, feats = model.module.predict(x, batch_preds)
+                preds, feats = model.module.predict(encoded_image, batch_preds)
             else:
-                preds, feats = model.predict(x, batch_preds)
+                preds, feats = model.predict(encoded_image, batch_preds)
+                
             preds = top_k_top_p_filtering(preds, top_k=top_k, top_p=top_p)  # if top_k and top_p are set to default, this line does nothing.
             if i % 2 == 0:
                 confs_ = torch.softmax(preds, dim=-1).sort(axis=-1, descending=True)[0][:, 0].cpu()
@@ -294,7 +244,7 @@ def postprocess(batch_preds, batch_confs, tokenizer):
 
 
 def save_single_predictions_as_images(
-    loader, model, tokenizer, epoch, wandb_dict, folder
+    loader, model, tokenizer, epoch, folder, device='cuda'
 ):
     os.makedirs(folder, exist_ok=True)
     print(f"=> Saving val predictions to {folder}...")
@@ -307,6 +257,7 @@ def save_single_predictions_as_images(
     with torch.no_grad():
         loader_iterator = iter(loader)
         idx, (x, y_mask, y_corner_mask, y, y_perm, img_ids) = 0, next(loader_iterator)
+        x = x.to(device, non_blocking=True)
         batch_preds, batch_confs, perm_preds = test_generate(model, x, tokenizer, max_len=CFG.generation_steps, top_k=0, top_p=1)
         vertex_coords, confs = postprocess(batch_preds, batch_confs, tokenizer)
 
@@ -385,10 +336,11 @@ def save_single_predictions_as_images(
         poly_out.float()/255, f"{folder}/pred_polygons/polygons_{idx}_{epoch}.png"
     )
 
-    wandb_dict['miou'] = binary_jaccard_index(polygons, y_mask)
-    wandb_dict['biou'] = binary_jaccard_index(polygons, y_mask, ignore_index=0)
-    wandb_dict['macc'] = binary_accuracy(polygons, y_mask)
-    wandb_dict['bacc'] = binary_accuracy(polygons, y_mask, ignore_index=0)
+    val_dict={}
+    val_dict['miou'] = binary_jaccard_index(polygons, y_mask)
+    val_dict['biou'] = binary_jaccard_index(polygons, y_mask, ignore_index=0)
+    val_dict['macc'] = binary_accuracy(polygons, y_mask)
+    val_dict['bacc'] = binary_accuracy(polygons, y_mask, ignore_index=0)
 
     torchvision.utils.save_image(x, f"{folder}/image_{idx}.png")
     ymask_out = torch.zeros_like(x)
@@ -407,4 +359,6 @@ def save_single_predictions_as_images(
     torchvision.utils.save_image(ymask_out/255., f"{folder}/gt_mask_{idx}.png")
     torchvision.utils.save_image(y_corner_mask*255, f"{folder}/gt_corners_{idx}.png")
     torchvision.utils.save_image(y_perm[:, None, :, :]*255, f"{folder}/gt_perm_matrix_{idx}.png")
+    
+    return val_dict
 
