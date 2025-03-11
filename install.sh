@@ -71,13 +71,6 @@ conda activate ${ENV_NAME}
 echo "________________ Install Required Packages _______________"
 echo
 
-# Create a conda environment from yml
-conda create -y --name $PROJECT_NAME python=$PYTHON
-
-# Activate the env
-source ${CONDA_DIR}/etc/profile.d/conda.sh
-conda activate ${PROJECT_NAME}
-
 # dependencies
 # pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
