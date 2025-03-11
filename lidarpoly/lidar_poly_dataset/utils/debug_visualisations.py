@@ -95,12 +95,16 @@ def plot_corners(corner_image, ax=None, show_axis='off', show=False):
     # Plot a red cross at each 1 value
     for y, x, _ in ones_coords:
         ax.plot(x,y, color='red', linewidth=25, marker='x')
+        
+        # Plot a red cross at each 1 value
+    for x, y, _ in ones_coords:
+        ax.plot(x,y, color='blue', linewidth=25, marker='x')
 
     if show:
         plt.show(block=False)
     
     
-def plot_batch(image_batch,mask_batch=None,corner_image_batch=None):
+def plot_pix2poly(image_batch,mask_batch=None,corner_image_batch=None):
     
     fig, ax = plt.subplots(4,4,figsize=(8, 8), dpi=150)
     ax = ax.flatten()
@@ -121,7 +125,6 @@ def plot_batch(image_batch,mask_batch=None,corner_image_batch=None):
             plot_corners(corner_image_batch[i], show=False, ax=ax[i])
     
     plt.tight_layout()
-    plt.show(block=False)
+    plt.show(block=True)
     
-    a=5
 
