@@ -1,3 +1,4 @@
+import sys
 from tqdm import tqdm
 import torch, os, torchvision
 from omegaconf import OmegaConf
@@ -43,7 +44,7 @@ def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cf
     perm_loss_meter = AverageMeter()
 
     loader = valid_loader
-    loader = tqdm(valid_loader, total=len(valid_loader))
+    loader = tqdm(valid_loader, total=len(valid_loader), file=sys.stdout, dynamic_ncols=True, mininterval=20.0)
 
     with torch.no_grad():
         for x, y_mask, y_corner_mask, y, y_perm, img_ids in loader:
@@ -90,7 +91,7 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
     perm_loss_meter = AverageMeter()
 
     loader = train_loader
-    loader = tqdm(train_loader, total=len(train_loader))
+    loader = tqdm(train_loader, total=len(train_loader), file=sys.stdout, dynamic_ncols=True, mininterval=20.0)
 
     for x, y_mask, y_corner_mask, y, y_perm, img_ids in loader:
         
@@ -154,10 +155,6 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
 
 
 
-
-
-
-
 def train_eval(
     model,
     train_loader,
@@ -182,7 +179,7 @@ def train_eval(
     epoch_iterator = range(cfg.model.start_epoch, cfg.model.num_epochs)
 
 
-    for epoch in tqdm(epoch_iterator, position=0, leave=True):
+    for epoch in tqdm(epoch_iterator, position=0, leave=True, file=sys.stdout, dynamic_ncols=True, mininterval=20.0):
         print(f"\n\nEPOCH: {epoch + 1}\n\n")
 
         train_loss_dict, iter_idx = train_one_epoch(
@@ -274,8 +271,9 @@ def train_eval(
                 device=cfg.device
             )
             for metric, value in val_metrics_dict.items():
-                print(f"{metric}: {value}")
-                wandb_dict[f"val_{metric}"] = value
+                if is_main_process():
+                    print(f"{metric}: {value}")
+                    wandb_dict[f"val_{metric}"] = value
 
             # batched_polygons = predict_to_coco(model, tokenizer, val_loader)
             # outfile = os.path.join(cfg.output_dir,"coco",f"validation_{epoch}.json")

@@ -1,5 +1,5 @@
 name: inria
-path: ${host.data_root}/${.name}/${model.name}
+path: ${host.data_root}/${.name}_coco_224_negAug
 train:
   annotations: ${..path}/train/annotation.json
   images: ${..path}/train/images/

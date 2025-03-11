@@ -1,3 +1,4 @@
+import sys
 import os
 import cv2
 import random
@@ -198,7 +199,7 @@ def test_generate(model, x, tokenizer, max_len=50, top_k=0, top_p=1):
             encoded_image = model.module.encoder(x)
         else:
             encoded_image = model.encoder(x)
-        for i in tqdm(range(max_len)):
+        for i in tqdm(range(max_len), file=sys.stdout, dynamic_ncols=True, mininterval=20.0):
             if isinstance(model, torch.nn.parallel.DistributedDataParallel):
                 preds, feats = model.module.predict(encoded_image, batch_preds)
             else:

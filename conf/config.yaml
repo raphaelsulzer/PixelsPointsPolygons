@@ -1,6 +1,6 @@
 defaults:
   - model: pix2poly   # Default model
-  - dataset: lidarpoly   # Default dataset
+  - dataset: inria   # Default dataset
   - run_type: release   # Default run_type
   - host: g5k
   - _self_
@@ -8,12 +8,12 @@ defaults:
 
 
 # experiment_name: images_only
-# experiment_name: inria_trained
-experiment_name: v0_images_only
+# experiment_name: inria
+experiment_name: lidarpoly
 
 multi_gpu: false
 
-device: 'cuda'
+device: cuda
 # checkpoint: /data/rsulzer/pix2poly_outputs/lidarpoly/${.experiment_name}/logs/checkpoints/epoch_49.pth
 # checkpoint: /data/rsulzer/pix2poly_outputs/lidarpoly/${.experiment_name}/logs/checkpoints/best_valid_metric.pth
 checkpoint: null
