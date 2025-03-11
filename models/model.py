@@ -174,7 +174,7 @@ class Decoder(nn.Module):
         preds = preds.transpose(0, 1)
         return self.output(preds), preds
 
-    def predict(self, encoder_out, tgt, device):
+    def predict(self, encoder_out, tgt):
         length = tgt.size(1)
         padding = (
             torch.ones((tgt.size(0), self.max_len - length - 1), device=tgt.device)
@@ -237,46 +237,16 @@ class EncoderDecoder(nn.Module):
 
         return preds, perm_mat
 
-    def predict(self, image, tgt):
-        encoder_out = self.encoder(image)
-        preds, feats = self.decoder.predict(
-            encoder_out, tgt, next(self.parameters()).device
-        )
+    # def predict(self, image, tgt):
+    #     encoder_out = self.encoder(image)
+    #     preds, feats = self.decoder.predict(encoder_out, tgt)
+    #     return preds, feats
+    
+    def predict(self, encoded_image, tgt):
+        # encoder_out = self.encoder(image)
+        preds, feats = self.decoder.predict(encoded_image, tgt)
         return preds, feats
     
-
-class EncoderDecoderWithAlreadyEncodedImages(nn.Module):
-    """This class is used to avoid recomputing the encoder output when the images are already encoded.
-    
-    It has to wrap an `EncoderDecoder` instead of just being the `Decoder` because that class contains code between
-    encoder and decoder.
-    
-    """
-    def __init__(self, encoderdecoder: EncoderDecoder):
-        super().__init__()
-        self.encoderdecoder = encoderdecoder
-    
-    def forward(self, encoder_out, tgt):
-        preds, feats = self.encoderdecoder.decoder(encoder_out, tgt)
-        perm_mat1 = self.encoderdecoder.scorenet1(feats)
-        perm_mat2 = self.encoderdecoder.scorenet2(feats)
-        perm_mat = perm_mat1 + torch.transpose(perm_mat2, 1, 2)
-
-        perm_mat = log_optimal_transport(
-            perm_mat,
-            self.encoderdecoder.bin_score,
-            self.encoderdecoder.sinkhorn_iterations,
-        )[:, : perm_mat.shape[1], : perm_mat.shape[2]]
-        perm_mat = F.softmax(perm_mat, dim=-1)
-
-        return preds, perm_mat
-    
-    def predict(self, encoder_out, tgt):
-        preds, feats = self.encoderdecoder.decoder.predict(
-            encoder_out, tgt, next(self.parameters()).device
-        )
-        return preds, feats
-
 
 if __name__ == "__main__":
     from tokenizer import Tokenizer
