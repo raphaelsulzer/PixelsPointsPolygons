@@ -2,7 +2,7 @@
 set -e
 
 # Local variables
-ENV_NAME=pix2poly2
+ENV_NAME=pix2poly
 PYTHON=3.11.11
 
 # Installation script for Miniconda3 environments
@@ -86,17 +86,6 @@ pip install matplotlib
 pip install albumentations
 pip install shapely
 pip install hydra-core
-
-# # dependencies
-# # pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
-# pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-# conda install conda-forge::transformers -y
-# conda install conda-forge::pycocotools -y
-# conda install conda-forge::torchmetrics -y
-# conda install conda-forge::tensorboard -y
-# conda install conda-forge::wandb -y
-# conda install conda-forge::timm=0.9.12 -y
-# pip install matplotlib==3.7.0
 
 # # problem with torch:tms? do this:
 # # https://github.com/huggingface/diffusers/issues/8958#issuecomment-2253055261
