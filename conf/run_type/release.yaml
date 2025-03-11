@@ -1,5 +1,5 @@
 name: release
-batch_size: 32
+batch_size: 64
 subset: null
 logging: INFO
 num_workers: 16
