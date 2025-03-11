@@ -2,17 +2,17 @@
 set -e
 
 # Local variables
-PROJECT_NAME=pix2poly
+ENV_NAME=pix2poly
 PYTHON=3.11.11
 
-# Installation script for Anaconda3 environments
-echo "____________ Pick conda install _____________"
+# Installation script for Miniconda3 environments
+echo "____________ Pick Miniconda Install _____________"
 echo
 # Recover the path to conda on your machine
-CONDA_DIR=`realpath /opt/miniconda3`
+CONDA_DIR=`realpath ~/miniconda3`
 if (test -z $CONDA_DIR) || [ ! -d $CONDA_DIR ]
 then
-  CONDA_DIR=`realpath ~/anaconda3`
+  CONDA_DIR=`realpath /opt/miniconda3`
 fi
 
 while (test -z $CONDA_DIR) || [ ! -d $CONDA_DIR ]
@@ -27,8 +27,48 @@ source ${CONDA_DIR}/etc/profile.d/conda.sh
 echo
 echo
 
+echo "________________ Install Conda Environment _______________"
+echo
 
-echo "________________ Installation _______________"
+# Check if the environment exists
+if conda env list | awk '{print $1}' | grep -q "^$ENV_NAME$"; then
+    read -p "Conda environment '$ENV_NAME' already exists. Do you want to remove and reinstall it? (yes/no): " answer
+
+    if [[ "$answer" == "yes" || "$answer" == "y" ]]; then
+        # Remove the environment
+        conda env remove --name "$ENV_NAME" --yes > /dev/null 2>&1
+
+        # Double-check removal
+        if conda env list | awk '{print $1}' | grep -q "^$ENV_NAME$"; then
+            echo "Failed to remove the environment '$ENV_NAME'."
+            exit 1
+        else
+            echo "Conda environment '$ENV_NAME' removed successfully."
+        fi
+
+        ## Create a conda environment
+        echo "Create conda environment '$ENV_NAME'."
+        conda create -y --name $ENV_NAME python=$PYTHON > /dev/null 2>&1
+
+    elif [[ "$answer" == "no" || "$answer" == "n" ]]; then
+        echo "Installing in existing environment..."
+    else
+        echo "Invalid input. Please enter yes or no."
+    fi
+else
+  ## Create a conda environment
+  echo "Create conda environment '$ENV_NAME'."
+  conda create -y --name $ENV_NAME python=$PYTHON > /dev/null 2>&1
+fi
+
+
+# Activate the env
+echo "Activating ${ENV_NAME} conda environment."
+source ${CONDA_DIR}/etc/profile.d/conda.sh
+conda activate ${ENV_NAME}
+
+
+echo "________________ Install Required Packages _______________"
 echo
 
 # Create a conda environment from yml
@@ -39,15 +79,15 @@ source ${CONDA_DIR}/etc/profile.d/conda.sh
 conda activate ${PROJECT_NAME}
 
 # dependencies
-pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
-conda install conda-forge::transformers=4.32.1 -y
+# pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+conda install conda-forge::transformers -y
 conda install conda-forge::pycocotools -y
 conda install conda-forge::torchmetrics -y
 conda install conda-forge::tensorboard -y
 conda install conda-forge::wandb -y
 conda install conda-forge::timm=0.9.12 -y
 pip install matplotlib==3.7.0
-pip install -r requirements.txt
 
 # problem with torch:tms? do this:
 # https://github.com/huggingface/diffusers/issues/8958#issuecomment-2253055261
