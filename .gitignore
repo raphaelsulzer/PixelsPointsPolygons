@@ -3,7 +3,6 @@ __pycache__
 data
 outputs
 runs
-.vscode
 preds*
 crowdai_visualizations
 scratch
