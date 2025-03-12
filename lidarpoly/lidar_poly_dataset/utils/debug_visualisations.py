@@ -115,7 +115,7 @@ def plot_corners(corner_image, ax=None, show_axis='off', show=False):
         plt.show(block=False)
     
     
-def plot_pix2poly(image_batch,mask_batch=None,corner_image_batch=None,polygon_batch=None,polygon_format="xy"):
+def plot_pix2poly(image_batch,image_names=None,mask_batch=None,corner_image_batch=None,polygon_batch=None,polygon_format="xy"):
     
     fig, ax = plt.subplots(4,4,figsize=(8, 8), dpi=150)
     ax = ax.flatten()
@@ -136,6 +136,8 @@ def plot_pix2poly(image_batch,mask_batch=None,corner_image_batch=None,polygon_ba
             plot_corners(corner_image_batch[i], show=False, ax=ax[i])
         if polygon_batch is not None:              
             plot_polygons(polygon_batch[i], show=False, ax=ax[i], polygon_format=polygon_format)
+        if image_names is not None:
+            ax[i].set_title(image_names[i], fontsize=4)
     
     plt.tight_layout()
     plt.show(block=True)
