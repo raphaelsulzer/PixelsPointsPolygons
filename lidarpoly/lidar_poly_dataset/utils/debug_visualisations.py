@@ -3,31 +3,33 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import torch
 
-def plot_polygons(polygon_vertices, image=None, point_cloud=None, pointsize=3, linewidth=2):
 
-    # # Example polygon data
-    # polygon_indices = ann['juncs_index']
-    # polygon_vertices = ann['junctions']
+def plot_point_cloud(point_cloud, ax=None, show=False):
+    
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(5, 5), dpi=50)
+    
+    # Normalize Z-values for colormap
+    z_min, z_max = point_cloud[:, 2].min(), point_cloud[:, 2].max()
+    norm = plt.Normalize(vmin=z_min, vmax=z_max)
+    cmap = plt.cm.turbo  # 'turbo' colormap
 
-    # Get unique polygon IDs
-    # unique_polygons = np.unique(polygon_indices)
+    # Plot point cloud below polygons
+    ax.scatter(point_cloud[:, 0], point_cloud[:, 1], c=cmap(norm(point_cloud[:, 2])), s=0.2, zorder=2)
+    
+    if show:
+        plt.show(block=False)
+    
+
+def plot_polygons(polygon_vertices, ax=None, pointsize=3, linewidth=2, show=False,
+                  polygon_format="xy"):
 
     # Assign a different color to each polygon
     colors = list(mcolors.TABLEAU_COLORS.values())
 
-    fig, ax = plt.subplots(figsize=(5, 5), dpi=100)
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(5, 5), dpi=100)
 
-    if image is not None:
-        ax.imshow(image)
-
-    if point_cloud is not None:
-        # Normalize Z-values for colormap
-        z_min, z_max = point_cloud[:, 2].min(), point_cloud[:, 2].max()
-        norm = plt.Normalize(vmin=z_min, vmax=z_max)
-        cmap = plt.cm.turbo  # 'turbo' colormap
-
-        # Plot point cloud below polygons
-        ax.scatter(point_cloud[:, 0], point_cloud[:, 1], c=cmap(norm(point_cloud[:, 2])), s=0.2, zorder=2)
 
     # Plot polygons
     for i, poly in enumerate(polygon_vertices):
@@ -35,6 +37,13 @@ def plot_polygons(polygon_vertices, image=None, point_cloud=None, pointsize=3, l
         # mask = polygon_indices == pid
         # poly = polygon_vertices[mask]
         # poly = np.vstack([poly, poly[0]])
+        if polygon_format == "xy":
+            pass
+        elif polygon_format == "yx":
+            poly = poly[:, [1, 0]]
+        else:
+            raise ValueError("polygon_format must be 'xy' or 'yx'")
+        
 
         # Draw polygon edges
         color = colors[i % len(colors)]  # Cycle through colors
@@ -43,7 +52,9 @@ def plot_polygons(polygon_vertices, image=None, point_cloud=None, pointsize=3, l
         # Draw polygon vertices
         ax.scatter(poly[:, 0], poly[:, 1], color=color, zorder=3, s=pointsize)
 
-    plt.show(block=False)
+        
+    if show:
+        plt.show(block=False)    
 
 
 def plot_mask(image, alpha=1.0, ax=None, show_axis='off', show=False):
@@ -104,7 +115,7 @@ def plot_corners(corner_image, ax=None, show_axis='off', show=False):
         plt.show(block=False)
     
     
-def plot_pix2poly(image_batch,mask_batch=None,corner_image_batch=None):
+def plot_pix2poly(image_batch,mask_batch=None,corner_image_batch=None,polygon_batch=None,polygon_format="xy"):
     
     fig, ax = plt.subplots(4,4,figsize=(8, 8), dpi=150)
     ax = ax.flatten()
@@ -123,6 +134,8 @@ def plot_pix2poly(image_batch,mask_batch=None,corner_image_batch=None):
             plot_mask(mask_batch[i], alpha=0.5 , show=False, ax=ax[i])
         if corner_image_batch is not None:
             plot_corners(corner_image_batch[i], show=False, ax=ax[i])
+        if polygon_batch is not None:              
+            plot_polygons(polygon_batch[i], show=False, ax=ax[i], polygon_format=polygon_format)
     
     plt.tight_layout()
     plt.show(block=True)
