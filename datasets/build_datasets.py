@@ -30,15 +30,35 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
     from lidar_poly_dataset import TrainDataset
     from datasets.dataset_inria_coco import collate_fn
 
-    train_transforms = A.ReplayCompose([
-        # A.D4(p=1.0),
-        A.Resize(height=cfg.model.input_height, width=cfg.model.input_width),
-        A.ColorJitter(p=0.5),
-        A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0),
-        ToTensorV2(),
-    ],
-        keypoint_params=A.KeypointParams(format='yx')
+    train_transforms = A.Compose(
+        [
+            A.Affine(rotate=[-360, 360], fit_output=True, p=0.8),  # scaled rotations are performed before resizing to ensure rotated and scaled images are correctly resized.
+            A.Resize(height=cfg.model.input_height, width=cfg.model.input_width),
+            A.RandomRotate90(p=1.),
+            A.RandomBrightnessContrast(p=0.5),
+            A.ColorJitter(),
+            A.ToGray(p=0.4),
+            A.GaussNoise(),
+            # ToTensorV2 of albumentations doesn't divide by 255 like in PyTorch,
+            # it is done inside Normalize function.
+            A.Normalize(
+                mean=[0.0, 0.0, 0.0],
+                std=[1.0, 1.0, 1.0],
+                max_pixel_value=255.0
+            ),
+            ToTensorV2(),
+        ],
+        keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
     )
+    # train_transforms = A.ReplayCompose([
+    #     # A.D4(p=1.0),
+    #     A.Resize(height=cfg.model.input_height, width=cfg.model.input_width),
+    #     A.ColorJitter(p=0.5),
+    #     A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0),
+    #     ToTensorV2(),
+    # ],
+    #     keypoint_params=A.KeypointParams(format='yx')
+    # )
     
     train_ds = TrainDataset(
         dataset_dir=cfg.dataset.path,
