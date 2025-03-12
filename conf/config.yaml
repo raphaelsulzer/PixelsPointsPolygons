@@ -2,7 +2,7 @@ defaults:
   - model: pix2poly   # Default model
   - dataset: lidarpoly   # Default dataset
   - run_type: release   # Default run_type
-  - host: g5k
+  - host: gin
   - _self_
 
 
@@ -15,8 +15,8 @@ multi_gpu: false
 
 device: cuda
 # checkpoint: /data/rsulzer/pix2poly_outputs/lidarpoly/${.experiment_name}/logs/checkpoints/epoch_49.pth
-# checkpoint: /data/rsulzer/pix2poly_outputs/lidarpoly/${.experiment_name}/logs/checkpoints/best_valid_metric.pth
-checkpoint: null
+checkpoint: /data/rsulzer/pix2poly_outputs/lidarpoly/${.experiment_name}/logs/checkpoints/epoch_39.pth
+# checkpoint: null
 output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.experiment_name}
 log_to_wandb: ${.run_type.log_to_wandb}
 
