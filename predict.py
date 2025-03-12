@@ -28,11 +28,13 @@ from datasets.build_datasets import get_val_loader
 from lidar_poly_dataset.utils import generate_coco_ann
 from lidar_poly_dataset.misc import make_logger
 
+from lidar_poly_dataset.utils import plot_pix2poly
+
+
 class Predicter:
     def __init__(self, cfg, verbosity=logging.INFO):
         self.cfg = cfg
         self.logger = make_logger("Prediction",level=verbosity,filepath=os.path.join(cfg.output_dir, 'predict.log'))
-
 
     def get_model(self,tokenizer):
         
@@ -71,28 +73,6 @@ class Predicter:
         return torch.from_numpy(polygons_mask)
         
 
-    def plot_prediction_as_mask(self, polygon_mask, y_mask, outfile):
-
-        pred_grid = make_grid(polygon_mask).permute(1, 2, 0)
-        gt_grid = make_grid(y_mask).permute(1, 2, 0)
-        plt.subplot(211), plt.imshow(pred_grid) ,plt.title("Predicted Polygons") ,plt.axis('off')
-        plt.subplot(212), plt.imshow(gt_grid) ,plt.title("Ground Truth") ,plt.axis('off')
-        
-        os.makedirs(os.path.dirname(outfile), exist_ok=True)
-        plt.savefig(outfile)
-        plt.close()
-
-
-    def plot_prediction_as_polygons(self, polygons, img):
-        
-        if not len(polygons):
-            return
-        
-        from lidar_poly_dataset.utils import plot_polygons
-        img = img.permute(1, 2, 0).cpu().numpy()
-        plot_polygons(polygons, img)
-        
-
     def run(self):
         seed_everything(42)
 
@@ -118,60 +98,51 @@ class Predicter:
         mean_iou_metric = BinaryJaccardIndex()
         mean_acc_metric = BinaryAccuracy()
 
-
         with torch.no_grad():
             cumulative_miou = []
             cumulative_macc = []
             speed = []
-            predictions = []
+            coco_predictions = []
             for x, y_mask, y_corner_mask, y, y_perm, idx in tqdm(val_loader):
-                all_coords = []
-                all_confs = []
                 t0 = time.time()
-
+                
+                x = x.to(self.cfg.device, non_blocking=True)
+                
                 batch_preds, batch_confs, perm_preds = test_generate(
-                    model.encoder,
-                    x,
-                    tokenizer,
-                    max_len=self.cfg.model.tokenizer.generation_steps,
-                    top_k=0,
-                    top_p=1,
-                )
+                    model,x,tokenizer,
+                    max_len=self.cfg.model.tokenizer.generation_steps,top_k=0,top_p=1)
                 
                 speed.append(time.time() - t0)
-                vertex_coords, confs = postprocess(batch_preds, batch_confs, tokenizer)
-
-                all_coords.extend(vertex_coords)
-                all_confs.extend(confs)
+                vertex_coords, _ = postprocess(batch_preds, batch_confs, tokenizer)
 
                 coords = []
-                for i in range(len(all_coords)):
-                    if all_coords[i] is not None:
-                        coord = torch.from_numpy(all_coords[i])
+                for i in range(len(vertex_coords)):
+                    if vertex_coords[i] is not None:
+                        coord = torch.from_numpy(vertex_coords[i])
                     else:
                         coord = torch.tensor([])
-
-                    padd = torch.ones((cfg.model.tokenizer.n_vertices - len(coord), 2)).fill_(cfg.model.tokenizer.pad_idx)
+                    padd = torch.ones((self.cfg.model.tokenizer.n_vertices - len(coord), 2)).fill_(self.cfg.model.tokenizer.pad_idx)
                     coord = torch.cat([coord, padd], dim=0)
                     coords.append(coord)
+                    
                 batch_polygons = permutations_to_polygons(perm_preds, coords, out='torch')  # [0, 224]     
 
-                for ip, pp in enumerate(batch_polygons):
+                batch_polygons_processed = []
+                for i, pp in enumerate(batch_polygons):
                     polys = []
                     for p in pp:
                         p = torch.fliplr(p)
                         p = p[p[:, 0] != self.cfg.model.tokenizer.pad_idx]
                         if len(p) > 0:
                             polys.append(p)
-                    predictions.extend(generate_coco_ann(polys,idx[ip].item()))
+                    batch_polygons_processed.append(polys)
+                    coco_predictions.extend(generate_coco_ann(polys,idx[i].item()))
 
-                polygons_mask = self.make_pixel_mask_from_prediction(x,batch_polygons,self.cfg)
+                polygons_mask = self.make_pixel_mask_from_prediction(x,batch_polygons)
                 batch_miou = mean_iou_metric(polygons_mask, y_mask)
                 batch_macc = mean_acc_metric(polygons_mask, y_mask)
 
-                self.plot_prediction_as_polygons(polys, x[-1])
-                # outfile = os.path.join(cfg.output_dir, "images", f"predictions_{idx}.png")
-                # plot_prediction_as_mask(polygons_mask, y_mask, outfile)
+                plot_pix2poly(image_batch=x, mask_batch=polygons_mask, polygon_batch=batch_polygons_processed,polygon_format="xy")
 
                 cumulative_miou.append(batch_miou)
                 cumulative_macc.append(batch_macc)
@@ -184,8 +155,7 @@ class Predicter:
         checkpoint_name = os.path.split(self.cfg.checkpoint)[-1][:-4]
         prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{checkpoint_name}.json")
         with open(prediction_outfile, "w") as fp:
-            fp.write(json.dumps(predictions))
-
+            fp.write(json.dumps(coco_predictions))
 
 
 @hydra.main(config_path="conf", config_name="config", version_base="1.3")
