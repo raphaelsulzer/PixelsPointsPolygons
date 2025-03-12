@@ -14,7 +14,7 @@ from shapely.geometry import Polygon
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import default_collate
 
-from lidar_poly_dataset.logger import make_logger
+from lidar_poly_dataset.misc import make_logger
 
 def affine_transform(pt, t):
     new_pt = np.array([pt[0], pt[1], 1.], dtype=np.float32).T
