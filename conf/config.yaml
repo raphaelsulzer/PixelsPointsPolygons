@@ -8,14 +8,15 @@ defaults:
 
 
 # experiment_name: images_only
-experiment_name: inria_trained
+# experiment_name: inria_trained
+experiment_name: inria_coco_224_negAug
 # experiment_name: lidarpoly_ori_aug
 
 multi_gpu: false
 
 device: cuda
 # checkpoint: /data/rsulzer/pix2poly_outputs/lidarpoly/${.experiment_name}/logs/checkpoints/epoch_49.pth
-checkpoint: /data/rsulzer/pix2poly_outputs/lidarpoly/${.experiment_name}/logs/checkpoints/validation_best.pth
+checkpoint: /data/rsulzer/pix2poly_outputs/inria/${.experiment_name}/logs/checkpoints/validation_best.pth
 # checkpoint: null
 output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.experiment_name}
 log_to_wandb: ${.run_type.log_to_wandb}

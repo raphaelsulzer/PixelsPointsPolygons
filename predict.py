@@ -34,7 +34,10 @@ from lidar_poly_dataset.utils import plot_pix2poly
 class Predicter:
     def __init__(self, cfg, verbosity=logging.INFO):
         self.cfg = cfg
-        self.logger = make_logger("Prediction",level=verbosity,filepath=os.path.join(cfg.output_dir, 'predict.log'))
+        # self.logger = make_logger("Prediction",level=verbosity,filepath=os.path.join(cfg.output_dir, 'predict.log'))
+        self.logger = make_logger("Prediction",level=verbosity)
+        self.logger.info("Create output directory {cfg.output_dir}...")
+        os.makedirs(cfg.output_dir, exist_ok=True)
 
     def get_model(self,tokenizer):
         
@@ -71,6 +74,13 @@ class Predicter:
                 if len(cnt) > 0:
                     cv2.fillPoly(polygons_mask[b, 0], pts=[cnt], color=1.)
         return torch.from_numpy(polygons_mask)
+    
+    
+    def get_image_file_name(self, img_dict, ids):
+        file_names = []
+        for id in ids:
+            file_names.append(img_dict[id.item()]['file_name'])
+        return file_names
         
 
     def run(self):
@@ -103,7 +113,7 @@ class Predicter:
             cumulative_macc = []
             speed = []
             coco_predictions = []
-            for x, y_mask, y_corner_mask, y, y_perm, idx in tqdm(val_loader):
+            for x, y_mask, y_corner_mask, y, y_perm, image_ids in tqdm(val_loader):
                 t0 = time.time()
                 
                 x = x.to(self.cfg.device, non_blocking=True)
@@ -136,13 +146,15 @@ class Predicter:
                         if len(p) > 0:
                             polys.append(p)
                     batch_polygons_processed.append(polys)
-                    coco_predictions.extend(generate_coco_ann(polys,idx[i].item()))
+                    coco_predictions.extend(generate_coco_ann(polys,image_ids[i].item()))
 
                 polygons_mask = self.make_pixel_mask_from_prediction(x,batch_polygons)
                 batch_miou = mean_iou_metric(polygons_mask, y_mask)
                 batch_macc = mean_acc_metric(polygons_mask, y_mask)
 
-                plot_pix2poly(image_batch=x, mask_batch=polygons_mask, polygon_batch=batch_polygons_processed,polygon_format="xy")
+                if self.cfg.run_type.name == "debug":
+                    file_names = self.get_image_file_name(val_loader.dataset.coco.imgs, image_ids)
+                    plot_pix2poly(image_batch=x, image_names=file_names, mask_batch=polygons_mask, polygon_batch=batch_polygons_processed)
 
                 cumulative_miou.append(batch_miou)
                 cumulative_macc.append(batch_macc)
