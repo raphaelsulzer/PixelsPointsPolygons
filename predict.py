@@ -25,7 +25,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from tokenizer import Tokenizer
 from utils import seed_everything, postprocess, permutations_to_polygons, compute_dynamic_cfg_vars, test_generate
 from models.model import Encoder, Decoder, EncoderDecoder
-from datasets.build_datasets import get_val_loader
+from datasets.build_datasets import get_train_loader, get_val_loader
 
 from lidar_poly_dataset.utils import generate_coco_ann
 from lidar_poly_dataset.misc import make_logger
@@ -98,7 +98,8 @@ class Predicter:
         
         compute_dynamic_cfg_vars(self.cfg,tokenizer)
 
-        val_loader = get_val_loader(self.cfg,tokenizer)
+        # val_loader = get_val_loader(self.cfg,tokenizer)
+        val_loader = get_train_loader(self.cfg,tokenizer)
         model = self.get_model(tokenizer,ddp=True)
 
         checkpoint = torch.load(self.cfg.checkpoint, map_location=self.cfg.device)

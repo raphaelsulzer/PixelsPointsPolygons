@@ -25,13 +25,14 @@ def get_train_loader(cfg,tokenizer):
 
 def get_train_loader_lidarpoly(cfg,tokenizer):
     
-    from lidar_poly_dataset import TrainDataset
+    from lidar_poly_dataset.dataset import TrainDataset
     from datasets.dataset_inria_coco import collate_fn
 
+    ### ORIGINAL
     # train_transforms = A.Compose(
     #     [
     #         A.Affine(rotate=[-360, 360], fit_output=True, p=0.8),  # scaled rotations are performed before resizing to ensure rotated and scaled images are correctly resized.
-    #         A.Resize(height=cfg.model.input_height, width=cfg.model.input_width),
+    #         A.Resize(height=CFG.INPUT_HEIGHT, width=CFG.INPUT_WIDTH),
     #         A.RandomRotate90(p=1.),
     #         A.RandomBrightnessContrast(p=0.5),
     #         A.ColorJitter(),
@@ -52,11 +53,11 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
     train_transforms = A.ReplayCompose([
         A.D4(p=1.0),
         A.Resize(height=cfg.model.input_height, width=cfg.model.input_width),
-        A.ColorJitter(p=0.5),
+        A.ColorJitter(),
         A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0),
         ToTensorV2(),
     ],
-        keypoint_params=A.KeypointParams(format='yx')
+        keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
     )
     
     train_ds = TrainDataset(
@@ -68,18 +69,18 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
     )
 
     if cfg.multi_gpu:
-        train_sampler = DistributedSampler(dataset=train_ds, shuffle=True)
+        train_sampler = {"sampler":DistributedSampler(dataset=train_ds, shuffle=True)}
     else:
-        train_sampler = None
+        train_sampler = {"shuffle":True}
 
     train_loader = DataLoader(
         train_ds,
         batch_size=cfg.model.batch_size,
         collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
-        sampler=train_sampler,
         num_workers=cfg.num_workers,
         pin_memory=True,
         drop_last=True,
+        **train_sampler
     )
     
     return train_loader
@@ -99,7 +100,7 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
         ],
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
     )
-        
+    
     val_ds = ValDataset(
         dataset_dir=cfg.dataset.path,
         transform=val_transforms,
@@ -108,18 +109,20 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
         n_polygon_vertices=cfg.model.tokenizer.n_vertices
     )
 
+
     if cfg.multi_gpu:
-        val_sampler = DistributedSampler(dataset=val_ds, shuffle=False)
+        val_sampler = {"sampler":DistributedSampler(dataset=val_ds, shuffle=False)}
     else:
-        val_sampler = None
+        val_sampler = {"shuffle":False}
         
     val_loader = DataLoader(
         val_ds,
         batch_size=cfg.model.batch_size,
         collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
-        sampler=val_sampler,
         num_workers=cfg.num_workers,
-        pin_memory=True
+        pin_memory=True,
+        drop_last=False,
+        **val_sampler
     )
     
     return val_loader
@@ -132,11 +135,11 @@ def get_train_loader_inria(cfg,tokenizer):
     train_transforms = A.ReplayCompose([
         A.D4(p=1.0),
         A.Resize(height=cfg.model.input_height, width=cfg.model.input_width),
-        A.ColorJitter(p=0.5),
+        A.ColorJitter(),
         A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0),
         ToTensorV2(),
     ],
-        keypoint_params=A.KeypointParams(format='yx')
+        keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
     )
         
     train_ds = InriaCocoDatasetTrain(
@@ -144,19 +147,20 @@ def get_train_loader_inria(cfg,tokenizer):
         transform=train_transforms,
         tokenizer=tokenizer,
     )
+        
     if cfg.multi_gpu:
-        train_sampler = DistributedSampler(dataset=train_ds, shuffle=True)
+        train_sampler = {"sampler":DistributedSampler(dataset=train_ds, shuffle=True)}
     else:
-        train_sampler = None
+        train_sampler = {"shuffle":True}
 
     train_loader = DataLoader(
         train_ds,
         batch_size=cfg.model.batch_size,
         collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
-        sampler=train_sampler,
         num_workers=cfg.num_workers,
         pin_memory=True,
         drop_last=True,
+        **train_sampler
     )
     
     return train_loader
@@ -198,9 +202,10 @@ def get_val_loader_inria(cfg,tokenizer):
         val_ds,
         batch_size=cfg.model.batch_size,
         collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
-        sampler=val_sampler,
         num_workers=cfg.num_workers,
-        pin_memory=True
+        pin_memory=True,
+        drop_last=False,
+        **val_sampler
     )
     
     return val_loader
