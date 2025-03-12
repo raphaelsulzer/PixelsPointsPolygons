@@ -164,7 +164,7 @@ def permutations_to_polygons(perm, graph, out='torch'):
                     g = torch.fliplr(g)
                     batch_poly.append(g.tolist())
                 elif out == 'coco':
-                    g = b_graph[p_idx,:]# * CFG.IMG_SIZE / CFG.INPUT_WIDTH
+                    g = b_graph[p_idx,:]
                     g = torch.fliplr(g)
                     batch_poly.append(g.view(-1).tolist())
                 elif out == 'inria-torch':
@@ -243,7 +243,7 @@ def postprocess(batch_preds, batch_confs, tokenizer):
 
 
 def save_single_predictions_as_images(
-    loader, model, tokenizer, epoch, folder, device='cuda'
+    loader, model, tokenizer, epoch, folder, cfg,
 ):
     os.makedirs(folder, exist_ok=True)
     print(f"=> Saving val predictions to {folder}...")
@@ -256,8 +256,8 @@ def save_single_predictions_as_images(
     with torch.no_grad():
         loader_iterator = iter(loader)
         idx, (x, y_mask, y_corner_mask, y, y_perm, img_ids) = 0, next(loader_iterator)
-        x = x.to(device, non_blocking=True)
-        batch_preds, batch_confs, perm_preds = test_generate(model, x, tokenizer, max_len=CFG.generation_steps, top_k=0, top_p=1)
+        x = x.to(cfg.device, non_blocking=True)
+        batch_preds, batch_confs, perm_preds = test_generate(model, x, tokenizer, max_len=cfg.model.tokenizer.generation_steps, top_k=0, top_p=1)
         vertex_coords, confs = postprocess(batch_preds, batch_confs, tokenizer)
 
         all_coords.extend(vertex_coords)
@@ -269,7 +269,7 @@ def save_single_predictions_as_images(
                 coord = torch.from_numpy(all_coords[i])
             else:
                 coord = torch.tensor([])
-            padd = torch.ones((CFG.N_VERTICES - len(coord), 2)).fill_(tokenizer.PAD_code)
+            padd = torch.ones((cfg.model.tokenizer.n_vertices - len(coord), 2)).fill_(tokenizer.PAD_code)
             coord = torch.cat((coord, padd), dim=0)
             coords.append(coord)
         batch_polygons = permutations_to_polygons(perm_preds, coords, out='torch')  # list of polygon coordinate tensors

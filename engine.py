@@ -264,7 +264,7 @@ def train_eval(
                 tokenizer,
                 epoch,
                 folder=os.path.join(cfg.output_dir, "runtime_outputs"),
-                device=cfg.device
+                cfg=cfg
             )
             for metric, value in val_metrics_dict.items():
                 if is_main_process():
