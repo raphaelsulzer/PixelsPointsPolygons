@@ -9,12 +9,15 @@
             "type": "debugpy",
             "request": "launch",
             // "program": "${file}",
-            "program": "${workspaceFolder}/predict.py",
+            "program": "${workspaceFolder}/train.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=debug",
-                "host=gin",
-                // "experiment_name=debug",
+                "run_type=release",
+                "host=g5k",
+                "experiment_name=inria_D4_aug",
+                "device=cpu",
+                "log_to_wandb=false"
+                // "multi_gpu=true"
             ]
         }
     ]
