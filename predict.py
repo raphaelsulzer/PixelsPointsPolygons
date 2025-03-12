@@ -19,6 +19,8 @@ from torchvision.utils import make_grid
 from torchmetrics.classification import BinaryJaccardIndex, BinaryAccuracy
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 from tokenizer import Tokenizer
 from utils import seed_everything, postprocess, permutations_to_polygons, compute_dynamic_cfg_vars, test_generate
@@ -39,7 +41,7 @@ class Predicter:
         self.logger.info("Create output directory {cfg.output_dir}...")
         os.makedirs(cfg.output_dir, exist_ok=True)
 
-    def get_model(self,tokenizer):
+    def get_model(self,tokenizer,ddp=False):
         
         encoder = Encoder(model_name=self.cfg.model.type, pretrained=True, out_dim=256)
         decoder = Decoder(
@@ -97,10 +99,11 @@ class Predicter:
         compute_dynamic_cfg_vars(self.cfg,tokenizer)
 
         val_loader = get_val_loader(self.cfg,tokenizer)
-        model = self.get_model(tokenizer)
+        model = self.get_model(tokenizer,ddp=True)
 
         checkpoint = torch.load(self.cfg.checkpoint, map_location=self.cfg.device)
-        model.load_state_dict(checkpoint['state_dict'])
+        single_gpu_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["state_dict"].items()}
+        model.load_state_dict(single_gpu_state_dict)
         epoch = checkpoint['epochs_run']
 
         self.logger.info(f"Model loaded from epoch: {epoch}")
