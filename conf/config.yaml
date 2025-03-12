@@ -9,7 +9,7 @@ defaults:
 
 # experiment_name: images_only
 # experiment_name: inria
-experiment_name: lidarpoly
+experiment_name: lidarpoly_ori_aug
 
 multi_gpu: false
 
