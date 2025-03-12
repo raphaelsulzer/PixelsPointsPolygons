@@ -1,4 +1,5 @@
 #!/bin/bash
+#SBATCH -A cso@a100
 #SBATCH --job-name=p2p_lidarpoly_ori_aug  # Job name
 #SBATCH --output=./slurm/output.log       # Standard output and error log
 #SBATCH --error=./slurm/error.log         # Error log
