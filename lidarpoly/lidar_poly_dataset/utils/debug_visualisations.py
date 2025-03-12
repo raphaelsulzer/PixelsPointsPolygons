@@ -107,9 +107,9 @@ def plot_corners(corner_image, ax=None, show_axis='off', show=False):
     for y, x, _ in ones_coords:
         ax.plot(x,y, color='red', linewidth=25, marker='x')
         
-        # Plot a red cross at each 1 value
-    for x, y, _ in ones_coords:
-        ax.plot(x,y, color='blue', linewidth=25, marker='x')
+    #     # Plot a red cross at each 1 value
+    # for x, y, _ in ones_coords:
+    #     ax.plot(x,y, color='blue', linewidth=25, marker='x')
 
     if show:
         plt.show(block=False)

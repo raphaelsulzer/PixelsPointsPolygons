@@ -23,34 +23,36 @@ def affine_transform(pt, t):
 
 
 class DefaultDataset(Dataset):
-    def __init__(self, dataset_dir, split, model_type="pix2poly",
-                 load_lidar=False, load_images=True,
-                 augment=False, transform=None,
-                 logging_level=logging.INFO,
+    def __init__(self, cfg, split,
+                 transform=None,
                  **kwargs):
-        self.dataset_dir = dataset_dir
-        if not os.path.isdir(self.dataset_dir):
-            raise NotADirectoryError(self.dataset_dir)
+        super().__init__()
+        
+        self.logger = make_logger(f'{split}Dataset', cfg.run_type.logging)
+        
+        self.cfg = cfg
         self.split = split
 
-        self.use_lidar = load_lidar
-        self.use_images = load_images
-
-        self.logger = make_logger('Dataset', logging_level)
-
+        self.dataset_dir = self.cfg.dataset.path
+        if not os.path.isdir(self.dataset_dir):
+            raise NotADirectoryError(self.dataset_dir)
+        
         self.ann_file = os.path.join(self.dataset_dir,f"annotations_{split}.json")
         if not os.path.isfile(self.ann_file):
             raise FileNotFoundError(self.ann_file)
+        
+        
         self.coco = COCO(self.ann_file)
         images_id = self.coco.getImgIds()
         self.tile_ids = images_id.copy()
         self.num_samples = len(self.tile_ids)
 
+        self.logger.debug(f"Loaded {len(self.coco.anns.items())} annotations from {self.ann_file}")
+
+        self.use_lidar = cfg.use_lidar
+        self.use_images = cfg.use_images
         self.transform = transform
-        self.augment = augment
-
-        self.model_type = model_type
-
+        self.model_type = cfg.model.name
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -202,7 +204,7 @@ class DefaultDataset(Dataset):
         mask = np.zeros((img_info['width'], img_info['height']))
         corner_coords = []
         corner_mask = np.zeros((img_info['width'], img_info['height']), dtype=np.float32)
-        perm_matrix = np.zeros((self.n_polygon_vertices, self.n_polygon_vertices), dtype=np.float32)
+        perm_matrix = np.zeros((self.cfg.model.tokenizer.n_vertices, self.cfg.model.tokenizer.n_vertices), dtype=np.float32)
         point_ids = []
         point_id = 0
         for ins in annotations:
@@ -242,16 +244,16 @@ class DefaultDataset(Dataset):
                 points = segm[:-1]
                 for i in range(len(points)):
                     j = (i + 1) % len(points)
-                    if v_count + i > self.n_polygon_vertices - 1 or v_count + j > self.n_polygon_vertices - 1:
+                    if v_count + i > self.cfg.model.tokenizer.n_vertices - 1 or v_count + j > self.cfg.model.tokenizer.n_vertices - 1:
                         break
                     perm_matrix[v_count + i, v_count + j] = 1.
                 v_count += len(points)
 
-        for i in range(v_count, self.n_polygon_vertices):
+        for i in range(v_count, self.cfg.model.tokenizer.n_vertices):
             perm_matrix[i, i] = 1.
 
         # Workaround for open contours:
-        for i in range(self.n_polygon_vertices):
+        for i in range(self.cfg.model.tokenizer.n_vertices):
             row = perm_matrix[i, :]
             col = perm_matrix[:, i]
             if np.sum(row) == 0 or np.sum(col) == 0:
@@ -261,8 +263,8 @@ class DefaultDataset(Dataset):
 
         masks = [mask, corner_mask]
 
-        if len(corner_coords) > self.n_polygon_vertices:
-            corner_coords = corner_coords[:self.n_polygon_vertices]
+        if len(corner_coords) > self.cfg.model.tokenizer.n_vertices:
+            corner_coords = corner_coords[:self.cfg.model.tokenizer.n_vertices]
 
         if self.transform is not None:
             augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
@@ -280,9 +282,9 @@ class DefaultDataset(Dataset):
             #     a=5
 
         if self.tokenizer is not None:
-            coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.shuffle_tokens)
+            coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.model.tokenizer.shuffle_tokens)
             coords_seqs = torch.LongTensor(coords_seqs)
-            if self.shuffle_tokens:
+            if self.cfg.model.tokenizer.shuffle_tokens:
                 perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
         else:
             coords_seqs = corner_coords
