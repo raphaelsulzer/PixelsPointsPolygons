@@ -1,6 +1,6 @@
 import sys
 from tqdm import tqdm
-import torch, os, torchvision
+import torch, os
 from omegaconf import OmegaConf
 import wandb
 
@@ -96,7 +96,8 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
     for x, y_mask, y_corner_mask, y, y_perm, img_ids in loader:
         
         # ### debug vis
-        # plot_pix2poly(x,y_mask,y_corner_mask)        
+        if cfg.run_type.name=="debug":
+            plot_pix2poly(image_batch=x,mask_batch=y_mask,corner_image_batch=y_corner_mask)        
         
         x = x.to(cfg.device, non_blocking=True)
         y = y.to(cfg.device, non_blocking=True)
@@ -133,11 +134,6 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
         lr = get_lr(optimizer)
 
         loader.set_postfix(train_loss=loss_meter.avg, lr=f"{lr:.5f}")
-        # print(f"Running_logs/Train_Loss: {loss_meter.avg}")
-        # writer.add_scalar('Running_logs/Train_Loss', loss_meter.avg, iter_idx)
-        # writer.add_scalar('Running_logs/LR', lr, iter_idx)
-        # writer.add_image(f"Running_logs/input_images", torchvision.utils.make_grid(x), iter_idx)
-        # writer.add_graph(model, input_to_model=(x, y_input))
 
         iter_idx += 1
 

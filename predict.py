@@ -4,33 +4,27 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
+import logging
 import time
 import json
-from tqdm import tqdm
-import numpy as np
 import cv2
-import matplotlib.pyplot as plt
 import hydra
 from omegaconf import OmegaConf
+from tqdm import tqdm
+import numpy as np
 
 import torch
-import logging
-from torchvision.utils import make_grid
 from torchmetrics.classification import BinaryJaccardIndex, BinaryAccuracy
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
+
+from lidar_poly_dataset.utils import generate_coco_ann, plot_pix2poly
+from lidar_poly_dataset.misc import make_logger
 
 from tokenizer import Tokenizer
 from utils import seed_everything, postprocess, permutations_to_polygons, compute_dynamic_cfg_vars, test_generate
 from models.model import Encoder, Decoder, EncoderDecoder
 from datasets.build_datasets import get_train_loader, get_val_loader
-
-from lidar_poly_dataset.utils import generate_coco_ann
-from lidar_poly_dataset.misc import make_logger
-
-from lidar_poly_dataset.utils import plot_pix2poly
 
 
 class Predicter:
@@ -64,7 +58,7 @@ class Predicter:
         
         return model
 
-    def make_pixel_mask_from_prediction(self, x, batch_polygons):
+    def get_pixel_mask_from_prediction(self, x, batch_polygons):
         B, C, H, W = x.shape
 
         polygons_mask = np.zeros((B, 1, H, W))
@@ -98,8 +92,8 @@ class Predicter:
         
         compute_dynamic_cfg_vars(self.cfg,tokenizer)
 
-        # val_loader = get_val_loader(self.cfg,tokenizer)
-        val_loader = get_train_loader(self.cfg,tokenizer)
+        val_loader = get_val_loader(self.cfg,tokenizer)
+        # val_loader = get_train_loader(self.cfg,tokenizer)
         model = self.get_model(tokenizer,ddp=True)
 
         checkpoint = torch.load(self.cfg.checkpoint, map_location=self.cfg.device)
@@ -152,7 +146,7 @@ class Predicter:
                     batch_polygons_processed.append(polys)
                     coco_predictions.extend(generate_coco_ann(polys,image_ids[i].item()))
 
-                polygons_mask = self.make_pixel_mask_from_prediction(x,batch_polygons)
+                polygons_mask = self.get_pixel_mask_from_prediction(x,batch_polygons)
                 batch_miou = mean_iou_metric(polygons_mask, y_mask)
                 batch_macc = mean_acc_metric(polygons_mask, y_mask)
 

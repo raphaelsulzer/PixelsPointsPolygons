@@ -1,7 +1,5 @@
 import numpy as np
 import torch
-from config import CFG
-
 
 class Tokenizer:
     def __init__(self, num_classes: int, num_bins: int, width: int, height: int, max_len=256):
