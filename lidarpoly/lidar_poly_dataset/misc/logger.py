@@ -7,6 +7,8 @@ def make_logger(name="MyLogger",level=logging.INFO,
 
     Parameters
     ------------
+    name : str
+        Name of the logger
     level : enum (int)
         Logging level, like logging.INFO
     capture_warnings: bool
