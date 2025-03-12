@@ -12,9 +12,8 @@
             "program": "${workspaceFolder}/predict.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=release",
+                "run_type=debug",
                 "host=gin",
-                "experiment_name=inria_D4_aug",
                 // "device=cpu",
                 "log_to_wandb=false"
                 // "multi_gpu=true"
