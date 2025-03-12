@@ -27,5 +27,5 @@ save_latest: True
 save_every: 10
 val_every: 1
 
-learning_rate: 1e-4
+learning_rate: 4e-4
 weight_decay: 1e-4
