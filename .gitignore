@@ -22,5 +22,4 @@ wandb/*
 !assets/vertex_sequence_detector.png
 !assets/optimal_matching_network.png
 
-OAR*
-oar/*
+oar/runs/*
