@@ -245,9 +245,8 @@ def postprocess(batch_preds, batch_confs, tokenizer):
     return all_coords, all_confs
 
 
-def save_single_predictions_as_images(
-    loader, model, tokenizer, epoch, folder, cfg,
-):
+def save_single_predictions_as_images(loader, model, tokenizer, epoch, folder, cfg):
+    
     os.makedirs(folder, exist_ok=True)
     print(f"=> Saving val predictions to {folder}...")
 
