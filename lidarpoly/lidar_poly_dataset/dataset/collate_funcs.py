@@ -42,7 +42,7 @@ def collate_fn_pix2poly(batch, cfg):
         # lidar_batch = torch.cat(lidar_batch)
         # lidar_pcd_id_batch = torch.cat(lidar_pcd_id_batch)
         ### try nested tensor instead of manuel indexing
-        lidar_batch = torch.nested.nested_tensor(lidar_batch)
+        lidar_batch = torch.nested.nested_tensor(lidar_batch, layout=torch.jagged)
         
     mask_batch = torch.stack(mask_batch)
     coords_mask_batch = torch.stack(coords_mask_batch)
