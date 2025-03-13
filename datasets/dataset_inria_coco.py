@@ -308,10 +308,6 @@ class InriaCocoDatasetVal(Dataset):
         return image, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img['id']])
 
 
-
-
-
-
 def collate_fn(batch, max_len, pad_idx):
     """
     if max_len:

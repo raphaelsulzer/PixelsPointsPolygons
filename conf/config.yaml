@@ -1,6 +1,6 @@
 defaults:
   - model: pix2poly   # Default model
-  - dataset: inria   # Default dataset
+  - dataset: lidarpoly   # Default dataset
   - run_type: release   # Default run_type
   - host: gin
   - _self_
@@ -26,5 +26,7 @@ dataset:
 num_workers: ${.run_type.num_workers}
 
 
-use_lidar: false
+use_lidar: true
 use_images: true
+
+debug_vis: false
