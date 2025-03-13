@@ -47,15 +47,15 @@ def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cf
     loader = tqdm(valid_loader, total=len(valid_loader), file=sys.stdout, dynamic_ncols=True, mininterval=20.0)
 
     with torch.no_grad():
-        for x, y_mask, y_corner_mask, y, y_perm, img_ids in loader:
-            x = x.to(cfg.device, non_blocking=True)
-            y = y.to(cfg.device, non_blocking=True)
+        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
+            x_image = x_image.to(cfg.device, non_blocking=True)
+            y_sequence = y_sequence.to(cfg.device, non_blocking=True)
             y_perm = y_perm.to(cfg.device, non_blocking=True)
 
-            y_input = y[:, :-1]
-            y_expected = y[:, 1:]
+            y_input = y_sequence[:, :-1]
+            y_expected = y_sequence[:, 1:]
 
-            preds, perm_mat = model(x, y_input)
+            preds, perm_mat = model(x_image, x_lidar, y_input)
 
             if epoch < cfg.model.milestone:
                 vertex_loss_weight = cfg.model.vertex_loss_weight
@@ -68,9 +68,9 @@ def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cf
 
             loss = vertex_loss + perm_loss
 
-            loss_meter.update(loss.item(), x.size(0))
-            vertex_loss_meter.update(vertex_loss.item(), x.size(0))
-            perm_loss_meter.update(perm_loss.item(), x.size(0))
+            loss_meter.update(loss.item(), x_image.size(0))
+            vertex_loss_meter.update(vertex_loss.item(), x_image.size(0))
+            perm_loss_meter.update(perm_loss.item(), x_image.size(0))
 
         loss_dict = {
         'total_loss': loss_meter.avg,
@@ -93,20 +93,24 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
     loader = train_loader
     loader = tqdm(train_loader, total=len(train_loader), file=sys.stdout, dynamic_ncols=True, mininterval=20.0)
 
-    for x, y_mask, y_corner_mask, y, y_perm, img_ids in loader:
+    for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
         
         # ### debug vis
-        if cfg.run_type.name=="debug":
-            plot_pix2poly(image_batch=x,mask_batch=y_mask,corner_image_batch=y_corner_mask)        
+        if cfg.debug_vis:
+            plot_pix2poly(image_batch=x_image,mask_batch=y_mask,corner_image_batch=y_corner_mask)        
         
-        x = x.to(cfg.device, non_blocking=True)
-        y = y.to(cfg.device, non_blocking=True)
+        if cfg.use_images:
+            x_image = x_image.to(cfg.device, non_blocking=True)
+        if cfg.use_lidar:
+            x_lidar = x_lidar.to(cfg.device, non_blocking=True)
+        
+        y_sequence = y_sequence.to(cfg.device, non_blocking=True)
         y_perm = y_perm.to(cfg.device, non_blocking=True)
 
-        y_input = y[:, :-1]
-        y_expected = y[:, 1:]
+        y_input = y_sequence[:, :-1]
+        y_expected = y_sequence[:, 1:]
 
-        preds, perm_mat = model(x, y_input)
+        preds, perm_mat = model(x_image, x_lidar, y_input)
 
         if epoch < cfg.model.milestone:
             vertex_loss_weight = cfg.model.vertex_loss_weight
@@ -127,9 +131,9 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
         if lr_scheduler is not None:
             lr_scheduler.step()
 
-        loss_meter.update(loss.item(), x.size(0))
-        vertex_loss_meter.update(vertex_loss.item(), x.size(0))
-        perm_loss_meter.update(perm_loss.item(), x.size(0))
+        loss_meter.update(loss.item(), x_image.size(0))
+        vertex_loss_meter.update(vertex_loss.item(), x_image.size(0))
+        perm_loss_meter.update(perm_loss.item(), x_image.size(0))
 
         lr = get_lr(optimizer)
 

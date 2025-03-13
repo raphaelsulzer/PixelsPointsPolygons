@@ -86,21 +86,44 @@ class ScoreNet(nn.Module):
 
         return x[:, 0]
 
+class LiDAREncoder(nn.Module):
+    pass
+
+
 
 class Encoder(nn.Module):
-    def __init__(self, model_name: str, out_dim=256, pretrained=False) -> None:
+    def __init__(self, cfg) -> None:
         super().__init__()
+        self.cfg = cfg
         self.model = timm.create_model(
-            model_name=model_name,
+            model_name=cfg.model.encoder.type,
             num_classes=0,
             global_pool='',
-            pretrained=pretrained
+            pretrained=cfg.model.encoder.pretrained
         )
-        self.bottleneck = nn.AdaptiveAvgPool1d(out_dim)
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
 
-    def forward(self, x):
+    def forward(self, x_images, x_lidar):
+        if self.cfg.use_images and self.cfg.use_lidar:
+            return self.forward_both(x_images, x_lidar)
+        elif self.cfg.use_images and not self.cfg.use_lidar:
+            return self.forward_images(x_images)
+        elif not self.cfg.use_images and self.cfg.use_lidar:
+            return self.forward_lidar(x_lidar)
+        else:
+            raise ValueError("At least one of images or LiDAR must be used")
+    
+    def forward_images(self, x):
         features = self.model(x)
-        return self.bottleneck(features[:, 1:])
+        return self.bottleneck(features[:, 1:,:])
+    
+    def forward_lidar(self, x):
+        raise NotImplementedError("LiDAR encoder not implemented yet")
+    
+    def forward_both(self, x_images, x_lidar):
+        
+        return self.forward_images(x_images)
+        a=5
 
 
 class Decoder(nn.Module):
@@ -223,8 +246,8 @@ class EncoderDecoder(nn.Module):
         self.scorenet2 = ScoreNet(self.n_vertices)
         self.bin_score = torch.nn.Parameter(torch.tensor(1.0))
 
-    def forward(self, image, tgt):
-        encoder_out = self.encoder(image)
+    def forward(self, image, lidar, tgt):
+        encoder_out = self.encoder(image, lidar)
         preds, feats = self.decoder(encoder_out, tgt)
         perm_mat1 = self.scorenet1(feats)
         perm_mat2 = self.scorenet2(feats)

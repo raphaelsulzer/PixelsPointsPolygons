@@ -95,7 +95,7 @@ pip install hydra-core
 
 # ## for lidar_poly_dataloader
 # conda install conda-forge::gcc_linux-64=10 conda-forge::gxx_linux-64=10 -y # otherwise copclib install bugs
-pip install copclib
+pip install laspy[laszip]
 pip install colorlog
 pip install descartes==1.1.0
 pip install scikit-image

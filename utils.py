@@ -18,7 +18,7 @@ def compute_dynamic_cfg_vars(cfg,tokenizer):
     cfg.model.tokenizer.pad_idx = tokenizer.PAD_code
     cfg.model.tokenizer.max_len = cfg.model.tokenizer.n_vertices*2+2
     cfg.model.tokenizer.generation_steps = cfg.model.tokenizer.n_vertices*2+1
-    cfg.model.num_patches = int((cfg.model.input_size // cfg.model.patch_size) ** 2)
+    cfg.model.encoder.num_patches = int((cfg.model.encoder.input_size // cfg.model.encoder.patch_size) ** 2)
     
 
 
@@ -182,9 +182,12 @@ def permutations_to_polygons(perm, graph, out='torch'):
     return batch
 
 
-def test_generate(model, x, tokenizer, max_len=50, top_k=0, top_p=1):
+def test_generate(model, x_images, x_lidar, tokenizer, max_len=50, top_k=0, top_p=1):
+    if x_images is not None:
+        batch_preds = torch.ones((x_images.size(0), 1), device=x_images.device).fill_(tokenizer.BOS_code).long()
+    else:
+        batch_preds = torch.ones((x_lidar.size(0), 1), device=x_lidar.device).fill_(tokenizer.BOS_code).long()
 
-    batch_preds = torch.ones((x.size(0), 1), device=x.device).fill_(tokenizer.BOS_code).long()
     confs = []
 
     if top_k != 0 or top_p != 1:
@@ -194,9 +197,9 @@ def test_generate(model, x, tokenizer, max_len=50, top_k=0, top_p=1):
 
     with torch.no_grad():
         if isinstance(model, torch.nn.parallel.DistributedDataParallel):
-            encoded_image = model.module.encoder(x)
+            encoded_image = model.module.encoder(x_images, x_lidar)
         else:
-            encoded_image = model.encoder(x)
+            encoded_image = model.encoder(x_images, x_lidar)
         for i in tqdm(range(max_len), file=sys.stdout, dynamic_ncols=True, mininterval=20.0):
             if isinstance(model, torch.nn.parallel.DistributedDataParallel):
                 preds, feats = model.module.predict(encoded_image, batch_preds)
@@ -242,9 +245,8 @@ def postprocess(batch_preds, batch_confs, tokenizer):
     return all_coords, all_confs
 
 
-def save_single_predictions_as_images(
-    loader, model, tokenizer, epoch, folder, cfg,
-):
+def save_single_predictions_as_images(loader, model, tokenizer, epoch, folder, cfg):
+    
     os.makedirs(folder, exist_ok=True)
     print(f"=> Saving val predictions to {folder}...")
 
@@ -255,9 +257,9 @@ def save_single_predictions_as_images(
 
     with torch.no_grad():
         loader_iterator = iter(loader)
-        idx, (x, y_mask, y_corner_mask, y, y_perm, img_ids) = 0, next(loader_iterator)
-        x = x.to(cfg.device, non_blocking=True)
-        batch_preds, batch_confs, perm_preds = test_generate(model, x, tokenizer, max_len=cfg.model.tokenizer.generation_steps, top_k=0, top_p=1)
+        idx, (x_images, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids) = 0, next(loader_iterator)
+        x_images = x_images.to(cfg.device, non_blocking=True)
+        batch_preds, batch_confs, perm_preds = test_generate(model, x_images, x_lidar, tokenizer, max_len=cfg.model.tokenizer.generation_steps, top_k=0, top_p=1)
         vertex_coords, confs = postprocess(batch_preds, batch_confs, tokenizer)
 
         all_coords.extend(vertex_coords)
@@ -274,7 +276,7 @@ def save_single_predictions_as_images(
             coords.append(coord)
         batch_polygons = permutations_to_polygons(perm_preds, coords, out='torch')  # list of polygon coordinate tensors
 
-    B, C, H, W = x.shape
+    B, C, H, W = x_images.shape
     # Write predicted vertices as mask to disk.
     vertex_mask = np.zeros((B, 1, H, W))
     for b in range(len(all_coords)):
@@ -287,11 +289,11 @@ def save_single_predictions_as_images(
     vertex_mask = torch.from_numpy(vertex_mask)
     if not os.path.exists(os.path.join(folder, 'corners_mask')):
         os.makedirs(os.path.join(folder, 'corners_mask'))
-    vertex_pred_vis = torch.zeros_like(x)
+    vertex_pred_vis = torch.zeros_like(x_images)
     for b in range(B):
         vertex_pred_vis[b] = torchvision.utils.draw_segmentation_masks(
-            (x[b]*255).to(dtype=torch.uint8),
-            torch.zeros_like(x[b, 0]).bool()
+            (x_images[b]*255).to(dtype=torch.uint8),
+            torch.zeros_like(x_images[b, 0]).bool()
         )
     vertex_pred_vis = vertex_pred_vis.cpu().numpy().astype(np.uint8)
     for b in range(len(all_coords)):
@@ -317,10 +319,10 @@ def save_single_predictions_as_images(
     polygons = torch.from_numpy(polygons)
     if not os.path.exists(os.path.join(folder, 'pred_polygons')):
         os.makedirs(os.path.join(folder, 'pred_polygons'))
-    poly_out = torch.zeros_like(x)
+    poly_out = torch.zeros_like(x_images)
     for b in range(B):
         poly_out[b] = torchvision.utils.draw_segmentation_masks(
-            (x[b]*255).to(dtype=torch.uint8),
+            (x_images[b]*255).to(dtype=torch.uint8),
             polygons[b, 0].bool()
         )
     poly_out = poly_out.cpu().numpy().astype(np.uint8)
@@ -341,15 +343,15 @@ def save_single_predictions_as_images(
     val_dict['macc'] = binary_accuracy(polygons, y_mask)
     val_dict['bacc'] = binary_accuracy(polygons, y_mask, ignore_index=0)
 
-    torchvision.utils.save_image(x, f"{folder}/image_{idx}.png")
-    ymask_out = torch.zeros_like(x)
+    torchvision.utils.save_image(x_images, f"{folder}/image_{idx}.png")
+    ymask_out = torch.zeros_like(x_images)
     for b in range(B):
         ymask_out[b] = torchvision.utils.draw_segmentation_masks(
-            (x[b]*255).to(dtype=torch.uint8),
+            (x_images[b]*255).to(dtype=torch.uint8),
             y_mask[b, 0].bool()
         )
     ymask_out = ymask_out.cpu().numpy().astype(np.uint8)
-    gt_corner_coords, _ = postprocess(y, batch_confs, tokenizer)
+    gt_corner_coords, _ = postprocess(y_sequence, batch_confs, tokenizer)
     for b in range(B):
         for corner in gt_corner_coords[b]:
             cx, cy = corner
