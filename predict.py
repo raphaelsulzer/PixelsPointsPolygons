@@ -23,7 +23,7 @@ from lidar_poly_dataset.misc import make_logger
 
 from tokenizer import Tokenizer
 from utils import seed_everything, postprocess, permutations_to_polygons, compute_dynamic_cfg_vars, test_generate
-from models.model import Encoder, Decoder, EncoderDecoder
+from models.pix2poly import Encoder, Decoder, EncoderDecoder
 from datasets.build_datasets import get_train_loader, get_val_loader
 
 
@@ -34,29 +34,6 @@ class Predicter:
         self.logger = make_logger("Prediction",level=verbosity)
         self.logger.info("Create output directory {cfg.output_dir}...")
         os.makedirs(cfg.output_dir, exist_ok=True)
-
-    def get_model(self,tokenizer,ddp=False):
-        
-        encoder = Encoder(model_name=self.cfg.model.type, pretrained=True, out_dim=256)
-        decoder = Decoder(
-            vocab_size=tokenizer.vocab_size,
-            encoder_len=self.cfg.model.num_patches,
-            dim=256,
-            num_heads=8,
-            num_layers=6,
-            max_len=self.cfg.model.tokenizer.max_len,
-            pad_idx=self.cfg.model.tokenizer.pad_idx,
-        )
-        model = EncoderDecoder(
-            encoder=encoder,
-            decoder=decoder,
-            n_vertices=self.cfg.model.tokenizer.n_vertices,
-            sinkhorn_iterations=self.cfg.model.sinkhorn_iterations
-        )
-        model.to(self.cfg.device)
-        model.eval()
-        
-        return model
 
     def get_pixel_mask_from_prediction(self, x, batch_polygons):
         B, C, H, W = x.shape
@@ -79,7 +56,7 @@ class Predicter:
         return file_names
         
 
-    def run(self):
+    def predict(self):
         seed_everything(42)
 
         tokenizer = Tokenizer(
@@ -175,7 +152,7 @@ def main(cfg):
     print(OmegaConf.to_yaml(cfg))
 
     pp = Predicter(cfg)
-    pp.run()
+    pp.predict()
 
 if __name__ == "__main__":
     main()
