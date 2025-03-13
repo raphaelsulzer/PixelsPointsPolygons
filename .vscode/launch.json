@@ -13,10 +13,10 @@
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",
-                "host=gin",
-                // "device=cpu",
-                "log_to_wandb=false"
-                // "multi_gpu=true"
+                "host=g5k",
+                "device=cpu",
+                "log_to_wandb=false",
+                "multi_gpu=false"
             ]
         }
     ]

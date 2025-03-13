@@ -115,7 +115,6 @@ class InriaCocoDatasetTrain(Dataset):
 
 
     def __getitem__(self, index):
-        n_vertices = self.cfg.n_vertices
         img_id = self.image_ids[index]
         img = self.coco.loadImgs(img_id)[0]
         img_path = osp.join(self.image_dir, img["file_name"])
@@ -127,7 +126,7 @@ class InriaCocoDatasetTrain(Dataset):
         mask = np.zeros((img['width'], img['height']))
         corner_coords = []
         corner_mask = np.zeros((img['width'], img['height']), dtype=np.float32)
-        perm_matrix = np.zeros((n_vertices, n_vertices), dtype=np.float32)
+        perm_matrix = np.zeros((self.n_vertices, self.n_vertices), dtype=np.float32)
         for ins in annotations:
             segmentations = ins['segmentation']
             for i, segm in enumerate(segmentations):
@@ -154,16 +153,16 @@ class InriaCocoDatasetTrain(Dataset):
                 points = segm[:-1]
                 for i in range(len(points)):
                     j = (i + 1) % len(points)
-                    if v_count+i > n_vertices - 1 or v_count+j > n_vertices-1:
+                    if v_count+i > self.n_vertices - 1 or v_count+j > self.n_vertices-1:
                         break
                     perm_matrix[v_count+i, v_count+j] = 1.
                 v_count += len(points)
 
-        for i in range(v_count, n_vertices):
+        for i in range(v_count, self.n_vertices):
             perm_matrix[i, i] = 1.
 
         # Workaround for open contours:
-        for i in range(n_vertices):
+        for i in range(self.n_vertices):
             row = perm_matrix[i, :]
             col = perm_matrix[:, i]
             if np.sum(row) == 0 or np.sum(col) == 0:
@@ -173,8 +172,8 @@ class InriaCocoDatasetTrain(Dataset):
 
         masks = [mask, corner_mask]
 
-        if len(corner_coords) > CFG.N_VERTICES:
-            corner_coords = corner_coords[:CFG.N_VERTICES]
+        if len(corner_coords) > self.n_vertices:
+            corner_coords = corner_coords[:self.n_vertices]
 
         if self.transform is not None:
             augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
