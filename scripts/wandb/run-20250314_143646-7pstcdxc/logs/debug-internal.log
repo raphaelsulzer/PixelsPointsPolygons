@@ -1,0 +1,15 @@
+{"time":"2025-03-14T14:36:46.477480289+01:00","level":"INFO","msg":"stream: starting","core version":"0.19.8","symlink path":"/run/netsop/u/home-sam/home/rsulzer/remote_python/pixelspointspolygons/scripts/wandb/run-20250314_143646-7pstcdxc/logs/debug-core.log"}
+{"time":"2025-03-14T14:36:46.60020347+01:00","level":"INFO","msg":"created new stream","id":"7pstcdxc"}
+{"time":"2025-03-14T14:36:46.600273015+01:00","level":"INFO","msg":"stream: started","id":"7pstcdxc"}
+{"time":"2025-03-14T14:36:46.600393735+01:00","level":"INFO","msg":"writer: Do: started","stream_id":"7pstcdxc"}
+{"time":"2025-03-14T14:36:46.600474806+01:00","level":"INFO","msg":"sender: started","stream_id":"7pstcdxc"}
+{"time":"2025-03-14T14:36:46.600571042+01:00","level":"INFO","msg":"handler: started","stream_id":"7pstcdxc"}
+{"time":"2025-03-14T14:36:46.929691656+01:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-03-14T14:36:58.028962748+01:00","level":"INFO","msg":"stream: closing","id":"7pstcdxc"}
+{"time":"2025-03-14T14:36:58.029210218+01:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-03-14T14:36:58.031037581+01:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-03-14T14:36:58.595227128+01:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-03-14T14:36:58.789838152+01:00","level":"INFO","msg":"handler: closed","stream_id":"7pstcdxc"}
+{"time":"2025-03-14T14:36:58.789896861+01:00","level":"INFO","msg":"sender: closed","stream_id":"7pstcdxc"}
+{"time":"2025-03-14T14:36:58.789874494+01:00","level":"INFO","msg":"writer: Close: closed","stream_id":"7pstcdxc"}
+{"time":"2025-03-14T14:36:58.791146446+01:00","level":"INFO","msg":"stream: closed","id":"7pstcdxc"}

@@ -1,0 +1,110 @@
+_wandb:
+    value:
+        cli_version: 0.19.8
+        m: []
+        python_version: 3.11.11
+        t:
+            "1":
+                - 1
+                - 5
+                - 11
+                - 41
+                - 49
+                - 50
+                - 53
+                - 55
+                - 63
+                - 80
+            "2":
+                - 1
+                - 5
+                - 11
+                - 41
+                - 49
+                - 50
+                - 53
+                - 55
+                - 63
+                - 80
+            "3":
+                - 13
+                - 16
+                - 23
+                - 55
+            "4": 3.11.11
+            "5": 0.19.8
+            "6": 4.32.0
+            "8":
+                - 5
+            "12": 0.19.8
+            "13": linux-x86_64
+checkpoint:
+    value: null
+dataset:
+    value:
+        name: lidarpoly
+        path: /data/rsulzer/lidarpoly/pix2poly
+        subset: null
+debug_vis:
+    value: false
+device:
+    value: cuda
+experiment_name:
+    value: debug
+host:
+    value:
+        data_root: /data/rsulzer
+        name: gin
+log_to_wandb:
+    value: true
+model:
+    value:
+        batch_size: 64
+        encoder:
+            input_height: 224
+            input_size: 224
+            input_width: 224
+            num_patches: 784
+            out_dim: 256
+            patch_size: 8
+            pretrained: true
+            type: vit_small_patch8_224.dino
+        label_smoothing: 0
+        learning_rate: 0.0004
+        milestone: 0
+        name: pix2poly
+        num_epochs: 100
+        perm_loss_weight: 10
+        save_best: true
+        save_every: 10
+        save_latest: true
+        sinkhorn_iterations: 100
+        start_epoch: 0
+        tokenizer:
+            generation_steps: 385
+            max_len: 386
+            n_vertices: 192
+            num_bins: 224
+            pad_idx: 226
+            shuffle_tokens: false
+        val_every: 1
+        vertex_loss_weight: 1
+        weight_decay: 0.0001
+multi_gpu:
+    value: false
+num_workers:
+    value: 16
+output_dir:
+    value: /data/rsulzer/pix2poly_outputs/lidarpoly/debug
+run_type:
+    value:
+        batch_size: 64
+        log_to_wandb: true
+        logging: INFO
+        name: release
+        num_workers: 16
+        subset: null
+use_images:
+    value: true
+use_lidar:
+    value: true

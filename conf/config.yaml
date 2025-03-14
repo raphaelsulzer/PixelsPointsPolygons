@@ -1,7 +1,7 @@
 defaults:
   - model: pix2poly   # Default model
   - dataset: lidarpoly   # Default dataset
-  - run_type: release   # Default run_type
+  - run_type: debug   # Default run_type
   - host: gin
   - _self_
 
