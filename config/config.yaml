@@ -1,23 +1,19 @@
 defaults:
   - model: pix2poly   # Default model
   - dataset: lidarpoly   # Default dataset
-  - run_type: debug   # Default run_type
+  - run_type: release   # Default run_type
   - host: gin
   - _self_
 
 # experiment_name: images_only
-experiment_name: debug
+# experiment_name: debug
 # experiment_name: inria_D4_aug
-# experiment_name: lidarpoly_ori_aug
-
+experiment_name: lidarpoly_ori_aug
 multi_gpu: false
-
 device: cuda
-# checkpoint: /data/rsulzer/pix2poly_outputs/lidarpoly/${.experiment_name}/logs/checkpoints/epoch_49.pth
-# checkpoint: /data/rsulzer/pix2poly_outputs/${.dataset.name}/${.experiment_name}/logs/checkpoints/validation_best.pth
-checkpoint: null
-output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.experiment_name}
 log_to_wandb: ${.run_type.log_to_wandb}
+
+output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.experiment_name}
 
 model:
   batch_size: ${..run_type.batch_size}
@@ -25,16 +21,20 @@ dataset:
   subset: ${..run_type.subset}
 num_workers: ${.run_type.num_workers}
 
-
 use_lidar: true
 use_images: true
 
-debug_vis: false
+debug_vis: true
+
+checkpoint: validation_best
+# checkpoint_file: null # override for loading a specific checkpoint file
+checkpoint_file: /data/rsulzer/pix2poly_outputs/lidarpoly/inria_trained/checkpoints/validation_best.pth # override for loading a specific checkpoint file
 
 eval:
   gt_file: ${..dataset.annotations.val}
-  pred_file: ${..output_dir}/logs/predictions.json
-  output_dir: ${..output_dir}/eval/eval.csv
+  pred_file: ${..output_dir}/predictions/${..checkpoint}.json
+  modes:
+    - coco
 
 hydra:
   run:

@@ -11,7 +11,18 @@ from omegaconf import OmegaConf
 from scipy.optimize import linear_sum_assignment
 from transformers.generation.utils import top_k_top_p_filtering
 from torchmetrics.functional.classification import binary_jaccard_index, binary_accuracy
-from tqdm import tqdm
+import contextlib
+
+@contextlib.contextmanager
+def suppress_stdout():
+    """Using this for surpressing the pycocotools messages"""
+    with open(os.devnull, 'w') as devnull:
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
 
 def init_wandb(cfg):
     
@@ -87,7 +98,8 @@ def create_mask(tgt, pad_idx):
 
     tgt_seq_len = tgt.size(1)
     tgt_mask = generate_square_subsequent_mask(tgt_seq_len,device=tgt.device)
-    tgt_padding_mask = (tgt == pad_idx)
+    # changing the type here from bool to float32 to get rid of the torch warning
+    tgt_padding_mask = (tgt == pad_idx).to(dtype=tgt_mask.dtype)
 
     return tgt_mask, tgt_padding_mask
 
@@ -223,7 +235,7 @@ def test_generate(model, x_images, x_lidar, tokenizer, max_len=50, top_k=0, top_
             encoded_image = model.module.encoder(x_images, x_lidar)
         else:
             encoded_image = model.encoder(x_images, x_lidar)
-        for i in tqdm(range(max_len), file=sys.stdout, dynamic_ncols=True, mininterval=20.0):
+        for i in range(max_len):
             if isinstance(model, torch.nn.parallel.DistributedDataParallel):
                 preds, feats = model.module.predict(encoded_image, batch_preds)
             else:
@@ -267,6 +279,11 @@ def postprocess(batch_preds, batch_confs, tokenizer):
 
     return all_coords, all_confs
 
+def get_image_file_name_from_dataloader(img_dict, ids):
+    file_names = []
+    for id in ids:
+        file_names.append(img_dict[id.item()]['file_name'])
+    return file_names
 
 def save_single_predictions_as_images(loader, model, tokenizer, epoch, folder, cfg):
     

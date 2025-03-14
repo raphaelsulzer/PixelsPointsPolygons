@@ -13,7 +13,7 @@ from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
 from .models.tokenizer import Tokenizer
-from .utils import seed_everything, load_checkpoint, compute_dynamic_cfg_vars, init_distributed, make_logger
+from .misc import seed_everything, load_checkpoint, compute_dynamic_cfg_vars, init_distributed, make_logger
 from .datasets import get_train_loader, get_val_loader
 from .engine import train_eval
 from .models import get_model

@@ -117,7 +117,10 @@ def plot_corners(corner_image, ax=None, show_axis='off', show=False):
     
 def plot_pix2poly(image_batch,image_names=None,mask_batch=None,corner_image_batch=None,polygon_batch=None,polygon_format="xy"):
     
-    fig, ax = plt.subplots(4,4,figsize=(8, 8), dpi=150)
+    n_rows = np.ceil(np.sqrt(len(image_batch))).astype(int)
+    n_cols = n_rows
+    
+    fig, ax = plt.subplots(n_rows,n_cols,figsize=(int(n_cols*2), int(n_cols*2)), dpi=150)
     ax = ax.flatten()
 
     image_batch = image_batch.permute(0, 2, 3, 1).cpu().numpy()

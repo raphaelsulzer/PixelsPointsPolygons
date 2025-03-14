@@ -30,7 +30,7 @@ def compute_coco_metrics(annFile, resFile):
 
 def evaluate(gt_file, dt_file, modes=["coco"], outfile=None):
     
-    pd = pd.DataFrame()
+    df = pd.DataFrame()
     
     if "coco" in modes:
         res = compute_coco_metrics(gt_file, dt_file)
@@ -44,3 +44,4 @@ def evaluate(gt_file, dt_file, modes=["coco"], outfile=None):
         compute_mask_metrics(dt_file, gt_file)
         
     a=5
+        

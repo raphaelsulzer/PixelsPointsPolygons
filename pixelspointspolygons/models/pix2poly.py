@@ -8,7 +8,7 @@ import os
 import sys
 sys.path.insert(1, os.getcwd())
 
-from ..utils import create_mask
+from ..misc import create_mask
 
 
 # Borrowed from https://github.com/magicleap/SuperGluePretrainedNetwork/blob/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/superglue.py#L143
@@ -160,7 +160,7 @@ class Decoder(nn.Module):
     def init_weights(self):
         for name, p in self.named_parameters():
             if 'encoder_pos_embed' in name or 'decoder_pos_embed' in name:
-                print("Skipping initialization of pos embed layers...")
+                # print("Skipping initialization of pos embed layers...")
                 continue
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)

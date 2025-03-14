@@ -14,12 +14,14 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 import numpy as np
 
 from tqdm import tqdm
-from torchmetrics.classification import BinaryJaccardIndex, BinaryAccuracy
 
-from .utils import *
+from .misc import *
 from .models.tokenizer import Tokenizer
 from .datasets import get_val_loader
+from .models import get_model
 
+# import warnings
+# warnings.filterwarnings("error", message="Support for mismatched key_padding_mask and attn_mask is deprecated. Use same type for both instead.")
 
 class Predictor:
     def __init__(self, cfg, verbosity=logging.INFO):
@@ -42,22 +44,30 @@ class Predictor:
                     cv2.fillPoly(polygons_mask[b, 0], pts=[cnt], color=1.)
         return torch.from_numpy(polygons_mask)
     
-    
-    def get_image_file_name(self, img_dict, ids):
-        file_names = []
-        for id in ids:
-            file_names.append(img_dict[id.item()]['file_name'])
-        return file_names
+    def load_checkpoint(self, model):
+        
+        if self.cfg.checkpoint_file is not None:
+            checkpoint_file = self.cfg.checkpoint_file
+            self.cfg.checkpoint = os.path.basename(checkpoint_file).split(".")[0]+"_overwrite"
+        else:
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
+        if not os.path.isfile(checkpoint_file):
+            raise FileExistsError(f"Checkpoint file {checkpoint_file} not found.")
+        self.logger.info(f"Loading model from checkpoint: {checkpoint_file}")
+        checkpoint = torch.load(checkpoint_file, map_location=self.cfg.device)
+        single_gpu_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["state_dict"].items()}
+        model.load_state_dict(single_gpu_state_dict)
+        epoch = checkpoint['epochs_run']
+        self.logger.info(f"Model loaded from epoch: {epoch}")
         
 
     def predict(self):
-        seed_everything(42)
 
         tokenizer = Tokenizer(
             num_classes=1,
             num_bins=self.cfg.model.tokenizer.num_bins,
-            width=self.cfg.model.input_width,
-            height=self.cfg.model.input_height,
+            width=self.cfg.model.encoder.input_width,
+            height=self.cfg.model.encoder.input_height,
             max_len=self.cfg.model.tokenizer.max_len
         )
         
@@ -65,30 +75,22 @@ class Predictor:
 
         val_loader = get_val_loader(self.cfg,tokenizer)
         # val_loader = get_train_loader(self.cfg,tokenizer)
-        model = self.get_model(tokenizer,ddp=True)
-
-        checkpoint = torch.load(self.cfg.checkpoint, map_location=self.cfg.device)
-        single_gpu_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["state_dict"].items()}
-        model.load_state_dict(single_gpu_state_dict)
-        epoch = checkpoint['epochs_run']
-
-        self.logger.info(f"Model loaded from epoch: {epoch}")
-
-        mean_iou_metric = BinaryJaccardIndex()
-        mean_acc_metric = BinaryAccuracy()
+        model = get_model(self.cfg,tokenizer=tokenizer)
+        self.load_checkpoint(model)
 
         with torch.no_grad():
-            cumulative_miou = []
-            cumulative_macc = []
             speed = []
             coco_predictions = []
-            for x, y_mask, y_corner_mask, y, y_perm, image_ids in tqdm(val_loader):
+            for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in tqdm(val_loader):
                 t0 = time.time()
                 
-                x = x.to(self.cfg.device, non_blocking=True)
-                
+                if self.cfg.use_images:
+                    x_image = x_image.to(self.cfg.device, non_blocking=True)
+                if self.cfg.use_lidar:
+                    x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+
                 batch_preds, batch_confs, perm_preds = test_generate(
-                    model,x,tokenizer,
+                    model,x_image,x_lidar,tokenizer,
                     max_len=self.cfg.model.tokenizer.generation_steps,top_k=0,top_p=1)
                 
                 speed.append(time.time() - t0)
@@ -117,23 +119,14 @@ class Predictor:
                     batch_polygons_processed.append(polys)
                     coco_predictions.extend(generate_coco_ann(polys,image_ids[i].item()))
 
-                polygons_mask = self.get_pixel_mask_from_prediction(x,batch_polygons)
-                batch_miou = mean_iou_metric(polygons_mask, y_mask)
-                batch_macc = mean_acc_metric(polygons_mask, y_mask)
+                polygons_mask = self.get_pixel_mask_from_prediction(x_image,batch_polygons)
 
-                if self.cfg.run_type.name == "debug":
-                    file_names = self.get_image_file_name(val_loader.dataset.coco.imgs, image_ids)
-                    plot_pix2poly(image_batch=x, image_names=file_names, mask_batch=polygons_mask, polygon_batch=batch_polygons_processed)
-
-                cumulative_miou.append(batch_miou)
-                cumulative_macc.append(batch_macc)
+                if self.cfg.debug_vis:
+                    file_names = get_image_file_name_from_dataloader(val_loader.dataset.coco.imgs, image_ids)
+                    plot_pix2poly(image_batch=x_image, image_names=file_names, mask_batch=polygons_mask, polygon_batch=batch_polygons_processed)
 
             self.logger.debug("Average model speed: ", np.mean(speed) / self.cfg.model.batch_size, " [s / image]")
 
-            # self.logger.info(f"Average Mean IOU: {torch.tensor(cumulative_miou).nanmean()}")
-            # self.logger.info(f"Average Mean Acc: {torch.tensor(cumulative_macc).nanmean()}")
-
-        checkpoint_name = os.path.split(self.cfg.checkpoint)[-1][:-4]
-        prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{checkpoint_name}.json")
+        prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.checkpoint}.json")
         with open(prediction_outfile, "w") as fp:
             fp.write(json.dumps(coco_predictions))
