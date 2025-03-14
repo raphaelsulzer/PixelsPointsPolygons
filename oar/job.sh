@@ -12,7 +12,7 @@ nvidia-smi
 
 # make use of a python torch environment
 module load conda
-conda activate pix2poly2
+conda activate ppp
 python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))";
-torchrun --nproc_per_node=2 train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true dataset=inria experiment_name=inria_D4_aug_bs64 checkpoint=null
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true dataset=lidarpoly experiment_name=lidarpoly_D4_aug_bs2x32 checkpoint=null
 
