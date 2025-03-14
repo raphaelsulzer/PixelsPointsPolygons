@@ -24,18 +24,22 @@ num_workers: ${.run_type.num_workers}
 use_lidar: false
 use_images: true
 
-debug_vis: true
+debug_vis: false
 
 checkpoint: validation_best
 # checkpoint_file: null # override for loading a specific checkpoint file
-# checkpoint_file: /data/rsulzer/pix2poly_outputs/lidarpoly/inria_trained/checkpoints/validation_best.pth # override for loading a specific checkpoint file
-checkpoint_file: /data/rsulzer/pix2poly_outputs/lidarpoly/lidarpoly_ori_aug_bs64/checkpoints/epoch_59.pth # override for loading a specific checkpoint file
+checkpoint_file: /data/rsulzer/pix2poly_outputs/lidarpoly/inria_trained/checkpoints/validation_best.pth # override for loading a specific checkpoint file
+# checkpoint_file: /data/rsulzer/pix2poly_outputs/lidarpoly/lidarpoly_ori_aug_bs64/checkpoints/epoch_59.pth # override for loading a specific checkpoint file
 # checkpoint_file: /data/rsulzer/pix2poly_outputs/inria/inria_D4_aug/logs/checkpoints/validation_best.pth
 eval:
   gt_file: ${..dataset.annotations.val}
   pred_file: ${..output_dir}/predictions/${..checkpoint}.json
+  # pred_file: ${..output_dir}/predictions/${..checkpoint}_overwrite.json
   modes:
-    - coco
+    - iou
+    - polis
+    # - mta
+    - topdig
 
 hydra:
   run:

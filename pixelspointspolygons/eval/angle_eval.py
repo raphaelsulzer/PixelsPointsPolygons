@@ -329,5 +329,8 @@ def compute_max_angle_error(annFile, resFile):
     dt_coco = gt_coco.loadRes(resFile)
     contour_eval = ContourEval(gt_coco, dt_coco)
     pool = Pool(processes=20)
-    max_angle_diffs = contour_eval.evaluate(pool=pool)
-    print('Mean max tangent angle error(MTA): ', max_angle_diffs.mean())
+    max_angle_diffs = contour_eval.evaluate(pool=pool).mean()
+    
+    print('Mean max tangent angle error(MTA): ', max_angle_diffs)
+    
+    return {"MTA":max_angle_diffs}

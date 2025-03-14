@@ -138,7 +138,7 @@ class PolisEval():
 
         print('average polis: %f' % (polis_avg))
 
-        return polis_avg
+        return {"POLIS":polis_avg}
 
 
     
