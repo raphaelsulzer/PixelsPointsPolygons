@@ -78,6 +78,7 @@ class Predictor:
         # val_loader = get_train_loader(self.cfg,tokenizer)
         model = get_model(self.cfg,tokenizer=tokenizer)
         self.load_checkpoint(model)
+        model.eval()
 
         with torch.no_grad():
             speed = []
@@ -120,12 +121,12 @@ class Predictor:
                     batch_polygons_processed.append(polys)
                     coco_predictions.extend(generate_coco_ann(polys,image_ids[i].item()))
 
-
                 if self.cfg.debug_vis:
                     polygons_mask = self.get_pixel_mask_from_prediction(x_image,batch_polygons)
                     file_names = get_image_file_name_from_dataloader(val_loader.dataset.coco.imgs, image_ids)
+                    file_names = None
                     plot_pix2poly(image_batch=x_image, image_names=file_names, mask_batch=polygons_mask, polygon_batch=batch_polygons_processed)
-
+                
             self.logger.debug("Average model speed: ", np.mean(speed) / self.cfg.model.batch_size, " [s / image]")
 
         prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.checkpoint}.json")
