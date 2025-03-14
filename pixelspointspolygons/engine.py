@@ -5,8 +5,8 @@ import wandb
 
 from tqdm import tqdm
 
-from .utils import AverageMeter, get_lr, save_checkpoint, save_single_predictions_as_images, plot_pix2poly, init_wandb
-from .utils.ddp_utils import is_main_process
+from .misc import *
+from .misc.ddp_utils import is_main_process
 
 
 def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cfg):
@@ -73,7 +73,8 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
         
         # ### debug vis
         if cfg.debug_vis:
-            plot_pix2poly(image_batch=x_image,mask_batch=y_mask,corner_image_batch=y_corner_mask)        
+            file_names = get_image_file_name_from_dataloader(train_loader.dataset.coco.imgs, image_ids)
+            plot_pix2poly(image_batch=x_image,mask_batch=y_mask,corner_image_batch=y_corner_mask,file_names=file_names)        
         
         if cfg.use_images:
             x_image = x_image.to(cfg.device, non_blocking=True)

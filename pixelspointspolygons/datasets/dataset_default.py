@@ -14,7 +14,8 @@ from shapely.geometry import Polygon
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import default_collate
 
-from pixelspointspolygons.utils import make_logger
+from ..misc import make_logger, suppress_stdout
+
 
 def affine_transform(pt, t):
     new_pt = np.array([pt[0], pt[1], 1.], dtype=np.float32).T
@@ -40,9 +41,9 @@ class DefaultDataset(Dataset):
         self.ann_file = os.path.join(self.dataset_dir,f"annotations_{split}.json")
         if not os.path.isfile(self.ann_file):
             raise FileNotFoundError(self.ann_file)
-        
-        
-        self.coco = COCO(self.ann_file)
+
+        with suppress_stdout():
+            self.coco = COCO(self.ann_file)
         images_id = self.coco.getImgIds()
         self.tile_ids = images_id.copy()
         self.num_samples = len(self.tile_ids)

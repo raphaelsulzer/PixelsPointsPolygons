@@ -1,4 +1,5 @@
 import hydra
+import os
 from omegaconf import OmegaConf
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
@@ -12,7 +13,8 @@ def main(cfg):
     print("\nConfiguration:")
     print(OmegaConf.to_yaml(cfg))
 
-    evaluate(cfg.eval.gt_file, cfg.eval.dt_file, modes=cfg.eval.modes, outfile=cfg.eval.outfile)
+    outfile = cfg.eval.pred_file.replace("/predictions/", "/eval/").replace(".json", ".csv")
+    evaluate(cfg.eval.gt_file, cfg.eval.pred_file, modes=cfg.eval.modes, outfile=outfile)
     
 
 if __name__ == "__main__":

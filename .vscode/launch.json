@@ -1,7 +1,5 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    // WARNING: The args overwrite the hydra config from ../config/config.yaml.
     "version": "0.2.0",
     "configurations": [
         {
@@ -9,15 +7,16 @@
             "type": "debugpy",
             "request": "launch",
             // "program": "${file}",
-            "program": "${workspaceFolder}/scripts/train.py",
+            "program": "${workspaceFolder}/scripts/predict.py",
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false"
-            ]
+                "multi_gpu=false",
+            ],
+            "justMyCode": false
         }
     ]
 }
