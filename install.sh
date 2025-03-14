@@ -2,11 +2,7 @@
 set -e
 
 # Local variables
-<<<<<<< HEAD
-ENV_NAME=pix2poly2
-=======
-ENV_NAME=pix2poly
->>>>>>> dev
+ENV_NAME=ppp
 PYTHON=3.11.11
 
 # Installation script for Miniconda3 environments
@@ -81,50 +77,28 @@ echo "________________ Install Required Packages _______________"
 echo
 
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-pip install transformers==4.32
-pip install pycocotools
-pip install torchmetrics
-pip install wandb
-pip install timm
-pip install matplotlib
-<<<<<<< HEAD
-pip install colorlog
-pip install albumentations
-pip install shapely
+# pip install transformers==4.32
+# pip install pycocotools
+# pip install torchmetrics
+# pip install wandb
+# pip install timm
+# pip install matplotlib
+# pip install albumentations
+# pip install shapely
+# pip install hydra-core
 
-# # dependencies
-# # pip install torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu118
-# pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-# conda install conda-forge::transformers -y
-# conda install conda-forge::pycocotools -y
-# conda install conda-forge::torchmetrics -y
-# conda install conda-forge::tensorboard -y
-# conda install conda-forge::wandb -y
-# conda install conda-forge::timm=0.9.12 -y
-# pip install matplotlib==3.7.0
+# # # problem with torch:tms? do this:
+# # # https://github.com/huggingface/diffusers/issues/8958#issuecomment-2253055261
 
-=======
-pip install albumentations
-pip install shapely
-pip install hydra-core
+# # ## for inria_to_coco.py
+# # conda install conda-forge::imagecodecs -y
 
->>>>>>> dev
-# # problem with torch:tms? do this:
-# # https://github.com/huggingface/diffusers/issues/8958#issuecomment-2253055261
+# # ## for lidar_poly_dataloader
+# # conda install conda-forge::gcc_linux-64=10 conda-forge::gxx_linux-64=10 -y # otherwise copclib install bugs
+# pip install laspy[laszip]
+# pip install colorlog
+# pip install descartes==1.1.0
+# pip install scikit-image
+# pip3 install -U scikit-learn
 
-# ## for inria_to_coco.py
-# conda install conda-forge::imagecodecs -y
-
-# ## for lidar_poly_dataloader
-# conda install conda-forge::gcc_linux-64=10 conda-forge::gxx_linux-64=10 -y # otherwise copclib install bugs
-<<<<<<< HEAD
-# pip install copclib
-# conda install conda-forge::colorlog -y
-# conda install conda-forge::descartes=1.1.0 -y
-=======
-pip install laspy[laszip]
-pip install colorlog
-pip install descartes==1.1.0
-pip install scikit-image
-pip3 install -U scikit-learn
->>>>>>> dev
+pip install -e .
