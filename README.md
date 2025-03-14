@@ -1,7 +1,7 @@
 <div align="center">
     <h2 align="center">Pixels, Points, Polygons: A Global Dataset and Baseline for Multimodal Building Vectorization</h2>
     <h3 align="center">Arxiv</h3>
-    <a href="https://raphaelsulzer.de/">Raphael Sulzer<sup>1</sup></a><br>
+    <a href="https://raphaelsulzer.de/">Raphael Sulzer<sup>1,2</sup></a><br>
     <sup>1</sup>LuxCarta <sup>2</sup>Inria
     <!-- <img src="./assets/sfo7.png" width=80% height=80%> -->
 </div>

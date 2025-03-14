@@ -15,7 +15,6 @@ def init_wandb(cfg):
         cfg, resolve=True, throw_on_missing=True
     )
 
-    log_outfile = os.path.join(cfg.output_dir, 'log.txt')
 
     # start a new wandb run to track this script
     wandb.init(
@@ -24,9 +23,11 @@ def init_wandb(cfg):
         name=cfg.experiment_name,
         group="v1_pix2poly",
         # track hyperparameters and run metadata
-        config=cfg_container
+        config=cfg_container,
+        dir=cfg.output_dir,
     )
-
+    
+    log_outfile = os.path.join(cfg.output_dir, 'wandb.log')
     wandb.run.log_code(log_outfile)
 
 
