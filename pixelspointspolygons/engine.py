@@ -1,34 +1,12 @@
 import sys
-from tqdm import tqdm
-import torch, os
-from omegaconf import OmegaConf
+import os
+import torch
 import wandb
 
-from .utils.postprocess_coco_parts import *
-from .utils import AverageMeter, get_lr, save_checkpoint, save_single_predictions_as_images
+from tqdm import tqdm
+
+from .utils import AverageMeter, get_lr, save_checkpoint, save_single_predictions_as_images, plot_pix2poly, init_wandb
 from .utils.ddp_utils import is_main_process
-
-
-def init_wandb(cfg):
-    
-    cfg_container = OmegaConf.to_container(
-        cfg, resolve=True, throw_on_missing=True
-    )
-
-
-    # start a new wandb run to track this script
-    wandb.init(
-        # set the wandb project where this run will be logged
-        project="HiSup",
-        name=cfg.experiment_name,
-        group="v1_pix2poly",
-        # track hyperparameters and run metadata
-        config=cfg_container,
-        dir=cfg.output_dir,
-    )
-    
-    log_outfile = os.path.join(cfg.output_dir, 'wandb.log')
-    wandb.run.log_code(log_outfile)
 
 
 def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cfg):

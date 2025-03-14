@@ -31,6 +31,10 @@ use_images: true
 
 debug_vis: false
 
+eval:
+  gt_file: ${..dataset.annotations.val}
+  pred_file: ${..output_dir}/logs/predictions.json
+  output_dir: ${..output_dir}/eval/eval.csv
 
 hydra:
   run:

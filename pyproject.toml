@@ -12,20 +12,21 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "transformers==4.32",
-    "pycocotools",
-    "torchmetrics",
-    "wandb",
-    "timm",
-    "matplotlib",
     "albumentations",
-    "shapely",
-    "hydra-core",
-    "laspy[lazrs]",
     "colorlog",
     "descartes==1.1.0",
+    "hydra-core",
+    "laspy[lazrs]",
+    "matplotlib",
+    "pandas",
+    "pycocotools",
     "scikit-image",
-    "scikit-learn"
+    "scikit-learn",
+    "shapely",
+    "timm",
+    "torchmetrics",
+    "transformers==4.32",
+    "wandb"
 ]
 
 

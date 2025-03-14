@@ -148,5 +148,5 @@ def compute_polis(annFile, resFile):
     gt_coco = COCO(annFile)
     dt_coco = gt_coco.loadRes(resFile)
     polisEval = PolisEval(gt_coco, dt_coco)
-    polisEval.evaluate()
+    return polisEval.evaluate()
     

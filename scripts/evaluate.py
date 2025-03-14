@@ -1,6 +1,10 @@
 import hydra
 from omegaconf import OmegaConf
-from pixelspointspolygons import Predictor
+from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
+
+from pixelspointspolygons.eval import evaluate
+
 
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
@@ -8,8 +12,8 @@ def main(cfg):
     print("\nConfiguration:")
     print(OmegaConf.to_yaml(cfg))
 
-    pp = Predictor(cfg)
-    pp.predict()
+    evaluate(cfg.eval.gt_file, cfg.eval.dt_file, modes=cfg.eval.modes, outfile=cfg.eval.outfile)
+    
 
 if __name__ == "__main__":
     main()
