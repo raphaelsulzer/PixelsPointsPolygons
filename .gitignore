@@ -3,11 +3,11 @@ __pycache__
 data
 outputs
 runs
-.vscode
 preds*
 crowdai_visualizations
 scratch
 .idea
+wandb/*
 
 # Files
 *.jpg
@@ -21,3 +21,5 @@ scratch
 !assets/pix2poly_overall_bg_white.png
 !assets/vertex_sequence_detector.png
 !assets/optimal_matching_network.png
+
+oar/runs/*

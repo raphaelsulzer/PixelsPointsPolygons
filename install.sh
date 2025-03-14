@@ -2,7 +2,11 @@
 set -e
 
 # Local variables
+<<<<<<< HEAD
 ENV_NAME=pix2poly2
+=======
+ENV_NAME=pix2poly
+>>>>>>> dev
 PYTHON=3.11.11
 
 # Installation script for Miniconda3 environments
@@ -83,6 +87,7 @@ pip install torchmetrics
 pip install wandb
 pip install timm
 pip install matplotlib
+<<<<<<< HEAD
 pip install colorlog
 pip install albumentations
 pip install shapely
@@ -98,6 +103,12 @@ pip install shapely
 # conda install conda-forge::timm=0.9.12 -y
 # pip install matplotlib==3.7.0
 
+=======
+pip install albumentations
+pip install shapely
+pip install hydra-core
+
+>>>>>>> dev
 # # problem with torch:tms? do this:
 # # https://github.com/huggingface/diffusers/issues/8958#issuecomment-2253055261
 
@@ -106,6 +117,14 @@ pip install shapely
 
 # ## for lidar_poly_dataloader
 # conda install conda-forge::gcc_linux-64=10 conda-forge::gxx_linux-64=10 -y # otherwise copclib install bugs
+<<<<<<< HEAD
 # pip install copclib
 # conda install conda-forge::colorlog -y
 # conda install conda-forge::descartes=1.1.0 -y
+=======
+pip install laspy[laszip]
+pip install colorlog
+pip install descartes==1.1.0
+pip install scikit-image
+pip3 install -U scikit-learn
+>>>>>>> dev

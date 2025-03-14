@@ -8,10 +8,7 @@ import os
 import sys
 sys.path.insert(1, os.getcwd())
 
-from config import CFG
-from utils import (
-    create_mask,
-)
+from utils import create_mask
 
 
 # Borrowed from https://github.com/magicleap/SuperGluePretrainedNetwork/blob/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/superglue.py#L143
@@ -89,21 +86,44 @@ class ScoreNet(nn.Module):
 
         return x[:, 0]
 
+class LiDAREncoder(nn.Module):
+    pass
+
+
 
 class Encoder(nn.Module):
-    def __init__(self, model_name: str, out_dim=256, pretrained=False) -> None:
+    def __init__(self, cfg) -> None:
         super().__init__()
+        self.cfg = cfg
         self.model = timm.create_model(
-            model_name=model_name,
+            model_name=cfg.model.encoder.type,
             num_classes=0,
             global_pool='',
-            pretrained=pretrained
+            pretrained=cfg.model.encoder.pretrained
         )
-        self.bottleneck = nn.AdaptiveAvgPool1d(out_dim)
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
 
-    def forward(self, x):
+    def forward(self, x_images, x_lidar):
+        if self.cfg.use_images and self.cfg.use_lidar:
+            return self.forward_both(x_images, x_lidar)
+        elif self.cfg.use_images and not self.cfg.use_lidar:
+            return self.forward_images(x_images)
+        elif not self.cfg.use_images and self.cfg.use_lidar:
+            return self.forward_lidar(x_lidar)
+        else:
+            raise ValueError("At least one of images or LiDAR must be used")
+    
+    def forward_images(self, x):
         features = self.model(x)
-        return self.bottleneck(features[:, 1:])
+        return self.bottleneck(features[:, 1:,:])
+    
+    def forward_lidar(self, x):
+        raise NotImplementedError("LiDAR encoder not implemented yet")
+    
+    def forward_both(self, x_images, x_lidar):
+        
+        return self.forward_images(x_images)
+        a=5
 
 
 class Decoder(nn.Module):
@@ -154,7 +174,7 @@ class Decoder(nn.Module):
         tgt shape: (N, L)
         """
 
-        tgt_mask, tgt_padding_mask = create_mask(tgt, self.pad_idx, device=next(self.parameters()).device)
+        tgt_mask, tgt_padding_mask = create_mask(tgt, self.pad_idx)
         tgt_embedding = self.embedding(tgt)
         tgt_embedding = self.decoder_pos_drop(
             tgt_embedding + self.decoder_pos_embed
@@ -177,7 +197,7 @@ class Decoder(nn.Module):
         preds = preds.transpose(0, 1)
         return self.output(preds), preds
 
-    def predict(self, encoder_out, tgt, device):
+    def predict(self, encoder_out, tgt):
         length = tgt.size(1)
         padding = (
             torch.ones((tgt.size(0), self.max_len - length - 1), device=tgt.device)
@@ -185,9 +205,7 @@ class Decoder(nn.Module):
             .long()
         )
         tgt = torch.cat([tgt, padding], dim=1)
-        tgt_mask, tgt_padding_mask = create_mask(
-            tgt, self.pad_idx, next(self.parameters()).device
-        )
+        tgt_mask, tgt_padding_mask = create_mask(tgt, self.pad_idx)
         tgt_embedding = self.embedding(tgt)
         tgt_embedding = self.decoder_pos_drop(
             tgt_embedding + self.decoder_pos_embed
@@ -228,8 +246,8 @@ class EncoderDecoder(nn.Module):
         self.scorenet2 = ScoreNet(self.n_vertices)
         self.bin_score = torch.nn.Parameter(torch.tensor(1.0))
 
-    def forward(self, image, tgt):
-        encoder_out = self.encoder(image)
+    def forward(self, image, lidar, tgt):
+        encoder_out = self.encoder(image, lidar)
         preds, feats = self.decoder(encoder_out, tgt)
         perm_mat1 = self.scorenet1(feats)
         perm_mat2 = self.scorenet2(feats)
@@ -242,46 +260,16 @@ class EncoderDecoder(nn.Module):
 
         return preds, perm_mat
 
-    def predict(self, image, tgt):
-        encoder_out = self.encoder(image)
-        preds, feats = self.decoder.predict(
-            encoder_out, tgt, next(self.parameters()).device
-        )
+    # def predict(self, image, tgt):
+    #     encoder_out = self.encoder(image)
+    #     preds, feats = self.decoder.predict(encoder_out, tgt)
+    #     return preds, feats
+    
+    def predict(self, encoded_image, tgt):
+        # encoder_out = self.encoder(image)
+        preds, feats = self.decoder.predict(encoded_image, tgt)
         return preds, feats
     
-
-class EncoderDecoderWithAlreadyEncodedImages(nn.Module):
-    """This class is used to avoid recomputing the encoder output when the images are already encoded.
-    
-    It has to wrap an `EncoderDecoder` instead of just being the `Decoder` because that class contains code between
-    encoder and decoder.
-    
-    """
-    def __init__(self, encoderdecoder: EncoderDecoder):
-        super().__init__()
-        self.encoderdecoder = encoderdecoder
-    
-    def forward(self, encoder_out, tgt):
-        preds, feats = self.encoderdecoder.decoder(encoder_out, tgt)
-        perm_mat1 = self.encoderdecoder.scorenet1(feats)
-        perm_mat2 = self.encoderdecoder.scorenet2(feats)
-        perm_mat = perm_mat1 + torch.transpose(perm_mat2, 1, 2)
-
-        perm_mat = log_optimal_transport(
-            perm_mat,
-            self.encoderdecoder.bin_score,
-            self.encoderdecoder.sinkhorn_iterations,
-        )[:, : perm_mat.shape[1], : perm_mat.shape[2]]
-        perm_mat = F.softmax(perm_mat, dim=-1)
-
-        return preds, perm_mat
-    
-    def predict(self, encoder_out, tgt):
-        preds, feats = self.encoderdecoder.decoder.predict(
-            encoder_out, tgt, next(self.parameters()).device
-        )
-        return preds, feats
-
 
 if __name__ == "__main__":
     from tokenizer import Tokenizer

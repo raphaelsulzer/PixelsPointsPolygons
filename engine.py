@@ -1,5 +1,7 @@
+import sys
 from tqdm import tqdm
 import torch, os
+<<<<<<< HEAD
 from predict_lidarpoly_coco import predict_to_coco
 from postprocess_coco_parts import *
 
@@ -15,28 +17,41 @@ from ddp_utils import is_main_process
 
 from lidar_poly_dataset.metrics import compute_IoU_cIoU
 
+=======
+from omegaconf import OmegaConf
+>>>>>>> dev
 import wandb
 
+from postprocess_coco_parts import *
+from utils import AverageMeter, get_lr, save_checkpoint, save_single_predictions_as_images
+from ddp_utils import is_main_process
 
-def setup_wandb():
+from lidar_poly_dataset.metrics import compute_IoU_cIoU
+from lidar_poly_dataset.utils import *
 
-    cfg_dict = {key: value for key, value in vars(CFG).items() if not key.startswith('__') and not callable(value)}
-    log_outfile = os.path.join(CFG.OUTPATH, 'log.txt')
+
+def init_wandb(cfg):
+    
+    cfg_container = OmegaConf.to_container(
+        cfg, resolve=True, throw_on_missing=True
+    )
+
+    log_outfile = os.path.join(cfg.output_dir, 'log.txt')
 
     # start a new wandb run to track this script
     wandb.init(
         # set the wandb project where this run will be logged
         project="HiSup",
-        name=CFG.RUN_NAME,
+        name=cfg.experiment_name,
         group="v1_pix2poly",
         # track hyperparameters and run metadata
-        config=cfg_dict
+        config=cfg_container
     )
 
     wandb.run.log_code(log_outfile)
 
 
-def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn):
+def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cfg):
     print(f"\nValidating...")
     model.eval()
     vertex_loss_fn.eval()
@@ -47,34 +62,33 @@ def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn):
     perm_loss_meter = AverageMeter()
 
     loader = valid_loader
-    if is_main_process():
-        loader = tqdm(valid_loader, total=len(valid_loader))
+    loader = tqdm(valid_loader, total=len(valid_loader), file=sys.stdout, dynamic_ncols=True, mininterval=20.0)
 
     with torch.no_grad():
-        for x, y_mask, y_corner_mask, y, y_perm in loader:
-            x = x.to(CFG.DEVICE, non_blocking=True)
-            y = y.to(CFG.DEVICE, non_blocking=True)
-            y_perm = y_perm.to(CFG.DEVICE, non_blocking=True)
+        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
+            x_image = x_image.to(cfg.device, non_blocking=True)
+            y_sequence = y_sequence.to(cfg.device, non_blocking=True)
+            y_perm = y_perm.to(cfg.device, non_blocking=True)
 
-            y_input = y[:, :-1]
-            y_expected = y[:, 1:]
+            y_input = y_sequence[:, :-1]
+            y_expected = y_sequence[:, 1:]
 
-            preds, perm_mat = model(x, y_input)
+            preds, perm_mat = model(x_image, x_lidar, y_input)
 
-            if epoch < CFG.MILESTONE:
-                vertex_loss_weight = CFG.vertex_loss_weight
+            if epoch < cfg.model.milestone:
+                vertex_loss_weight = cfg.model.vertex_loss_weight
                 perm_loss_weight = 0.0
             else:
-                vertex_loss_weight = CFG.vertex_loss_weight
-                perm_loss_weight = CFG.perm_loss_weight
+                vertex_loss_weight = cfg.model.vertex_loss_weight
+                perm_loss_weight = cfg.model.perm_loss_weight
             vertex_loss = vertex_loss_weight*vertex_loss_fn(preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
             perm_loss = perm_loss_weight*perm_loss_fn(perm_mat, y_perm)
 
             loss = vertex_loss + perm_loss
 
-            loss_meter.update(loss.item(), x.size(0))
-            vertex_loss_meter.update(vertex_loss.item(), x.size(0))
-            perm_loss_meter.update(perm_loss.item(), x.size(0))
+            loss_meter.update(loss.item(), x_image.size(0))
+            vertex_loss_meter.update(vertex_loss.item(), x_image.size(0))
+            perm_loss_meter.update(perm_loss.item(), x_image.size(0))
 
         loss_dict = {
         'total_loss': loss_meter.avg,
@@ -85,7 +99,7 @@ def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn):
     return loss_dict
 
 
-def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_scheduler, vertex_loss_fn, perm_loss_fn):
+def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_scheduler, vertex_loss_fn, perm_loss_fn, cfg):
     model.train()
     vertex_loss_fn.train()
     perm_loss_fn.train()
@@ -95,25 +109,33 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
     perm_loss_meter = AverageMeter()
 
     loader = train_loader
-    if is_main_process():
-        loader = tqdm(train_loader, total=len(train_loader))
+    loader = tqdm(train_loader, total=len(train_loader), file=sys.stdout, dynamic_ncols=True, mininterval=20.0)
 
-    for x, y_mask, y_corner_mask, y, y_perm in loader:
-        x = x.to(CFG.DEVICE, non_blocking=True)
-        y = y.to(CFG.DEVICE, non_blocking=True)
-        y_perm = y_perm.to(CFG.DEVICE, non_blocking=True)
+    for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
+        
+        # ### debug vis
+        if cfg.debug_vis:
+            plot_pix2poly(image_batch=x_image,mask_batch=y_mask,corner_image_batch=y_corner_mask)        
+        
+        if cfg.use_images:
+            x_image = x_image.to(cfg.device, non_blocking=True)
+        if cfg.use_lidar:
+            x_lidar = x_lidar.to(cfg.device, non_blocking=True)
+        
+        y_sequence = y_sequence.to(cfg.device, non_blocking=True)
+        y_perm = y_perm.to(cfg.device, non_blocking=True)
 
-        y_input = y[:, :-1]
-        y_expected = y[:, 1:]
+        y_input = y_sequence[:, :-1]
+        y_expected = y_sequence[:, 1:]
 
-        preds, perm_mat = model(x, y_input)
+        preds, perm_mat = model(x_image, x_lidar, y_input)
 
-        if epoch < CFG.MILESTONE:
-            vertex_loss_weight = CFG.vertex_loss_weight
+        if epoch < cfg.model.milestone:
+            vertex_loss_weight = cfg.model.vertex_loss_weight
             perm_loss_weight = 0.0
         else:
-            vertex_loss_weight = CFG.vertex_loss_weight
-            perm_loss_weight = CFG.perm_loss_weight
+            vertex_loss_weight = cfg.model.vertex_loss_weight
+            perm_loss_weight = cfg.model.perm_loss_weight
 
         vertex_loss = vertex_loss_weight*vertex_loss_fn(preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
         perm_loss = perm_loss_weight*perm_loss_fn(perm_mat, y_perm)
@@ -127,23 +149,18 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
         if lr_scheduler is not None:
             lr_scheduler.step()
 
-        loss_meter.update(loss.item(), x.size(0))
-        vertex_loss_meter.update(vertex_loss.item(), x.size(0))
-        perm_loss_meter.update(perm_loss.item(), x.size(0))
+        loss_meter.update(loss.item(), x_image.size(0))
+        vertex_loss_meter.update(vertex_loss.item(), x_image.size(0))
+        perm_loss_meter.update(perm_loss.item(), x_image.size(0))
 
         lr = get_lr(optimizer)
-        if is_main_process():
-            loader.set_postfix(train_loss=loss_meter.avg, lr=f"{lr:.5f}")
-            # print(f"Running_logs/Train_Loss: {loss_meter.avg}")
-            # writer.add_scalar('Running_logs/Train_Loss', loss_meter.avg, iter_idx)
-            # writer.add_scalar('Running_logs/LR', lr, iter_idx)
-            # writer.add_image(f"Running_logs/input_images", torchvision.utils.make_grid(x), iter_idx)
-            # writer.add_graph(model, input_to_model=(x, y_input))
+
+        loader.set_postfix(train_loss=loss_meter.avg, lr=f"{lr:.5f}")
 
         iter_idx += 1
 
-        # if iter_idx % 50 == 0:
-        #     break
+        if cfg.run_type.name=="debug" and iter_idx % 10 == 0:
+            break
 
     print(f"Total train loss: {loss_meter.avg}\n\n")
     loss_dict = {
@@ -153,10 +170,6 @@ def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_schedule
     }
 
     return loss_dict, iter_idx
-
-
-
-
 
 
 
@@ -170,21 +183,22 @@ def train_eval(
     optimizer,
     lr_scheduler,
     step,
+    cfg
 ):
 
-    if CFG.LOG_TO_WANDB:
-        setup_wandb()
+    if cfg.log_to_wandb:
+        if is_main_process():
+            init_wandb(cfg)
 
     best_loss = float('inf')
     best_metric = float('-inf')
 
-    iter_idx=CFG.START_EPOCH * len(train_loader)
-    epoch_iterator = range(CFG.START_EPOCH, CFG.NUM_EPOCHS)
+    iter_idx=cfg.model.start_epoch * len(train_loader)
+    epoch_iterator = range(cfg.model.start_epoch, cfg.model.num_epochs)
 
 
-    for epoch in tqdm(epoch_iterator, position=0, leave=True):
-        if is_main_process():
-            print(f"\n\nEPOCH: {epoch + 1}\n\n")
+    for epoch in tqdm(epoch_iterator, position=0, leave=True, file=sys.stdout, dynamic_ncols=True, mininterval=20.0):
+        print(f"\n\nEPOCH: {epoch + 1}\n\n")
 
         train_loss_dict, iter_idx = train_one_epoch(
             epoch,
@@ -195,12 +209,14 @@ def train_eval(
             lr_scheduler if step=='batch' else None,
             vertex_loss_fn,
             perm_loss_fn,
+            cfg=cfg
         )
-
-        wandb_dict ={}
-        wandb_dict['epoch'] = epoch
-        for k, v in train_loss_dict.items():
-            wandb_dict[f"train_{k}"] = v
+        if is_main_process():
+            wandb_dict ={}
+            wandb_dict['epoch'] = epoch
+            for k, v in train_loss_dict.items():
+                wandb_dict[f"train_{k}"] = v
+            wandb_dict['lr'] = get_lr(optimizer)
 
         val_loss_dict = valid_one_epoch(
             epoch,
@@ -208,13 +224,15 @@ def train_eval(
             val_loader,
             vertex_loss_fn,
             perm_loss_fn,
+            cfg=cfg
         )
-
-        for k, v in val_loss_dict.items():
-            wandb_dict[f"val_{k}"] = v
+        if is_main_process():
+            for k, v in val_loss_dict.items():
+                wandb_dict[f"val_{k}"] = v
+            print(f"Valid loss: {val_loss_dict['total_loss']:.3f}\n\n")
 
         # Save best validation loss epoch.
-        if val_loss_dict['total_loss'] < best_loss and CFG.SAVE_BEST and is_main_process():
+        if val_loss_dict['total_loss'] < best_loss and cfg.model.save_best:
             best_loss = val_loss_dict['total_loss']
             checkpoint = {
                 "state_dict": model.state_dict(),
@@ -225,13 +243,13 @@ def train_eval(
             }
             save_checkpoint(
                 checkpoint,
-                folder=os.path.join(CFG.OUTPATH,"logs","checkpoints"),
+                folder=os.path.join(cfg.output_dir,"logs","checkpoints"),
                 filename="validation_best.pth"
             )
             print(f"Saved best val loss model.")
 
         # Save latest checkpoint every epoch.
-        if CFG.SAVE_LATEST and is_main_process():
+        if cfg.model.save_latest:
             checkpoint = {
                     "state_dict": model.state_dict(),
                     "optimizer": optimizer.state_dict(),
@@ -241,11 +259,11 @@ def train_eval(
                 }
             save_checkpoint(
                 checkpoint,
-                folder=os.path.join(CFG.OUTPATH,"logs","checkpoints"),
+                folder=os.path.join(cfg.output_dir,"logs","checkpoints"),
                 filename="latest.pth"
             )
 
-        if (epoch + 1) % CFG.SAVE_EVERY == 0:
+        if (epoch + 1) % cfg.model.save_every == 0:
             checkpoint = {
                 "state_dict": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
@@ -255,24 +273,28 @@ def train_eval(
             }
             save_checkpoint(
                 checkpoint,
-                folder=os.path.join(CFG.OUTPATH,"logs","checkpoints"),
+                folder=os.path.join(cfg.output_dir,"logs","checkpoints"),
                 filename=f"epoch_{epoch}.pth"
             )
 
         # output examples to a folder
-        if (epoch + 1) % CFG.VAL_EVERY == 0:
+        if (epoch + 1) % cfg.model.val_every == 0:
 
-            save_single_predictions_as_images(
+            val_metrics_dict = save_single_predictions_as_images(
                 val_loader,
                 model,
                 tokenizer,
                 epoch,
-                wandb_dict,
-                folder=os.path.join(CFG.OUTPATH, "runtime_outputs")
+                folder=os.path.join(cfg.output_dir, "runtime_outputs"),
+                cfg=cfg
             )
+            for metric, value in val_metrics_dict.items():
+                if is_main_process():
+                    print(f"{metric}: {value}")
+                    wandb_dict[f"val_{metric}"] = value
 
             # batched_polygons = predict_to_coco(model, tokenizer, val_loader)
-            # outfile = os.path.join(CFG.OUTPATH,"coco",f"validation_{epoch}.json")
+            # outfile = os.path.join(cfg.output_dir,"coco",f"validation_{epoch}.json")
             # combine_polygons_from_list(batched_polygons, outfile)
             #
             # iou, ciou = compute_IoU_cIoU(outfile, val_loader.dataset.ann_file)
@@ -290,15 +312,13 @@ def train_eval(
             #     }
             #     save_checkpoint(
             #         checkpoint,
-            #         folder=os.path.join(CFG.OUTPATH, "logs", "checkpoints"),
+            #         folder=os.path.join(cfg.output_dir, "logs", "checkpoints"),
             #         filename="validation_best.pth"
             #     )
             #     print(f"Saved best val metric model.")
 
-        for k,v in wandb_dict.items():
-            print(f"{k}: {v}")
-
-        if CFG.LOG_TO_WANDB:
-            wandb.log(wandb_dict)
+        if cfg.log_to_wandb:
+            if is_main_process():
+                wandb.log(wandb_dict)
 
 
