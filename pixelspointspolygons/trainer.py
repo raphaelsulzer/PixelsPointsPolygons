@@ -24,7 +24,7 @@ class Trainer:
         
         self.cfg = cfg
         self.logger = make_logger("Training",level=verbosity)
-        self.logger.info("Create output directory {cfg.output_dir}...")
+        self.logger.info(f"Create output directory {cfg.output_dir}...")
         os.makedirs(cfg.output_dir, exist_ok=True)
        
 

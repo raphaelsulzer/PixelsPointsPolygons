@@ -2,12 +2,15 @@ import sys
 import os
 import torch
 import wandb
+import json
 
 from tqdm import tqdm
 
 from .misc import *
 from .misc.ddp_utils import is_main_process
 
+from .eval import evaluate
+from .predictor import Predictor
 
 def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cfg):
     print(f"\nValidating...")
@@ -57,7 +60,9 @@ def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cf
     return loss_dict
 
 
-def train_one_epoch(epoch, iter_idx, model, train_loader, optimizer, lr_scheduler, vertex_loss_fn, perm_loss_fn, cfg):
+def train_one_epoch(epoch, iter_idx, 
+                    model, 
+                    train_loader, optimizer, lr_scheduler, vertex_loss_fn, perm_loss_fn, cfg):
     model.train()
     vertex_loss_fn.train()
     perm_loss_fn.train()
@@ -150,11 +155,11 @@ def train_eval(
             init_wandb(cfg)
 
     best_loss = float('inf')
-    best_metric = float('-inf')
 
     iter_idx=cfg.model.start_epoch * len(train_loader)
     epoch_iterator = range(cfg.model.start_epoch, cfg.model.num_epochs)
 
+    pp = Predictor(cfg)
 
     for epoch in tqdm(epoch_iterator, position=0, leave=True, file=sys.stdout, dynamic_ncols=True, mininterval=20.0):
         print(f"\n\nEPOCH: {epoch + 1}\n\n")
@@ -191,7 +196,7 @@ def train_eval(
             print(f"Valid loss: {val_loss_dict['total_loss']:.3f}\n\n")
 
         # Save best validation loss epoch.
-        if val_loss_dict['total_loss'] < best_loss and cfg.model.save_best:
+        if val_loss_dict['total_loss'] < best_loss and cfg.save_best:
             best_loss = val_loss_dict['total_loss']
             checkpoint = {
                 "state_dict": model.state_dict(),
@@ -202,13 +207,13 @@ def train_eval(
             }
             save_checkpoint(
                 checkpoint,
-                folder=os.path.join(cfg.output_dir,"logs","checkpoints"),
+                folder=os.path.join(cfg.output_dir,"checkpoints"),
                 filename="validation_best.pth"
             )
             print(f"Saved best val loss model.")
 
         # Save latest checkpoint every epoch.
-        if cfg.model.save_latest:
+        if cfg.save_latest:
             checkpoint = {
                     "state_dict": model.state_dict(),
                     "optimizer": optimizer.state_dict(),
@@ -222,7 +227,7 @@ def train_eval(
                 filename="latest.pth"
             )
 
-        if (epoch + 1) % cfg.model.save_every == 0:
+        if (epoch + 1) % cfg.save_every == 0:
             checkpoint = {
                 "state_dict": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
@@ -237,44 +242,33 @@ def train_eval(
             )
 
         # output examples to a folder
-        if (epoch + 1) % cfg.model.val_every == 0:
+        if (epoch + 1) % cfg.val_every == 0:
+            
+            # val_metrics_dict = save_single_predictions_as_images(val_loader, model, tokenizer,
+            #     epoch,
+            #     folder=os.path.join(cfg.output_dir, "runtime_outputs"),
+            #     cfg=cfg
+            # )
+            
+            coco_predictions = pp.predict_from_loader(model,tokenizer,val_loader)
 
-            val_metrics_dict = save_single_predictions_as_images(
-                val_loader,
-                model,
-                tokenizer,
-                epoch,
-                folder=os.path.join(cfg.output_dir, "runtime_outputs"),
-                cfg=cfg
-            )
-            for metric, value in val_metrics_dict.items():
-                if is_main_process():
-                    print(f"{metric}: {value}")
-                    wandb_dict[f"val_{metric}"] = value
+            if len(coco_predictions) > 0:
+                
+                print("Found some predictions. Evaluating...")
+                
+                prediction_outfile = os.path.join(cfg.output_dir, "predictions", f"epoch_{epoch}.json")
+                os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
+                with open(prediction_outfile, "w") as fp:
+                    fp.write(json.dumps(coco_predictions))
+                
+                val_metrics_dict = evaluate(val_loader.dataset.ann_file, prediction_outfile, modes=cfg.eval.modes)
 
-            # batched_polygons = predict_to_coco(model, tokenizer, val_loader)
-            # outfile = os.path.join(cfg.output_dir,"coco",f"validation_{epoch}.json")
-            # combine_polygons_from_list(batched_polygons, outfile)
-            #
-            # iou, ciou = compute_IoU_cIoU(outfile, val_loader.dataset.ann_file)
-            # print("Iou: {:.4f}, CIou: {:.4f}".format())
+                for metric, value in val_metrics_dict.items():
+                    if is_main_process():
+                        print(f"{metric}: {value}")
+                        wandb_dict[f"val_{metric}"] = value
 
-            # # Save best single batch validation metric epoch.
-            # if wandb_dict["miou"] > best_metric and CFG.SAVE_BEST:
-            #     best_metric = wandb_dict["miou"]
-            #     checkpoint = {
-            #         "state_dict": model.state_dict(),
-            #         "optimizer": optimizer.state_dict(),
-            #         "scheduler": lr_scheduler.state_dict(),
-            #         "epochs_run": epoch,
-            #         "loss": train_loss_dict["total_loss"]
-            #     }
-            #     save_checkpoint(
-            #         checkpoint,
-            #         folder=os.path.join(cfg.output_dir, "logs", "checkpoints"),
-            #         filename="validation_best.pth"
-            #     )
-            #     print(f"Saved best val metric model.")
+
 
         if cfg.log_to_wandb:
             if is_main_process():
