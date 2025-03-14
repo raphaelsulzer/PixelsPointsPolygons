@@ -1,0 +1,12 @@
+name: lidarpoly
+path: ${host.data_root}/${.name}/${model.name}
+# train:
+#   annotations: ${..path}/annotations_train.json
+#   images: ${..path}/images/train/
+# val:
+#   annotations: ${..path}/annotations_val.json
+#   images: ${..path}/images/val/
+# test:
+#   annotations: ${..path}/test/annotations_test.json  
+#   images: ${..path}/images/test
+subset: null

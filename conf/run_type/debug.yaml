@@ -1,0 +1,6 @@
+name: debug
+batch_size: 16
+subset: 16
+logging: DEBUG
+num_workers: 1
+log_to_wandb: False
