@@ -1,8 +1,5 @@
 import hydra
-import os
 from omegaconf import OmegaConf
-from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
 
 from pixelspointspolygons.eval import evaluate
 
