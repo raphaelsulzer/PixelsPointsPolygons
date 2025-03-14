@@ -1,5 +1,16 @@
 # Directories
 __pycache__
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/*.so
+**/*.dylib
+**/*.dll
+
+*.egg-info/
+*.egg
+
 data
 outputs
 runs
