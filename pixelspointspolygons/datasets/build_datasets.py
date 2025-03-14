@@ -7,6 +7,7 @@ from torch.utils.data import Subset
 from torch.utils.data.distributed import DistributedSampler
 
 from .dataset_train import TrainDataset
+from .dataset_val import ValDataset
 from .collate_funcs import collate_fn_pix2poly
 
 
@@ -86,9 +87,6 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
 
 def get_val_loader_lidarpoly(cfg,tokenizer):
     
-    
-    from lidar_poly_dataset.dataset import ValDataset, collate_fn_pix2poly
-
     
     val_transforms = A.Compose(
         [
