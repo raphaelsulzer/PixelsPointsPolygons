@@ -21,7 +21,7 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 from lidar_poly_dataset.utils import generate_coco_ann, plot_pix2poly
 from lidar_poly_dataset.misc import make_logger
 
-from src.tokenizer import Tokenizer
+from pixelspointspolygons.tokenizer import Tokenizer
 from utils import seed_everything, postprocess, permutations_to_polygons, compute_dynamic_cfg_vars, test_generate
 from models.pix2poly import Encoder, Decoder, EncoderDecoder
 from datasets.build_datasets import get_train_loader, get_val_loader
