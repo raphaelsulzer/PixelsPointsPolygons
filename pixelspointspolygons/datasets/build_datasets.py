@@ -29,7 +29,6 @@ def get_train_loader(cfg,tokenizer):
 
 def get_train_loader_lidarpoly(cfg,tokenizer):
     
-
     ### ORIGINAL
     train_transforms = A.Compose(
         [

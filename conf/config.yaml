@@ -30,3 +30,8 @@ use_lidar: true
 use_images: true
 
 debug_vis: false
+
+
+hydra:
+  run:
+    dir: ${...output_dir}
