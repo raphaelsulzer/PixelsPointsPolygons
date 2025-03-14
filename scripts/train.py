@@ -13,14 +13,11 @@ from torch import nn
 from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
-from lidar_poly_dataset.misc import make_logger
-
-from tokenizer import Tokenizer
-from utils import seed_everything, load_checkpoint, compute_dynamic_cfg_vars
-from ddp_utils import init_distributed
-from datasets.build_datasets import get_train_loader, get_val_loader
-from engine import train_eval
-from models import get_model
+from pixelspointspolygons.tokenizer import Tokenizer
+from pixelspointspolygons.utils import seed_everything, load_checkpoint, compute_dynamic_cfg_vars, init_distributed, make_logger
+from pixelspointspolygons.datasets import get_train_loader, get_val_loader
+from pixelspointspolygons.engine import train_eval
+from pixelspointspolygons.models import get_model
 
 
 class Trainer:
@@ -106,7 +103,7 @@ class Trainer:
         )
 
 
-@hydra.main(config_path="conf", config_name="config", version_base="1.3")
+@hydra.main(config_path="../conf", config_name="config", version_base="1.3")
 def main(cfg):
     OmegaConf.resolve(cfg)
     print("\nConfiguration:")

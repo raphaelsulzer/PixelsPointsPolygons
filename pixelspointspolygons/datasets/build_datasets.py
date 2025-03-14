@@ -6,6 +6,9 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Subset
 from torch.utils.data.distributed import DistributedSampler
 
+from .dataset_train import TrainDataset
+from .collate_funcs import collate_fn_pix2poly
+
 
 def get_val_loader(cfg,tokenizer):
     if cfg.dataset.name == 'inria':
@@ -25,7 +28,6 @@ def get_train_loader(cfg,tokenizer):
 
 def get_train_loader_lidarpoly(cfg,tokenizer):
     
-    from lidar_poly_dataset.dataset import TrainDataset, collate_fn_pix2poly
 
     ### ORIGINAL
     train_transforms = A.Compose(

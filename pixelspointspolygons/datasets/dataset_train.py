@@ -1,4 +1,4 @@
-from lidar_poly_dataset.dataset import DefaultDataset
+from .dataset_default import DefaultDataset
 
 class TrainDataset(DefaultDataset):
     def __init__(self,cfg,**kwargs):

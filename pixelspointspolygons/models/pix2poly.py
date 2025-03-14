@@ -8,7 +8,7 @@ import os
 import sys
 sys.path.insert(1, os.getcwd())
 
-from utils import create_mask
+from ..utils import create_mask
 
 
 # Borrowed from https://github.com/magicleap/SuperGluePretrainedNetwork/blob/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/superglue.py#L143
@@ -272,7 +272,7 @@ class EncoderDecoder(nn.Module):
     
 
 if __name__ == "__main__":
-    from tokenizer import Tokenizer
+    from pixelspointspolygons.tokenizer import Tokenizer
     from torch.nn.utils.rnn import pad_sequence
     import numpy as np
     import torch

@@ -1,33 +1,12 @@
 import sys
 from tqdm import tqdm
 import torch, os
-<<<<<<< HEAD
-from predict_lidarpoly_coco import predict_to_coco
-from postprocess_coco_parts import *
-
-from utils_ori import (
-    AverageMeter,
-    get_lr,
-    save_checkpoint,
-    save_single_predictions_as_images
-)
-from config import CFG
-
-from ddp_utils import is_main_process
-
-from lidar_poly_dataset.metrics import compute_IoU_cIoU
-
-=======
 from omegaconf import OmegaConf
->>>>>>> dev
 import wandb
 
-from postprocess_coco_parts import *
-from utils import AverageMeter, get_lr, save_checkpoint, save_single_predictions_as_images
-from ddp_utils import is_main_process
-
-from lidar_poly_dataset.metrics import compute_IoU_cIoU
-from lidar_poly_dataset.utils import *
+from .utils.postprocess_coco_parts import *
+from .utils import AverageMeter, get_lr, save_checkpoint, save_single_predictions_as_images
+from .utils.ddp_utils import is_main_process
 
 
 def init_wandb(cfg):
