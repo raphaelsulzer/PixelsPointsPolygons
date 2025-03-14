@@ -8,7 +8,7 @@ defaults:
 # experiment_name: images_only
 # experiment_name: debug
 # experiment_name: inria_D4_aug
-experiment_name: lidarpoly_ori_aug
+experiment_name: lidarpoly_D4_aug_bs32
 multi_gpu: false
 device: cuda
 log_to_wandb: ${.run_type.log_to_wandb}
@@ -26,9 +26,11 @@ use_images: true
 
 debug_vis: false
 
-checkpoint: validation_best
-# checkpoint_file: null # override for loading a specific checkpoint file
-checkpoint_file: /data/rsulzer/pix2poly_outputs/lidarpoly/inria_trained/checkpoints/validation_best.pth # override for loading a specific checkpoint file
+checkpoint: null
+checkpoint_file: null # override for loading a specific checkpoint file
+
+# checkpoint: validation_best
+# checkpoint_file: /data/rsulzer/pix2poly_outputs/lidarpoly/inria_trained/checkpoints/validation_best.pth # override for loading a specific checkpoint file
 # checkpoint_file: /data/rsulzer/pix2poly_outputs/lidarpoly/lidarpoly_ori_aug_bs64/checkpoints/epoch_59.pth # override for loading a specific checkpoint file
 # checkpoint_file: /data/rsulzer/pix2poly_outputs/inria/inria_D4_aug/logs/checkpoints/validation_best.pth
 eval:
@@ -40,6 +42,12 @@ eval:
     - polis
     # - mta
     - topdig
+
+
+save_best: True
+save_latest: True
+save_every: 10
+val_every: 1
 
 hydra:
   run:

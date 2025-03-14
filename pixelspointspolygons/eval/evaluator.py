@@ -59,6 +59,5 @@ def evaluate(gt_file, dt_file, modes=["coco"], outfile=None):
     # Pretty print the DataFrame
     print(df)
     
-    # print(res_dict)
-    
+    return res_dict    
         

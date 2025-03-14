@@ -29,10 +29,6 @@ batch_size: 32
 start_epoch: 0
 num_epochs: 100
 milestone: 0
-val_every: 1
 learning_rate: 4e-4
 weight_decay: 1e-4
 
-save_best: True
-save_latest: True
-save_every: 10
