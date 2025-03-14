@@ -1,0 +1,19 @@
+Metadata-Version: 2.2
+Name: ppp
+Version: 0.1.0
+Summary: Pixels, Points, Polygons: A Global Dataset and Baseline for Multimodal Building Vectorization
+Author-email: Raphael Sulzer <raphael.sulzer.1@gmail.com>
+Requires-Dist: transformers==4.32
+Requires-Dist: pycocotools
+Requires-Dist: torchmetrics
+Requires-Dist: wandb
+Requires-Dist: timm
+Requires-Dist: matplotlib
+Requires-Dist: albumentations
+Requires-Dist: shapely
+Requires-Dist: hydra-core
+Requires-Dist: laspy[lazrs]
+Requires-Dist: colorlog
+Requires-Dist: descartes==1.1.0
+Requires-Dist: scikit-image
+Requires-Dist: scikit-learn

@@ -62,7 +62,7 @@ if conda env list | awk '{print $1}' | grep -q "^$ENV_NAME$"; then
     fi
 else
   ## Create a conda environment
-  echo "Create conda environment '$ENV_NAME'."
+  echo "Create conda environment '$ENV_NAME'..."
   conda create -y --name $ENV_NAME python=$PYTHON > /dev/null 2>&1
 fi
 
@@ -77,6 +77,7 @@ echo "________________ Install Required Packages _______________"
 echo
 
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
 # pip install transformers==4.32
 # pip install pycocotools
 # pip install torchmetrics
@@ -102,3 +103,5 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 # pip3 install -U scikit-learn
 
 pip install -e .
+
+echo "Run 'conda activate ${ENV_NAME}' to activate the environment."
