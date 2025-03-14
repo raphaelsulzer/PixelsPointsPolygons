@@ -254,20 +254,23 @@ def train_eval(
 
             if len(coco_predictions) > 0:
                 
-                print("Found some predictions. Evaluating...")
-                
-                prediction_outfile = os.path.join(cfg.output_dir, "predictions", f"epoch_{epoch}.json")
-                os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
-                with open(prediction_outfile, "w") as fp:
-                    fp.write(json.dumps(coco_predictions))
-                
-                val_metrics_dict = evaluate(val_loader.dataset.ann_file, prediction_outfile, modes=cfg.eval.modes)
+                try:
+                    print("Found some predictions. Evaluating...")
+                    
+                    prediction_outfile = os.path.join(cfg.output_dir, "predictions", f"epoch_{epoch}.json")
+                    os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
+                    with open(prediction_outfile, "w") as fp:
+                        fp.write(json.dumps(coco_predictions))
+                    
+                    val_metrics_dict = evaluate(val_loader.dataset.ann_file, prediction_outfile, modes=cfg.eval.modes)
 
-                for metric, value in val_metrics_dict.items():
-                    if is_main_process():
-                        print(f"{metric}: {value}")
-                        wandb_dict[f"val_{metric}"] = value
-
+                    for metric, value in val_metrics_dict.items():
+                        if is_main_process():
+                            wandb_dict[f"val_{metric}"] = value
+                            
+                except Exception as e:
+                    print(f"Error evaluating predictions: {e}")
+                    
 
 
         if cfg.log_to_wandb:

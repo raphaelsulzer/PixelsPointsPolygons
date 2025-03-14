@@ -134,9 +134,12 @@ class PolisEval():
                 polis_tot += img_polis_avg
                 num_valid_imgs += 1
         
-        polis_avg = polis_tot / num_valid_imgs
-
-        print('average polis: %f' % (polis_avg))
+        if num_valid_imgs > 0:
+            polis_avg = polis_tot / num_valid_imgs
+            print('average polis: %f' % (polis_avg))
+        else:
+            polis_avg = np.nan
+            print('no valid images in polis evaluation')
 
         return {"POLIS":polis_avg}
 
