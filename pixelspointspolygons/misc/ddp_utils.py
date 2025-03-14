@@ -39,3 +39,5 @@ def init_distributed():
 
     # synchronizes all threads to reach this point before moving on.
     dist.barrier()
+    
+    return dist.get_world_size()
