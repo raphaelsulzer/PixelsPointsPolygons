@@ -7,7 +7,7 @@
             "type": "debugpy",
             "request": "launch",
             // "program": "${file}",
-            "program": "${workspaceFolder}/scripts/predict.py",
+            "program": "${workspaceFolder}/scripts/evaluate.py",
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",

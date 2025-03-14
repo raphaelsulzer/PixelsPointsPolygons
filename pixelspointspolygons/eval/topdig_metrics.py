@@ -135,13 +135,24 @@ def compute_mask_metrics(input_json, gti_annotations):
         bar.set_description("iou: %2.4f, p-acc: %2.4f, f1:%2.4f, iou-topo: %2.4f, p-acc-topo: %2.4f, f1-topo:%2.4f " % (np.mean(list_iou), np.mean(list_acc), np.mean(list_f1), np.mean(list_iou_topo), np.mean(list_acc_topo), np.mean(list_f1_topo)))
         bar.refresh()
 
-    print("Done!")
-    print("Mean IoU: ", np.mean(list_iou))
-    print("Mean P-Acc: ", np.mean(list_acc))
-    print("Mean F1-Score: ", np.mean(list_f1))
-    print("Mean IoU-Topo: ", np.mean(list_iou_topo))
-    print("Mean P-Acc-Topo: ", np.mean(list_acc_topo))
-    print("Mean F1-Score-Topo: ", np.mean(list_f1_topo))
+    
+    list_iou = np.mean(list_iou).item()
+    list_acc = np.mean(list_acc).item()
+    list_f1 = np.mean(list_f1).item()
+    list_iou_topo = np.mean(list_iou_topo).item()
+    list_acc_topo = np.mean(list_acc_topo).item()
+    list_f1_topo = np.mean(list_f1_topo).item()
+    
+    print("Mean IoU: ", list_iou)
+    print("Mean P-Acc: ", list_acc)
+    print("Mean F1-Score: ", list_f1)
+    print("Mean IoU-Topo: ", list_iou_topo)
+    print("Mean P-Acc-Topo: ", list_acc_topo)
+    print("Mean F1-Score-Topo: ", list_f1_topo)
+    
+    return {"IoU_":list_iou, "P-Acc":list_acc, "F1-Score":list_f1, "IoU-Topo":list_iou_topo, "P-Acc-Topo":list_acc_topo, "F1-Score-Topo":list_f1_topo}
+    
+    
 
 
 if __name__ == "__main__":
