@@ -8,7 +8,7 @@ from tqdm import tqdm
 import torch
 import cv2
 
-from eval.hisup_eval_utils.metrics.cIoU import calc_IoU
+from .cIoU import calc_IoU
 from torchmetrics.functional.classification import binary_accuracy, binary_f1_score
 
 

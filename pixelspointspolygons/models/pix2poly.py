@@ -272,7 +272,7 @@ class EncoderDecoder(nn.Module):
     
 
 if __name__ == "__main__":
-    from pixelspointspolygons.tokenizer import Tokenizer
+    from pixelspointspolygons.models.tokenizer import Tokenizer
     from torch.nn.utils.rnn import pad_sequence
     import numpy as np
     import torch

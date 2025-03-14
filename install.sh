@@ -87,6 +87,7 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 # pip install albumentations
 # pip install shapely
 # pip install hydra-core
+# pip install pandas
 
 # # # problem with torch:tms? do this:
 # # # https://github.com/huggingface/diffusers/issues/8958#issuecomment-2253055261

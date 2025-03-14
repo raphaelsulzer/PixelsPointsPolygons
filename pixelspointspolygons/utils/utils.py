@@ -2,17 +2,40 @@ import sys
 import os
 import cv2
 import random
-import numpy as np
-from scipy.optimize import linear_sum_assignment
-
+import wandb
 import torch
 import torchvision
-# from transformers import top_k_top_p_filtering
+import numpy as np
+
+from omegaconf import OmegaConf
+from scipy.optimize import linear_sum_assignment
 from transformers.generation.utils import top_k_top_p_filtering
 from torchmetrics.functional.classification import binary_jaccard_index, binary_accuracy
-
 from tqdm import tqdm
 
+def init_wandb(cfg):
+    
+    cfg_container = OmegaConf.to_container(
+        cfg, resolve=True, throw_on_missing=True
+    )
+
+
+    # start a new wandb run to track this script
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="HiSup",
+        name=cfg.experiment_name,
+        group="v1_pix2poly",
+        # track hyperparameters and run metadata
+        config=cfg_container,
+        dir=cfg.output_dir,
+    )
+    
+    log_outfile = os.path.join(cfg.output_dir, 'wandb.log')
+    wandb.run.log_code(log_outfile)
+    
+    
+    
 def compute_dynamic_cfg_vars(cfg,tokenizer):
     
     cfg.model.tokenizer.pad_idx = tokenizer.PAD_code
