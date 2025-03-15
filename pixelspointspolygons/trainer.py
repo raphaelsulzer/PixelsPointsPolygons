@@ -31,10 +31,10 @@ class Trainer:
     def train(self):
         if self.cfg.multi_gpu:
             n_gpus = init_distributed()
-            self.logger.info("Training on {n_gpus} GPUs")
+            self.logger.info(f"Training on {n_gpus} GPUs")
         else:
             n_gpus = 1
-            self.logger.info("Training on single GPU")
+            self.logger.info(f"Training on single GPU")
         
         seed_everything(42)
 
@@ -45,7 +45,7 @@ class Trainer:
             height=self.cfg.model.encoder.input_height,
             max_len=self.cfg.model.tokenizer.max_len
         )
-        compute_dynamic_cfg_vars(self.cfg,tokenizer,n_gpus)
+        compute_dynamic_cfg_vars(self.cfg,tokenizer)
 
         model = get_model(self.cfg,tokenizer=tokenizer)
 

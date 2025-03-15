@@ -61,11 +61,8 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
         transform=train_transforms,
         tokenizer=tokenizer
     )
-
-    if cfg.multi_gpu:
-        train_sampler = {"sampler":DistributedSampler(dataset=train_ds, shuffle=True)}
-    else:
-        train_sampler = {"shuffle":True}
+    
+    sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.multi_gpu else None
 
     train_loader = DataLoader(
         train_ds,
@@ -73,8 +70,9 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
         collate_fn=partial(collate_fn_pix2poly, cfg=cfg),
         num_workers=cfg.num_workers,
         pin_memory=True,
-        drop_last=True,
-        **train_sampler
+        drop_last=False,
+        sampler=sampler,
+        shuffle=(sampler is None)
     )
     
     return train_loader
@@ -103,10 +101,8 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
         val_ds.ann_file = ann_file
 
 
-    if cfg.multi_gpu:
-        val_sampler = {"sampler":DistributedSampler(dataset=val_ds, shuffle=False)}
-    else:
-        val_sampler = {"shuffle":False}
+    sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.multi_gpu else None
+
         
     val_loader = DataLoader(
         val_ds,
@@ -115,7 +111,8 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
         num_workers=cfg.num_workers,
         pin_memory=True,
         drop_last=False,
-        **val_sampler
+        sampler=sampler,
+        shuffle=False
     )
     
     return val_loader
@@ -153,10 +150,8 @@ def get_train_loader_inria(cfg,tokenizer):
         tokenizer=tokenizer,
     )
         
-    if cfg.multi_gpu:
-        train_sampler = {"sampler":DistributedSampler(dataset=train_ds, shuffle=True)}
-    else:
-        train_sampler = {"shuffle":True}
+    sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.multi_gpu else None
+
 
     train_loader = DataLoader(
         train_ds,
@@ -165,7 +160,8 @@ def get_train_loader_inria(cfg,tokenizer):
         num_workers=cfg.num_workers,
         pin_memory=True,
         drop_last=True,
-        **train_sampler
+        sampler=sampler,
+        shuffle=(sampler is None)
     )
     
     return train_loader
@@ -197,13 +193,9 @@ def get_val_loader_inria(cfg,tokenizer):
     if cfg.dataset.subset is not None:
         indices = list(range(cfg.dataset.subset))
         val_ds = Subset(val_ds, indices)
-    
         
-    if cfg.multi_gpu:
-        val_sampler = {"sampler":DistributedSampler(dataset=val_ds, shuffle=True)}
-    else:
-        val_sampler = {"shuffle":True}
-        
+    sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.multi_gpu else None
+
     val_loader = DataLoader(
         val_ds,
         batch_size=cfg.model.batch_size,
@@ -211,7 +203,8 @@ def get_val_loader_inria(cfg,tokenizer):
         num_workers=cfg.num_workers,
         pin_memory=True,
         drop_last=False,
-        **val_sampler
+        sampler=sampler,
+        shuffle=False
     )
     
     return val_loader
