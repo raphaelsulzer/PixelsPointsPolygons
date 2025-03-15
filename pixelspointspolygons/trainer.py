@@ -53,8 +53,6 @@ class Trainer:
         val_loader = get_val_loader(self.cfg,tokenizer)
         
         
-        
-        
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f"Model has {n_params/10**6:.2f}M parameters")
 

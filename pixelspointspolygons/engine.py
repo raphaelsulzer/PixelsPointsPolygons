@@ -162,7 +162,8 @@ def train_eval(
     pp = Predictor(cfg)
 
     for epoch in tqdm(epoch_iterator, position=0, leave=True, file=sys.stdout, dynamic_ncols=True, mininterval=20.0):
-        print(f"\n\nEPOCH: {epoch + 1}\n\n")
+        if is_main_process():
+            print(f"\n\nEPOCH: {epoch + 1}\n\n")
         
         # important to shuffle the data differently for each epoch, see: https://pytorch.org/docs/stable/data.html#torch.utils.data.distributed.DistributedSampler
         if cfg.multi_gpu:
@@ -200,7 +201,7 @@ def train_eval(
             print(f"Valid loss: {val_loss_dict['total_loss']:.3f}\n\n")
 
         # Save best validation loss epoch.
-        if val_loss_dict['total_loss'] < best_loss and cfg.save_best:
+        if val_loss_dict['total_loss'] < best_loss and cfg.save_best and is_main_process():
             best_loss = val_loss_dict['total_loss']
             checkpoint = {
                 "state_dict": model.state_dict(),
@@ -217,7 +218,7 @@ def train_eval(
             print(f"Saved best val loss model.")
 
         # Save latest checkpoint every epoch.
-        if cfg.save_latest:
+        if cfg.save_latest and is_main_process():
             checkpoint = {
                     "state_dict": model.state_dict(),
                     "optimizer": optimizer.state_dict(),
@@ -231,7 +232,7 @@ def train_eval(
                 filename="latest.pth"
             )
 
-        if (epoch + 1) % cfg.save_every == 0:
+        if (epoch + 1) % cfg.save_every == 0 and is_main_process():
             checkpoint = {
                 "state_dict": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
@@ -246,7 +247,7 @@ def train_eval(
             )
 
         # output examples to a folder
-        if (epoch + 1) % cfg.val_every == 0:
+        if (epoch + 1) % cfg.val_every == 0 and is_main_process():
             
             # val_metrics_dict = save_single_predictions_as_images(val_loader, model, tokenizer,
             #     epoch,
