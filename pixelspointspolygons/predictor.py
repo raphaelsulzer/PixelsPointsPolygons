@@ -28,7 +28,7 @@ class Predictor:
         self.cfg = cfg
         # self.logger = make_logger("Prediction",level=verbosity,filepath=os.path.join(cfg.output_dir, 'predict.log'))
         self.logger = make_logger("Prediction",level=verbosity)
-        self.logger.info("Create output directory {cfg.output_dir}...")
+        self.logger.info(f"Create output directory {cfg.output_dir}")
         os.makedirs(cfg.output_dir, exist_ok=True)
 
     def get_pixel_mask_from_prediction(self, x, batch_polygons):
