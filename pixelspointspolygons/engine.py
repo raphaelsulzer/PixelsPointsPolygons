@@ -166,7 +166,7 @@ def train_eval(
         
         # important to shuffle the data differently for each epoch, see: https://pytorch.org/docs/stable/data.html#torch.utils.data.distributed.DistributedSampler
         if cfg.multi_gpu:
-            train_loader.set_epoch(epoch) 
+            train_loader.sampler.set_epoch(epoch) 
 
         train_loss_dict, iter_idx = train_one_epoch(
             epoch,
