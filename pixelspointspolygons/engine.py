@@ -163,6 +163,10 @@ def train_eval(
 
     for epoch in tqdm(epoch_iterator, position=0, leave=True, file=sys.stdout, dynamic_ncols=True, mininterval=20.0):
         print(f"\n\nEPOCH: {epoch + 1}\n\n")
+        
+        # important to shuffle the data differently for each epoch, see: https://pytorch.org/docs/stable/data.html#torch.utils.data.distributed.DistributedSampler
+        if cfg.multi_gpu:
+            train_loader.set_epoch(epoch) 
 
         train_loss_dict, iter_idx = train_one_epoch(
             epoch,
