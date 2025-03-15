@@ -59,10 +59,10 @@ class Trainer:
         weight[tokenizer.num_bins:tokenizer.BOS_code] = 0.0
         vertex_loss_fn = nn.CrossEntropyLoss(ignore_index=self.cfg.model.tokenizer.pad_idx, label_smoothing=self.cfg.model.label_smoothing, weight=weight)
         perm_loss_fn = nn.BCELoss()
-
+        
         optimizer = optim.AdamW(model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
 
-        num_training_steps = self.cfg.model.num_epochs * (len(train_loader.dataset) // self.cfg.model.batch_size)
+        num_training_steps = self.cfg.model.num_epochs * (len(train_loader.dataset) // self.cfg.model.batch_size // n_gpus)
         num_warmup_steps = int(0.05 * num_training_steps)
         lr_scheduler = get_linear_schedule_with_warmup(
             optimizer,
