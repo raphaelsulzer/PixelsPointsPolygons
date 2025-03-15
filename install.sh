@@ -76,7 +76,9 @@ conda activate ${ENV_NAME}
 echo "________________ Install Required Packages _______________"
 echo
 
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+pip install -r requirements-torch-cuda.txt
 
 # pip install transformers==4.32
 # pip install pycocotools
@@ -105,4 +107,5 @@ pip3 install torch torchvision torchaudio --index-url https://download.pytorch.o
 
 pip install -e .
 
+echo "________________ Installation Completed Successfully _______________"
 echo "Run 'conda activate ${ENV_NAME}' to activate the environment."

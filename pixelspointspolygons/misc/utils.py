@@ -403,3 +403,17 @@ def save_single_predictions_as_images(loader, model, tokenizer, epoch, folder, c
     
     return val_dict
 
+
+def plot_model_architecture(model, input_shape=(16,3,224,224), outfile="/data/rsulzer/model_architecture.svg"):
+    from torchview import draw_graph
+
+    model_graph = draw_graph(
+        model,
+        input_size=input_shape,  # adjust input shape
+        expand_nested=True,
+        graph_dir="LR",  # left-to-right layout
+        save_graph=True,
+        filename=outfile,
+        # graph_attr={"dpi": "500"}
+    )
+    model_graph.visual_graph.render()  # render the graph to a file

@@ -26,7 +26,7 @@ class Trainer:
         self.logger = make_logger("Training",level=verbosity)
         self.logger.info(f"Create output directory {cfg.output_dir}")
         os.makedirs(cfg.output_dir, exist_ok=True)
-       
+
 
     def train(self):
         if self.cfg.multi_gpu:
@@ -51,6 +51,9 @@ class Trainer:
 
         train_loader = get_train_loader(self.cfg,tokenizer)
         val_loader = get_val_loader(self.cfg,tokenizer)
+        
+        
+        
         
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         print(f"Model has {n_params/10**6:.2f}M parameters")

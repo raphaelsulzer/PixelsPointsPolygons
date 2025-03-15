@@ -123,7 +123,9 @@ class DefaultDataset(Dataset):
             filename = self.get_image_file(img_info)
             image = np.array(Image.open(filename).convert("RGB"))
         else:
-            image = None
+            # make dummy image for albumentations to work
+            image = np.zeros((img_info['width'], 
+                            img_info['height'], 1), dtype=np.uint8)
 
         # load lidar
         if self.use_lidar:
@@ -190,8 +192,10 @@ class DefaultDataset(Dataset):
         if len(corner_coords) > self.cfg.model.tokenizer.n_vertices:
             corner_coords = corner_coords[:self.cfg.model.tokenizer.n_vertices]
 
-        if self.transform is not None:
+        if self.transform is not None: 
+            
             augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
+            
             image = augmentations['image']
             mask = augmentations['masks'][0]
             corner_mask = augmentations['masks'][1]
