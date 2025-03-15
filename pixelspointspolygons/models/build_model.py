@@ -9,9 +9,17 @@ def get_model(cfg,**kwargs):
 
 def get_pix2poly_model(cfg,tokenizer):
     
-    from .pix2poly import EncoderDecoder, Encoder, Decoder
+    from .pix2poly import EncoderDecoder, ImageEncoder, LiDAREncoder, MultiEncoder, Decoder
 
-    encoder = Encoder(cfg)
+    if cfg.use_images and cfg.use_lidar:
+        encoder = MultiEncoder(cfg)
+    elif cfg.use_images:
+        encoder = ImageEncoder(cfg)
+    elif cfg.use_lidar: 
+        encoder = LiDAREncoder(cfg)
+    else:
+        raise ValueError("At least one of use_image or use_lidar must be True")
+    
     decoder = Decoder(
         vocab_size=tokenizer.vocab_size,
         encoder_len=cfg.model.encoder.num_patches,
@@ -24,8 +32,7 @@ def get_pix2poly_model(cfg,tokenizer):
     model = EncoderDecoder(
         encoder=encoder,
         decoder=decoder,
-        n_vertices=cfg.model.tokenizer.n_vertices,
-        sinkhorn_iterations=cfg.model.sinkhorn_iterations
+        cfg=cfg
     )
     model.to(cfg.device)
     

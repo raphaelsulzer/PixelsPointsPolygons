@@ -3,6 +3,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from timm.models.layers import trunc_normal_
+# from spconv.pytorch.utils import PointToVoxel, gather_features_by_pc_voxel_id
+import open3d.ml.torch as ml3d
 
 import os
 import sys
@@ -86,12 +88,116 @@ class ScoreNet(nn.Module):
 
         return x[:, 0]
 
+
+class PointPillarsWithoutHead(ml3d.models.PointPillars):
+    
+    """Object detection model. Based on the PointPillars architecture
+    https://github.com/nutonomy/second.pytorch.
+
+    Args:
+        name (string): Name of model.
+            Default to "PointPillars".
+        voxel_size: voxel edge lengths with format [x, y, z].
+        point_cloud_range: The valid range of point coordinates as
+            [x_min, y_min, z_min, x_max, y_max, z_max].
+        voxelize: Config of PointPillarsVoxelization module.
+        voxelize_encoder: Config of PillarFeatureNet module.
+        scatter: Config of PointPillarsScatter module.
+        backbone: Config of backbone module (SECOND).
+        neck: Config of neck module (SECONDFPN).
+        head: Config of anchor head module.
+    """
+
+    def __init__(self,cfg):
+        
+        
+        point_cloud_range = [0, 0, 0, 
+                             cfg.model.encoder.input_width, cfg.model.encoder.input_height, cfg.model.lidar_encoder.z_max]
+        
+        voxelize={
+            'max_num_points': 128,
+            'voxel_size': [8, 8, 100],
+            # 'max_voxels': [64,64],
+            'max_voxels': [784,784], # careful, this is in total over all batches!!
+        }
+        voxel_encoder={
+            'in_channels': 3,
+            'feat_channels': [64,384],
+            'voxel_size': [8, 8, 100]
+        }
+        scatter={
+            "in_channels" : 384,
+            "output_shape" : [28, 28]
+        }
+        augment={
+            "PointShuffle": False
+        }
+            
+        super(PointPillarsWithoutHead,self).__init__(
+                 device=cfg.device,
+                 num_input_features=3,
+                 point_cloud_range=point_cloud_range,
+                 voxelize=voxelize,
+                 voxel_encoder=voxel_encoder,
+                 scatter=scatter,
+                 augment=augment)
+        
+        del self.backbone
+        del self.neck
+        del self.bbox_head
+        del self.loss_cls
+        del self.loss_bbox
+        del self.loss_dir
+        
+        
+
+        
+    def forward(self, x_lidar):
+        """Extract features from points."""
+        voxels, num_points, coors = self.voxelize(x_lidar)
+        voxel_features = self.voxel_encoder(voxels, num_points, coors)
+        batch_size = coors[-1, 0].item() + 1
+        x = self.middle_encoder(voxel_features, coors, batch_size)
+
+        return x
+
+
 class LiDAREncoder(nn.Module):
-    pass
+    
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.cfg = cfg
+        
+        self.vit = timm.create_model(
+            model_name=cfg.model.encoder.type,
+            num_classes=0,
+            global_pool='',
+            pretrained=cfg.model.encoder.pretrained
+        )
+        
+        # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
+        self.point_pillars = PointPillarsWithoutHead(cfg)
+        
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
 
 
+    def forward(self, x_images=None, x_lidar=None):
+        
+        x = self.point_pillars(x_lidar)
+        
+        a=5
+        
 
-class Encoder(nn.Module):
+class MultiEncoder(nn.Module):
+    
+    def __init__(self, cfg) -> None:
+        raise NotImplementedError("This class is not implemented yet")
+        
+    def forward(self, x_images, x_lidar):
+        raise NotImplementedError("This class is not implemented yet")
+    
+
+class ImageEncoder(nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.cfg = cfg
@@ -102,29 +208,12 @@ class Encoder(nn.Module):
             pretrained=cfg.model.encoder.pretrained
         )
         self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
-
-    def forward(self, x_images, x_lidar):
-        if self.cfg.use_images and self.cfg.use_lidar:
-            return self.forward_both(x_images, x_lidar)
-        elif self.cfg.use_images and not self.cfg.use_lidar:
-            return self.forward_images(x_images)
-        elif not self.cfg.use_images and self.cfg.use_lidar:
-            return self.forward_lidar(x_lidar)
-        else:
-            raise ValueError("At least one of images or LiDAR must be used")
     
-    def forward_images(self, x):
-        features = self.model(x)
+    def forward(self, x_images=None, x_lidar=None):
+        
+        features = self.model(x_images)
         return self.bottleneck(features[:, 1:,:])
     
-    def forward_lidar(self, x):
-        raise NotImplementedError("LiDAR encoder not implemented yet")
-    
-    def forward_both(self, x_images, x_lidar):
-        
-        return self.forward_images(x_images)
-        a=5
-
 
 class Decoder(nn.Module):
     def __init__(
@@ -234,21 +323,22 @@ class EncoderDecoder(nn.Module):
         self,
         encoder: nn.Module,
         decoder: nn.Module,
-        n_vertices: int,
-        sinkhorn_iterations: int,
+        cfg,
     ):
         super().__init__()
+        self.cfg = cfg
         self.encoder = encoder
         self.decoder = decoder
-        self.n_vertices = n_vertices
-        self.sinkhorn_iterations = sinkhorn_iterations
+        self.n_vertices = cfg.model.tokenizer.n_vertices
+        self.sinkhorn_iterations = cfg.model.sinkhorn_iterations
         self.scorenet1 = ScoreNet(self.n_vertices)
         self.scorenet2 = ScoreNet(self.n_vertices)
         self.bin_score = torch.nn.Parameter(torch.tensor(1.0))
 
-    def forward(self, image, lidar, tgt):
-        encoder_out = self.encoder(image, lidar)
-        preds, feats = self.decoder(encoder_out, tgt)
+    def forward(self, x_image, x_lidar, y):
+                
+        encoder_out = self.encoder(x_image, x_lidar)
+        preds, feats = self.decoder(encoder_out, y)
         perm_mat1 = self.scorenet1(feats)
         perm_mat2 = self.scorenet2(feats)
         perm_mat = perm_mat1 + torch.transpose(perm_mat2, 1, 2)
@@ -329,7 +419,7 @@ if __name__ == "__main__":
         gt_seqs_expected = gt_seqs[:, 1:]
 
         # Initialize model components
-        encoder = Encoder(model_name=config.model_name, pretrained=False, out_dim=256)
+        encoder = ImageEncoder(model_name=config.model_name, pretrained=False, out_dim=256)
         decoder = Decoder(
             vocab_size=tokenizer.vocab_size,
             encoder_len=config.num_patches,

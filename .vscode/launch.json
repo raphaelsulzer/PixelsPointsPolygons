@@ -11,8 +11,8 @@
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",
-                "host=g5k",
-                "device=cpu",
+                "host=gin",
+                "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
             ],

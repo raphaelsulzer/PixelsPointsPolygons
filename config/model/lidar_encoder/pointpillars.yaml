@@ -1,0 +1,6 @@
+name: pointpillars
+z_max: 100 # all pointclouds will be scaled to [0, lidar_height]
+voxel_size:
+  x: 8
+  y: 8
+  z: ${..z_max}

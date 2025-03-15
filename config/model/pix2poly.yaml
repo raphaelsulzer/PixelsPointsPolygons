@@ -32,3 +32,6 @@ milestone: 0
 learning_rate: 4e-4
 weight_decay: 1e-4
 
+
+defaults:
+    - lidar_encoder: pointpillars

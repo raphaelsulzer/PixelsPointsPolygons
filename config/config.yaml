@@ -21,8 +21,8 @@ dataset:
   subset: ${..run_type.subset}
 num_workers: ${.run_type.num_workers}
 
-use_lidar: false
-use_images: true
+use_lidar: true
+use_images: false
 
 debug_vis: false
 
@@ -44,8 +44,8 @@ eval:
     - topdig
 
 
-save_best: True
-save_latest: True
+save_best: true
+save_latest: true
 save_every: 10
 val_every: 1
 
