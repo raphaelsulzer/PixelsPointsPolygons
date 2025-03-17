@@ -8,7 +8,7 @@ defaults:
 # experiment_name: images_only
 # experiment_name: debug
 # experiment_name: inria_D4_aug
-experiment_name: lidarpoly_D4_aug_bs32
+experiment_name: lidarpoly_D4_aug_bs2x32
 multi_gpu: false
 device: cuda
 log_to_wandb: ${.run_type.log_to_wandb}
@@ -26,7 +26,7 @@ use_images: true
 
 debug_vis: false
 
-checkpoint: validation_best
+checkpoint: null
 checkpoint_file: null # override for loading a specific checkpoint file
 
 # checkpoint: validation_best
@@ -38,9 +38,9 @@ eval:
   pred_file: ${..output_dir}/predictions/${..checkpoint}.json
   # pred_file: ${..output_dir}/predictions/${..checkpoint}_overwrite.json
   modes:
-    # - coco
-    # - iou
-    # - polis
+    - coco
+    - iou
+    - polis
     - mta
     # - topdig
 

@@ -193,8 +193,9 @@ def get_val_loader_inria(cfg,tokenizer):
     if cfg.dataset.subset is not None:
         indices = list(range(cfg.dataset.subset))
         val_ds = Subset(val_ds, indices)
-        
-    sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.multi_gpu else None
+    
+    ## Do not use a DistributedSampler for validation, otherwise it is a pain to gather the coco annotations to one outfile
+    # sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.multi_gpu else None
 
     val_loader = DataLoader(
         val_ds,
@@ -203,7 +204,7 @@ def get_val_loader_inria(cfg,tokenizer):
         num_workers=cfg.num_workers,
         pin_memory=True,
         drop_last=False,
-        sampler=sampler,
+        # sampler=sampler,
         shuffle=False
     )
     

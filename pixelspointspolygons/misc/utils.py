@@ -65,11 +65,11 @@ def seed_everything(seed=1234):
     torch.backends.cudnn.deterministic = True
 
 
-def save_checkpoint(state, folder="logs/checkpoint/run1", filename="my_checkpoint.pth.tar"):
-    print("=> Saving checkpoint")
-    if not os.path.exists(folder):
-        os.makedirs(folder)
-    torch.save(state, os.path.join(folder, filename))
+# def save_checkpoint(state, folder="logs/checkpoint/run1", filename="my_checkpoint.pth.tar"):
+#     print("=> Saving checkpoint")
+#     if not os.path.exists(folder):
+#         os.makedirs(folder)
+#     torch.save(state, os.path.join(folder, filename))
 
 
 def load_checkpoint(checkpoint, model, optimizer, scheduler):
