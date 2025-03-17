@@ -11,7 +11,8 @@ def main(cfg):
     print(OmegaConf.to_yaml(cfg))
     
     outfile = cfg.eval.pred_file.replace("/predictions/", "/eval/").replace(".json", ".csv")
-    evaluate(cfg.eval.gt_file, cfg.eval.pred_file, modes=cfg.eval.modes, outfile=outfile)
+    evaluate(cfg.eval.gt_file, cfg.eval.pred_file, modes=cfg.eval.modes,
+            exp_name=cfg.experiment_name, outfile=outfile)
     
 
 if __name__ == "__main__":

@@ -17,6 +17,8 @@ import json
 import argparse
 from tqdm import tqdm
 
+from .utils import get_pixel_mask_from_coco_seg
+
 def calc_IoU(a, b):
     i = np.logical_and(a, b)
     u = np.logical_or(a, b)
@@ -40,68 +42,41 @@ def compute_IoU_cIoU(input_json, gti_annotations):
     submission_file = json.loads(open(input_json).read())
     coco_dt = coco_gt.loadRes(submission_file)
 
-    # this simple gets all gt images that have an annotation (instead of getting all gt images, regardless if they have an annotation or not)
-    image_ids = coco_gt.getImgIds(catIds=coco_gt.getCatIds())
+    ## get all gt images that have an annotation
+    # image_ids = coco_gt.getImgIds(catIds=coco_gt.getCatIds())
+    
+    ## get all dt images that have an annotation
+    # image_ids = coco_dt.getImgIds(catIds=coco_dt.getCatIds())
+    
+    # get all gt images regardless if they have an annotation or not
+    image_ids = coco_gt.getImgIds()
+    
     bar = tqdm(image_ids)
 
     list_iou = []
     list_ciou = []
-    pss = []
+    list_nr = []
     for image_id in bar:
-        # retrieve an image
-        img = coco_gt.loadImgs(image_id)[0]
+        
+        mask_gt, N_GT = get_pixel_mask_from_coco_seg(coco_gt, image_id, return_n_verts=True)
+        mask_dt, N_DT = get_pixel_mask_from_coco_seg(coco_dt, image_id, return_n_verts=True)
 
-        # get GT mask and number of vertices
-        annotation_ids = coco_gt.getAnnIds(imgIds=img['id'])
-        N_GT = 0
-        if len(annotation_ids) > 0:
-            annotations = coco_gt.loadAnns(annotation_ids)
-            for _idx, annotation in enumerate(annotations):
-                rle = cocomask.frPyObjects(annotation['segmentation'], img['height'], img['width'])
-                m = cocomask.decode(rle)
-                if _idx == 0:
-                    mask_gt = m.reshape((img['height'], img['width']))
-                    N_GT = len(annotation['segmentation'][0]) // 2
-                else:
-                    mask_gt = mask_gt + m.reshape((img['height'], img['width']))
-                    N_GT = N_GT + len(annotation['segmentation'][0]) // 2
-        else:
-            mask_gt = np.zeros((img['height'], img['weight']), dtype=np.uint8)
-        mask_gt = mask_gt != 0
-
-        # get Predicted mask and number of vertices
-        annotation_ids = coco_dt.getAnnIds(imgIds=img['id'])
-        N = 0
-        if len(annotation_ids) > 0:
-            annotations = coco_dt.loadAnns(annotation_ids)
-            for _idx, annotation in enumerate(annotations):
-                rle = cocomask.frPyObjects(annotation['segmentation'], img['height'], img['width'])
-                m = cocomask.decode(rle)
-                if _idx == 0:
-                    mask = m.reshape((img['height'], img['width']))
-                    N = len(annotation['segmentation'][0]) // 2
-                else:
-                    mask = mask + m.reshape((img['height'], img['width']))
-                    N = N + len(annotation['segmentation'][0]) // 2
-        else:
-            mask = np.zeros((img['height'], img['width']), dtype=np.uint8)
-        mask = mask != 0
-
-        ps = 1 - np.abs(N - N_GT) / (N + N_GT + 1e-9)
-        iou = calc_IoU(mask, mask_gt)
+        nr = 1 - np.abs(N_DT - N_GT) / (N_DT + N_GT + 1e-9)
+        iou = calc_IoU(mask_dt, mask_gt)
         list_iou.append(iou)
-        list_ciou.append(iou * ps)
-        pss.append(ps)
+        list_ciou.append(iou * nr)
+        list_nr.append(nr)
 
-        bar.set_description("iou: %2.4f, c-iou: %2.4f, ps:%2.4f" % (np.mean(list_iou), np.mean(list_ciou), np.mean(pss)))
+        bar.set_description("IoU: %2.4f, C-IoU: %2.4f, NR: %2.4f" % (np.mean(list_iou), np.mean(list_ciou), np.mean(list_nr)))
         bar.refresh()
 
     iou = np.mean(list_iou).item()
     ciou = np.mean(list_ciou).item()
+    nr = np.mean(list_nr).item()
     
-    print("IoU: %2.4f, C-IoU: %2.4f" % (iou, ciou))
+    print("IoU: %2.4f, C-IoU: %2.4f, NR: %2.4f" % (iou, ciou, nr))
 
-    return {"IoU":iou, "C-IoU":ciou}
+    return {"IoU":iou, "C-IoU":ciou, "NR": nr}
 
 
 

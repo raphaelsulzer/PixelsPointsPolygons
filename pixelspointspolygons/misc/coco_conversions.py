@@ -3,7 +3,7 @@ import numpy as np
 from skimage.measure import label, regionprops
 from pycocotools import mask as coco_mask
 
-def poly_to_bbox(poly):
+def get_bbox_from_coco_seg(poly):
     """
     input: poly----2D array with points
     """
@@ -12,6 +12,7 @@ def poly_to_bbox(poly):
     w = np.max(poly[:,0]) - lt_x
     h = np.max(poly[:,1]) - lt_y
     return [float(lt_x), float(lt_y), float(w), float(h)]
+
 
 def generate_coco_ann(polygon_list, img_id):
     sample_ann = []
@@ -24,8 +25,8 @@ def generate_coco_ann(polygon_list, img_id):
                 'image_id': int(img_id),
                 'category_id': 100,
                 'segmentation': [polygon.ravel().tolist()],
-                'bbox': poly_to_bbox(polygon),
-                # 'score': float(scores[i]),
+                'bbox': get_bbox_from_coco_seg(polygon),
+                'score': 1.0 # this is just for the CocoEval to work
             }
         sample_ann.append(ann_per_building)
 
