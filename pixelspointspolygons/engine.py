@@ -3,6 +3,7 @@ import os
 import torch
 import wandb
 import json
+import shutil
 
 from tqdm import tqdm
 
@@ -200,6 +201,7 @@ def train_eval(
                 wandb_dict[f"val_{k}"] = v
             print(f"Valid loss: {val_loss_dict['total_loss']:.3f}\n\n")
 
+        validation_best = False
         # Save best validation loss epoch.
         if val_loss_dict['total_loss'] < best_loss and cfg.save_best and is_main_process():
             best_loss = val_loss_dict['total_loss']
@@ -215,6 +217,7 @@ def train_eval(
                 folder=os.path.join(cfg.output_dir,"checkpoints"),
                 filename="validation_best.pth"
             )
+            validation_best = True
             print(f"Saved best val loss model.")
 
         # Save latest checkpoint every epoch.
@@ -228,7 +231,7 @@ def train_eval(
                 }
             save_checkpoint(
                 checkpoint,
-                folder=os.path.join(cfg.output_dir,"logs","checkpoints"),
+                folder=os.path.join(cfg.output_dir,"checkpoints"),
                 filename="latest.pth"
             )
 
@@ -242,21 +245,14 @@ def train_eval(
             }
             save_checkpoint(
                 checkpoint,
-                folder=os.path.join(cfg.output_dir,"logs","checkpoints"),
+                folder=os.path.join(cfg.output_dir,"checkpoints"),
                 filename=f"epoch_{epoch}.pth"
             )
 
         # output examples to a folder
         if (epoch + 1) % cfg.val_every == 0 and is_main_process():
             
-            # val_metrics_dict = save_single_predictions_as_images(val_loader, model, tokenizer,
-            #     epoch,
-            #     folder=os.path.join(cfg.output_dir, "runtime_outputs"),
-            #     cfg=cfg
-            # )
-            
             coco_predictions = pp.predict_from_loader(model,tokenizer,val_loader)
-
             if len(coco_predictions) > 0:
                 
                 try:
@@ -266,6 +262,9 @@ def train_eval(
                     os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
                     with open(prediction_outfile, "w") as fp:
                         fp.write(json.dumps(coco_predictions))
+                    if validation_best:
+                        best_prediction_outfile = os.path.join(cfg.output_dir, "predictions", "validation_best.json")
+                        shutil.copyfile(prediction_outfile, best_prediction_outfile)
                     
                     val_metrics_dict = evaluate(val_loader.dataset.ann_file, prediction_outfile, modes=cfg.eval.modes)
 

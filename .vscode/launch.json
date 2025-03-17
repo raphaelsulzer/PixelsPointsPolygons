@@ -3,7 +3,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File with Arguments",
+            "name": "train",
             "type": "debugpy",
             "request": "launch",
             // "program": "${file}",
@@ -12,7 +12,39 @@
             "args": [
                 "run_type=debug",
                 "host=g5k",
-                "device=cpu",
+                "device=cuda",
+                "log_to_wandb=false",
+                "multi_gpu=false",
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "predict",
+            "type": "debugpy",
+            "request": "launch",
+            // "program": "${file}",
+            "program": "${workspaceFolder}/scripts/predict.py",
+            "console": "integratedTerminal",
+            "args": [
+                "run_type=debug",
+                "host=gin",
+                "device=cuda",
+                "log_to_wandb=false",
+                "multi_gpu=false",
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "evaluate",
+            "type": "debugpy",
+            "request": "launch",
+            // "program": "${file}",
+            "program": "${workspaceFolder}/scripts/evaluate.py",
+            "console": "integratedTerminal",
+            "args": [
+                "run_type=debug",
+                "host=gin",
+                "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
             ],

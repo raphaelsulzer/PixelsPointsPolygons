@@ -27,6 +27,7 @@ def calc_IoU(a, b):
 
     is_void = U == 0
     if is_void:
+        # if there is not annotation in both gt and dt, then the IoU should be 1.0
         return 1.0
     else:
         return iou
@@ -39,7 +40,7 @@ def compute_IoU_cIoU(input_json, gti_annotations):
     submission_file = json.loads(open(input_json).read())
     coco_dt = coco_gt.loadRes(submission_file)
 
-
+    # this simple gets all gt images that have an annotation (instead of getting all gt images, regardless if they have an annotation or not)
     image_ids = coco_gt.getImgIds(catIds=coco_gt.getCatIds())
     bar = tqdm(image_ids)
 

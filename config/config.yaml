@@ -26,7 +26,7 @@ use_images: true
 
 debug_vis: false
 
-checkpoint: null
+checkpoint: validation_best
 checkpoint_file: null # override for loading a specific checkpoint file
 
 # checkpoint: validation_best
