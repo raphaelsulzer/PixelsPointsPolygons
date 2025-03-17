@@ -25,7 +25,6 @@ wandb/*
 *.png
 *.tar.xz
 *.gif
-*.txt
 
 # Files ignore
 !assets/sfo7.png

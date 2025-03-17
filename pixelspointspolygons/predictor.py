@@ -64,6 +64,9 @@ class Predictor:
     
     def predict_from_loader(self, model, tokenizer, loader):
         
+        if isinstance(loader.dataset, torch.utils.data.Subset):
+            self.logger.warning("You are predicting only a subset of the dataset. Your coco evaluation will not be very useful.")
+        
         model.eval()
         
         coco_predictions = []
