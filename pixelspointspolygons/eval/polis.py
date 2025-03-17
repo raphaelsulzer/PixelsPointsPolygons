@@ -64,7 +64,7 @@ def polis(coords, bndry):
 
 class PolisEval():
 
-    def __init__(self, cocoGt=None, cocoDt=None):
+    def __init__(self, cocoGt=None, cocoDt=None, iou_threshold=0.5):
         self.cocoGt   = cocoGt
         self.cocoDt   = cocoDt
         self.evalImgs = defaultdict(list)
@@ -73,6 +73,7 @@ class PolisEval():
         self._dts     = defaultdict(list)
         self.stats    = []
         self.imgIds = list(sorted(self.cocoGt.imgs.keys()))
+        self.iou_threshold = iou_threshold
 
     def _prepare(self):
         gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=self.imgIds))
@@ -109,7 +110,7 @@ class PolisEval():
         for i, gt_poly in enumerate(gt_polygons):
             matched_idx = np.argmax(ious[:,i])
             iou = ious[matched_idx, i]
-            if iou > 0.5: # iouThres:
+            if iou > self.iou_threshold: # iouThres:
                 polis = compare_polys(Polygon(gt_poly), Polygon(dt_polygons[matched_idx]))
                 img_polis_avg += polis
                 num_sample += 1
@@ -150,6 +151,6 @@ class PolisEval():
 def compute_polis(annFile, resFile):
     gt_coco = COCO(annFile)
     dt_coco = gt_coco.loadRes(resFile)
-    polisEval = PolisEval(gt_coco, dt_coco)
+    polisEval = PolisEval(gt_coco, dt_coco, iou_threshold=0.5)
     return polisEval.evaluate()
     

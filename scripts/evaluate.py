@@ -12,7 +12,7 @@ def main(cfg):
     
     outfile = cfg.eval.pred_file.replace("/predictions/", "/eval/").replace(".json", ".csv")
     evaluate(cfg.eval.gt_file, cfg.eval.pred_file, modes=cfg.eval.modes,
-            exp_name=cfg.experiment_name, outfile=outfile)
+            exp_name=cfg.experiment_name, outfile=outfile, num_workers=cfg.num_workers)
     
 
 if __name__ == "__main__":
