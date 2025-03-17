@@ -7,6 +7,8 @@ import shutil
 
 from tqdm import tqdm
 
+import torch.distributed as dist
+
 from .misc import *
 from .misc.ddp_utils import is_main_process
 
@@ -212,13 +214,10 @@ def train_eval(
                 "epochs_run": epoch,
                 "loss": train_loss_dict["total_loss"]
             }
-            save_checkpoint(
-                checkpoint,
-                folder=os.path.join(cfg.output_dir,"checkpoints"),
-                filename="validation_best.pth"
-            )
+            checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", "validation_best.pth")
+            torch.save(checkpoint, checkpoint_file)
             validation_best = True
-            print(f"Saved best val loss model.")
+            print(f"Save model 'validation_best' to {checkpoint_file}")
 
         # Save latest checkpoint every epoch.
         if cfg.save_latest and is_main_process():
@@ -229,11 +228,9 @@ def train_eval(
                     "epochs_run": epoch,
                     "loss": train_loss_dict["total_loss"]
                 }
-            save_checkpoint(
-                checkpoint,
-                folder=os.path.join(cfg.output_dir,"checkpoints"),
-                filename="latest.pth"
-            )
+            checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", "latest.pth")
+            torch.save(checkpoint, checkpoint_file)
+            print(f"Save model 'latest' to {checkpoint_file}")
 
         if (epoch + 1) % cfg.save_every == 0 and is_main_process():
             checkpoint = {
@@ -243,20 +240,20 @@ def train_eval(
                 "epochs_run": epoch,
                 "loss": train_loss_dict["total_loss"]
             }
-            save_checkpoint(
-                checkpoint,
-                folder=os.path.join(cfg.output_dir,"checkpoints"),
-                filename=f"epoch_{epoch}.pth"
-            )
+            checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
+            torch.save(checkpoint, checkpoint_file)
+            print(f"Save model 'epoch_{epoch}' to {checkpoint_file}")
 
-        # output examples to a folder
+        #############################################
+        ############## COCO Evaluation ##############
+        #############################################
         if (epoch + 1) % cfg.val_every == 0 and is_main_process():
-            
+            print("Predict and evaluate validation set with latest model...")
             coco_predictions = pp.predict_from_loader(model,tokenizer,val_loader)
             if len(coco_predictions) > 0:
-                
+                print(f"Predicted {len(coco_predictions)}. Evaluating...")
+                wandb_dict[f"val_num_polygons"] = len(coco_predictions)
                 try:
-                    print("Found some predictions. Evaluating...")
                     
                     prediction_outfile = os.path.join(cfg.output_dir, "predictions", f"epoch_{epoch}.json")
                     os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
@@ -269,13 +266,17 @@ def train_eval(
                     val_metrics_dict = evaluate(val_loader.dataset.ann_file, prediction_outfile, modes=cfg.eval.modes)
 
                     for metric, value in val_metrics_dict.items():
-                        if is_main_process():
-                            wandb_dict[f"val_{metric}"] = value
-                            
+                        wandb_dict[f"val_{metric}"] = value
+                        
+                        
                 except Exception as e:
                     print(f"Error evaluating predictions: {e}")
-                    
+            else:
+                print("No polygons predicted. Skipping evaluation...")
 
+        # Sync all processes before next epoch
+        if cfg.multi_gpu:
+            dist.barrier()
 
         if cfg.log_to_wandb:
             if is_main_process():

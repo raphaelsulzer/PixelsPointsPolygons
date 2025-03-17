@@ -74,8 +74,11 @@ class Trainer:
         local_rank = int(os.environ["LOCAL_RANK"]) if self.cfg.multi_gpu else 0
         if self.cfg.checkpoint is not None:
             map_location = {'cuda:%d' % 0: 'cuda:%d' % local_rank}
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
+            if not os.path.isfile(checkpoint_file):
+                raise FileExistsError(f"Checkpoint file {checkpoint_file} does not exist.")
             start_epoch = load_checkpoint(
-                torch.load(self.cfg.checkpoint, map_location=map_location),
+                torch.load(checkpoint_file, map_location=map_location),
                 model,
                 optimizer,
                 lr_scheduler

@@ -123,6 +123,9 @@ def evaluate(gt_file, dt_file, modes=["coco"], exp_name="Experiment 1", outfile=
     
     # Format the DataFrame to display only two digits after the comma
     pd.options.display.float_format = "{:.2f}".format
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', 500)
+    # pd.set_option('display.max_colwidth', 50)
     
     # Pretty print the DataFrame
     print(df)
