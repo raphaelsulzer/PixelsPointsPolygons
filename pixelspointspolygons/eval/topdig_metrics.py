@@ -71,10 +71,7 @@ def compute_mask_metrics(input_json, gti_annotations):
         topo_mask = np.zeros((img['height'], img['width']))
         poly_lines = []
         for _idx, annotation in enumerate(annotations):
-            try:
-                rle = cocomask.frPyObjects(annotation['segmentation'], img['height'], img['width'])
-            except Exception:
-                import ipdb; ipdb.set_trace()
+            rle = cocomask.frPyObjects(annotation['segmentation'], img['height'], img['width'])                
             m = cocomask.decode(rle)
             if _idx == 0:
                 mask = m.reshape((img['height'], img['width']))

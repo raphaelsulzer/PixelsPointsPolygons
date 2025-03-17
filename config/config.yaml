@@ -38,10 +38,11 @@ eval:
   pred_file: ${..output_dir}/predictions/${..checkpoint}.json
   # pred_file: ${..output_dir}/predictions/${..checkpoint}_overwrite.json
   modes:
+    # - coco
     - iou
-    - polis
+    # - polis
     # - mta
-    - topdig
+    # - topdig
 
 
 save_best: true
