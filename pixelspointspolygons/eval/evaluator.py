@@ -93,7 +93,7 @@ def compute_boundary_coco_metrics(annFile, resFile):
 
 
 
-def evaluate(gt_file, dt_file, modes=["coco"], exp_name="Experiment 1", outfile=None):
+def evaluate(gt_file, dt_file, modes=["coco"], exp_name="Experiment 1", outfile=None, num_workers=8):
     
     res_dict = {}
     
@@ -103,7 +103,7 @@ def evaluate(gt_file, dt_file, modes=["coco"], exp_name="Experiment 1", outfile=
         if "polis" in modes:  
             res_dict.update(compute_polis(gt_file, dt_file))
         if "mta" in modes:
-            res_dict.update(compute_max_angle_error(gt_file, dt_file))
+            res_dict.update(compute_max_angle_error(gt_file, dt_file, num_workers=num_workers))
         if "iou" in modes:
             res_dict.update(compute_IoU_cIoU(dt_file, gt_file))
         if "topdig" in modes:
