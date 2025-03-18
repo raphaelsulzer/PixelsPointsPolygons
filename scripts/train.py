@@ -1,6 +1,6 @@
 import hydra
 from omegaconf import OmegaConf
-from pixelspointspolygons import Trainer
+from pixelspointspolygons.train import Trainer
 
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
