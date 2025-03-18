@@ -10,8 +10,6 @@ from tqdm import tqdm
 import torch.distributed as dist
 
 from .misc import *
-from .misc.ddp_utils import is_main_process
-
 from .eval import Evaluator
 from .predictor import Predictor
 
