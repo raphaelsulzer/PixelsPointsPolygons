@@ -284,17 +284,19 @@ def train_val_pix2poly(model,
                         for metric, value in val_metrics_dict.items():
                             wandb_dict[f"val_{metric}"] = value
                     
-                    except FileExistsError:
+                    except FileExistsError as e:
+                        print(e)
                         raise
                     except Exception as e:
                         print(f"Error evaluating predictions: {e}")
                 else:
                     print("No polygons predicted. Skipping evaluation...")
 
-
-        # Sync all processes before next epoch
-        if cfg.multi_gpu:
-            dist.barrier()
+            print("Validation finished...\n")
+            
+        # # Sync all processes before next epoch
+        # if cfg.multi_gpu:
+        #     dist.barrier()
 
         if cfg.log_to_wandb:
             if is_main_process():

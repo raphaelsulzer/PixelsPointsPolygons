@@ -92,10 +92,11 @@ class Trainer:
         if self.cfg.checkpoint is not None:
             self.load_checkpoint(model,optimizer,lr_scheduler=None)
 
-        # Convert BatchNorm in model to SyncBatchNorm
-        model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
         # Wrap model with distributed data parallel.
         if self.cfg.multi_gpu:
+            # Convert BatchNorm in model to SyncBatchNorm
+            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
         
         # Store config to file, after all the dynamic variables have been computed
