@@ -53,6 +53,8 @@ class Trainer:
         train_loader = get_train_loader(self.cfg,tokenizer)
         if is_main_process():
             val_loader = get_val_loader(self.cfg,tokenizer)
+        else:
+            val_loader = None
         
         
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
