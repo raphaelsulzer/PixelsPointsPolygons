@@ -191,18 +191,18 @@ def train_val_pix2poly(model,
             perm_loss_fn,
             cfg=cfg
         )
+        
         if is_main_process():
+            
             wandb_dict ={}
             wandb_dict['epoch'] = epoch
             for k, v in train_loss_dict.items():
                 wandb_dict[f"train_{k}"] = v
             wandb_dict['lr'] = get_lr(optimizer)
 
-
-        ############################################
-        ################ Validation ################
-        ############################################
-        if is_main_process():
+            ############################################
+            ################ Validation ################
+            ############################################
             val_loss_dict = valid_one_epoch(
                 epoch,
                 model,
@@ -215,82 +215,82 @@ def train_val_pix2poly(model,
                 wandb_dict[f"val_{k}"] = v
             print(f"Valid loss: {val_loss_dict['total_loss']:.3f}\n\n")
 
-        validation_best = False
-        # Save best validation loss epoch.
-        if val_loss_dict['total_loss'] < best_loss and cfg.save_best and is_main_process():
-            best_loss = val_loss_dict['total_loss']
-            checkpoint = {
-                "state_dict": model.state_dict(),
-                "optimizer": optimizer.state_dict(),
-                "scheduler": lr_scheduler.state_dict(),
-                "epochs_run": epoch,
-                "loss": train_loss_dict["total_loss"]
-            }
-            checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", "validation_best.pth")
-            os.makedirs(os.path.dirname(checkpoint_file), exist_ok=True)
-            torch.save(checkpoint, checkpoint_file)
-            validation_best = True
-            print(f"Save model 'validation_best' to {checkpoint_file}")
-
-        # Save latest checkpoint every epoch.
-        if cfg.save_latest and is_main_process():
-            checkpoint = {
+            validation_best = False
+            # Save best validation loss epoch.
+            if val_loss_dict['total_loss'] < best_loss and cfg.save_best:
+                best_loss = val_loss_dict['total_loss']
+                checkpoint = {
                     "state_dict": model.state_dict(),
                     "optimizer": optimizer.state_dict(),
                     "scheduler": lr_scheduler.state_dict(),
                     "epochs_run": epoch,
                     "loss": train_loss_dict["total_loss"]
                 }
-            checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", "latest.pth")
-            os.makedirs(os.path.dirname(checkpoint_file), exist_ok=True)
-            torch.save(checkpoint, checkpoint_file)
-            print(f"Save model 'latest' to {checkpoint_file}")
+                checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", "validation_best.pth")
+                os.makedirs(os.path.dirname(checkpoint_file), exist_ok=True)
+                torch.save(checkpoint, checkpoint_file)
+                validation_best = True
+                print(f"Save model 'validation_best' to {checkpoint_file}")
 
-        if (epoch + 1) % cfg.save_every == 0 and is_main_process():
-            checkpoint = {
-                "state_dict": model.state_dict(),
-                "optimizer": optimizer.state_dict(),
-                "scheduler": lr_scheduler.state_dict(),
-                "epochs_run": epoch,
-                "loss": train_loss_dict["total_loss"]
-            }
-            checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
-            os.makedirs(os.path.dirname(checkpoint_file), exist_ok=True)
-            torch.save(checkpoint, checkpoint_file)
-            print(f"Save model 'epoch_{epoch}' to {checkpoint_file}")
+            # Save latest checkpoint every epoch.
+            if cfg.save_latest:
+                checkpoint = {
+                        "state_dict": model.state_dict(),
+                        "optimizer": optimizer.state_dict(),
+                        "scheduler": lr_scheduler.state_dict(),
+                        "epochs_run": epoch,
+                        "loss": train_loss_dict["total_loss"]
+                    }
+                checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", "latest.pth")
+                os.makedirs(os.path.dirname(checkpoint_file), exist_ok=True)
+                torch.save(checkpoint, checkpoint_file)
+                print(f"Save model 'latest' to {checkpoint_file}")
 
-        #############################################
-        ############## COCO Evaluation ##############
-        #############################################
-        if (epoch + 1) % cfg.val_every == 0 and is_main_process():
-            print("Predict and evaluate validation set with latest model...")
-            coco_predictions = predictor.predict_from_loader(model,tokenizer,val_loader)
-            if len(coco_predictions) > 0:
-                print(f"Predicted {len(coco_predictions)} out of {len(val_loader.dataset.coco.getAnnIds())} polygons in the validation set.") 
-                # print("Evaluating...")
-                wandb_dict[f"val_num_polygons"] = len(coco_predictions)
-                try:
-                    
-                    prediction_outfile = os.path.join(cfg.output_dir, "predictions", f"epoch_{epoch}.json")
-                    os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
-                    with open(prediction_outfile, "w") as fp:
-                        fp.write(json.dumps(coco_predictions))
-                    if validation_best:
-                        best_prediction_outfile = os.path.join(cfg.output_dir, "predictions", "validation_best.json")
-                        shutil.copyfile(prediction_outfile, best_prediction_outfile)
-                    
-                    evaluator.load_predictions(prediction_outfile)
-                    evaluator.print_info()
-                    val_metrics_dict = evaluator()
+            if (epoch + 1) % cfg.save_every == 0:
+                checkpoint = {
+                    "state_dict": model.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                    "scheduler": lr_scheduler.state_dict(),
+                    "epochs_run": epoch,
+                    "loss": train_loss_dict["total_loss"]
+                }
+                checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
+                os.makedirs(os.path.dirname(checkpoint_file), exist_ok=True)
+                torch.save(checkpoint, checkpoint_file)
+                print(f"Save model 'epoch_{epoch}' to {checkpoint_file}")
 
-                    for metric, value in val_metrics_dict.items():
-                        wandb_dict[f"val_{metric}"] = value
+            #############################################
+            ############## COCO Evaluation ##############
+            #############################################
+            if (epoch + 1) % cfg.val_every == 0:
+                print("Predict and evaluate validation set with latest model...")
+                coco_predictions = predictor.predict_from_loader(model,tokenizer,val_loader)
+                if len(coco_predictions) > 0:
+                    print(f"Predicted {len(coco_predictions)} out of {len(val_loader.dataset.coco.getAnnIds())} polygons in the validation set.") 
+                    # print("Evaluating...")
+                    wandb_dict[f"val_num_polygons"] = len(coco_predictions)
+                    try:
+                        prediction_outfile = os.path.join(cfg.output_dir, "predictions", f"epoch_{epoch}.json")
+                        os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
+                        with open(prediction_outfile, "w") as fp:
+                            fp.write(json.dumps(coco_predictions))
+                        if validation_best:
+                            best_prediction_outfile = os.path.join(cfg.output_dir, "predictions", "validation_best.json")
+                            shutil.copyfile(prediction_outfile, best_prediction_outfile)
                         
-                        
-                except Exception as e:
-                    print(f"Error evaluating predictions: {e}")
-            else:
-                print("No polygons predicted. Skipping evaluation...")
+                        evaluator.load_predictions(prediction_outfile)
+                        evaluator.print_info()
+                        val_metrics_dict = evaluator()
+
+                        for metric, value in val_metrics_dict.items():
+                            wandb_dict[f"val_{metric}"] = value
+                            
+                            
+                    except Exception as e:
+                        print(f"Error evaluating predictions: {e}")
+                else:
+                    print("No polygons predicted. Skipping evaluation...")
+
 
         # Sync all processes before next epoch
         if cfg.multi_gpu:

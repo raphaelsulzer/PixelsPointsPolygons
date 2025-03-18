@@ -14,5 +14,6 @@ nvidia-smi
 module load conda
 conda activate ppp
 python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))";
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true dataset=lidarpoly experiment_name=lidarpoly_D4_aug_bs2x16 checkpoint=null model.batch_size=16 use_lidar=False
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true dataset=lidarpoly \
+experiment_name=lidar_only_bs2x16 checkpoint=null model.batch_size=16 use_lidar=True use_images=False
 
