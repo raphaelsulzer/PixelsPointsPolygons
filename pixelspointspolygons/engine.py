@@ -190,15 +190,16 @@ def train_eval(
                 wandb_dict[f"train_{k}"] = v
             wandb_dict['lr'] = get_lr(optimizer)
 
-        val_loss_dict = valid_one_epoch(
-            epoch,
-            model,
-            val_loader,
-            vertex_loss_fn,
-            perm_loss_fn,
-            cfg=cfg
-        )
+
         if is_main_process():
+            val_loss_dict = valid_one_epoch(
+                epoch,
+                model,
+                val_loader,
+                vertex_loss_fn,
+                perm_loss_fn,
+                cfg=cfg
+            )
             for k, v in val_loss_dict.items():
                 wandb_dict[f"val_{k}"] = v
             print(f"Valid loss: {val_loss_dict['total_loss']:.3f}\n\n")
