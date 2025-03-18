@@ -186,15 +186,6 @@ class LiDAREncoder(nn.Module):
         x = self.point_pillars(x_lidar)
         
         a=5
-        
-
-class MultiEncoder(nn.Module):
-    
-    def __init__(self, cfg) -> None:
-        raise NotImplementedError("This class is not implemented yet")
-        
-    def forward(self, x_images, x_lidar):
-        raise NotImplementedError("This class is not implemented yet")
     
 
 class ImageEncoder(nn.Module):
@@ -214,6 +205,19 @@ class ImageEncoder(nn.Module):
         features = self.model(x_images)
         return self.bottleneck(features[:, 1:,:])
     
+
+class MultiEncoder(nn.Module):
+    
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.image_encoder = ImageEncoder(cfg)
+        self.lidar_encoder = LiDAREncoder(cfg)
+
+        # raise NotImplementedError("This class is not implemented yet")
+        
+    def forward(self, x_images, x_lidar):
+        raise NotImplementedError("This class is not implemented yet")
+
 
 class Decoder(nn.Module):
     def __init__(
@@ -316,7 +320,6 @@ class Decoder(nn.Module):
 
         preds = preds.transpose(0, 1)
         return self.output(preds)[:, length-1, :], preds
-
 
 class EncoderDecoder(nn.Module):
     def __init__(

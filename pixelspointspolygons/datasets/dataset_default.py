@@ -110,6 +110,51 @@ class DefaultDataset(Dataset):
             return self.__getitem__pix2poly(idx)
         else:
             raise NotImplementedError(f"Model type {self.model_type} not implemented.")
+    
+    
+    
+    def apply_augmentations_to_lidar(self, augmentation_replay, lidar):
+        
+    
+        transforms = augmentation_replay["transforms"]      
+        for transform in transforms:
+            if transform["__class_fullname__"] == "D4":
+                if not transform['applied']:
+                    continue
+                group_element = transform['params']['group_element']
+                if group_element == 'e':
+                    # Identity, no change
+                    pass
+                elif group_element == 'r90':
+                    lidar[:, [0, 1]] = lidar[:, [1, 0]]
+                    lidar[:, 0] = -lidar[:, 0]
+                elif group_element == 'r180':
+                    lidar[:, 0] = -lidar[:, 0]
+                    lidar[:, 1] = -lidar[:, 1]
+                elif group_element == 'r270':
+                    lidar[:, [0, 1]] = lidar[:, [1, 0]]
+                    lidar[:, 1] = -lidar[:, 1]
+                elif group_element == 'v':
+                    lidar[:, 1] = -lidar[:, 1]
+                elif group_element == 'hvt':
+                    lidar[:, [0, 1]] = lidar[:, [1, 0]]
+                    lidar[:, 0] = -lidar[:, 0]
+                    lidar[:, 1] = -lidar[:, 1]
+                elif group_element == 'h':
+                    lidar[:, 0] = -lidar[:, 0]
+                elif group_element == 't':
+                    lidar[:, [0, 1]] = lidar[:, [1, 0]]
+
+            else:
+                self.logger.debug(f"Skipping transform {transform['__class_fullname__']} for LiDAR")
+        
+        lidar = torch.from_numpy(lidar)
+        
+        return lidar
+            
+        
+        
+        
 
     def __getitem__pix2poly(self, index):
 
@@ -196,13 +241,15 @@ class DefaultDataset(Dataset):
             
             augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
             
+            if self.use_lidar:
+                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar)
+            
             image = augmentations['image']
             mask = augmentations['masks'][0]
             corner_mask = augmentations['masks'][1]
             corner_coords = np.array(augmentations['keypoints'])
 
-            if self.cfg.use_lidar:
-                lidar = torch.from_numpy(lidar)
+                
             
             # if len(corner_coords) > 0:
             #     # self.debug_vis(corner_coords, point_ids, augmented_image)
