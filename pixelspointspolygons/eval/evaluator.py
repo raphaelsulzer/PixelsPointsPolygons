@@ -1,5 +1,5 @@
 import logging
-
+import os
 import pandas as pd
 
 from pycocotools.coco import COCO
@@ -33,6 +33,10 @@ class Evaluator:
         
         if pred_file is None:
             pred_file = self.pred_file
+        else:
+            if not os.path.isfile(pred_file):
+                raise FileExistsError(f"File {pred_file} does not exist.")
+            self.pred_file = pred_file
         self.cocoDt = self.cocoGt.loadRes(pred_file)
 
     def compute_coco_metrics(self, annType='segm'):
