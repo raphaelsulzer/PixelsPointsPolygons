@@ -12,10 +12,15 @@ squeue -u $USER --start
 scontrol show job jobid 
 ## Display control states for a node
 scontrol show node nodeid 
-scancel jobid Delete the job with jobid
-sinfo Display the system settings
-sacct Display job accounting information
-sbatch filename Submit a batch script filename
-salloc Obtain an interactive job allocation
-srun execfile Obtain a job allocation and execute
-an application
+## Delete the job with jobid
+scancel jobid 
+## Display the system settings
+sinfo 
+## Display job accounting information
+sacct 
+##  Submit a batch script filename
+sbatch filename
+## Obtain an interactive job allocation
+salloc 
+## Obtain a job allocation and execute an application
+srun execfile 
