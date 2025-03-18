@@ -13,7 +13,7 @@ from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
 from .models.tokenizer import Tokenizer
-from .misc import seed_everything, load_checkpoint, compute_dynamic_cfg_vars, init_distributed, make_logger
+from .misc import seed_everything, load_checkpoint, compute_dynamic_cfg_vars, init_distributed, make_logger, is_main_process
 from .datasets import get_train_loader, get_val_loader
 from .engine import train_eval
 from .models import get_model
@@ -51,7 +51,8 @@ class Trainer:
         model = get_model(self.cfg,tokenizer=tokenizer)
 
         train_loader = get_train_loader(self.cfg,tokenizer)
-        val_loader = get_val_loader(self.cfg,tokenizer)
+        if is_main_process():
+            val_loader = get_val_loader(self.cfg,tokenizer)
         
         
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
