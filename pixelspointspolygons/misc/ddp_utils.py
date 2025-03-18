@@ -33,6 +33,8 @@ def init_distributed():
         world_size=world_size,
         rank=rank
     )
+    
+    print()
 
     # this will make all .cuda() calls work properly.
     torch.cuda.set_device(local_rank)
@@ -41,3 +43,19 @@ def init_distributed():
     dist.barrier()
     
     return dist.get_world_size()
+
+def print_all_ranks():
+    # Get the rank of the current process
+    rank = dist.get_rank()
+    
+    # Get the total number of processes
+    world_size = dist.get_world_size()
+    
+    # Gather the rank from all processes (all processes will have the rank of others)
+    ranks = [0] * world_size
+    dist.all_gather_object(ranks, rank)
+    
+    # Print the rank of all processes
+    print(f"Process {rank}/{world_size} ranks: {ranks}")
+
+# Call the function in your main process or in a distributed environment
