@@ -24,7 +24,7 @@ num_workers: ${.run_type.num_workers}
 use_lidar: true
 use_images: false
 
-debug_vis: true
+debug_vis: false
 
 checkpoint: null
 checkpoint_file: null # override for loading a specific checkpoint file
