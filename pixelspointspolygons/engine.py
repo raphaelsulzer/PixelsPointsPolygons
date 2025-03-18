@@ -255,7 +255,7 @@ def train_eval(
             coco_predictions = predictor.predict_from_loader(model,tokenizer,val_loader)
             if len(coco_predictions) > 0:
                 print(f"Predicted {len(coco_predictions)} out of {len(val_loader.dataset.coco.getAnnIds())} polygons in the validation set.") 
-                print("Evaluating...")
+                # print("Evaluating...")
                 wandb_dict[f"val_num_polygons"] = len(coco_predictions)
                 try:
                     
@@ -268,6 +268,7 @@ def train_eval(
                         shutil.copyfile(prediction_outfile, best_prediction_outfile)
                     
                     evaluator.load_predictions(prediction_outfile)
+                    evaluator.print_info()
                     val_metrics_dict = evaluator()
 
                     for metric, value in val_metrics_dict.items():
