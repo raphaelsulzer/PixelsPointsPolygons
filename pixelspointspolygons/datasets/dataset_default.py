@@ -116,37 +116,38 @@ class DefaultDataset(Dataset):
     def apply_augmentations_to_lidar(self, augmentation_replay, lidar):
         
     
-        transforms = augmentation_replay["transforms"]      
-        for transform in transforms:
-            if transform["__class_fullname__"] == "D4":
-                if not transform['applied']:
-                    continue
-                group_element = transform['params']['group_element']
-                if group_element == 'e':
-                    # Identity, no change
-                    pass
-                elif group_element == 'r90':
-                    lidar[:, [0, 1]] = lidar[:, [1, 0]]
-                    lidar[:, 0] = -lidar[:, 0]
-                elif group_element == 'r180':
-                    lidar[:, 0] = -lidar[:, 0]
-                    lidar[:, 1] = -lidar[:, 1]
-                elif group_element == 'r270':
-                    lidar[:, [0, 1]] = lidar[:, [1, 0]]
-                    lidar[:, 1] = -lidar[:, 1]
-                elif group_element == 'v':
-                    lidar[:, 1] = -lidar[:, 1]
-                elif group_element == 'hvt':
-                    lidar[:, [0, 1]] = lidar[:, [1, 0]]
-                    lidar[:, 0] = -lidar[:, 0]
-                    lidar[:, 1] = -lidar[:, 1]
-                elif group_element == 'h':
-                    lidar[:, 0] = -lidar[:, 0]
-                elif group_element == 't':
-                    lidar[:, [0, 1]] = lidar[:, [1, 0]]
+        # transforms = augmentation_replay["transforms"]      
+        # for transform in transforms:
+        #     if transform["__class_fullname__"] == "D4":
+        #         if not transform['applied']:
+        #             continue
+        #         group_element = transform['params']['group_element']
+        #         if group_element == 'e':
+        #             # Identity, no change
+        #             pass
+        #         elif group_element == 'r90':
+        #             lidar[:, [0, 1]] = lidar[:, [1, 0]]
+        #             lidar[:, 0] = -lidar[:, 0]
+        #         elif group_element == 'r180':
+        #             lidar[:, 0] = -lidar[:, 0]
+        #             lidar[:, 1] = -lidar[:, 1]
+        #         elif group_element == 'r270':
+        #             lidar[:, [0, 1]] = lidar[:, [1, 0]]
+        #             lidar[:, 1] = -lidar[:, 1]
+        #         elif group_element == 'v':
+        #             lidar[:, 1] = -lidar[:, 1]
+        #         elif group_element == 'hvt':
+        #             lidar[:, [0, 1]] = lidar[:, [1, 0]]
+        #             lidar[:, 0] = -lidar[:, 0]
+        #             lidar[:, 1] = -lidar[:, 1]
+        #         elif group_element == 'h':
+        #             lidar[:, 0] = -lidar[:, 0]
+        #         elif group_element == 't':
+        #             lidar[:, [0, 1]] = lidar[:, [1, 0]]
 
-            else:
-                self.logger.debug(f"Skipping transform {transform['__class_fullname__']} for LiDAR")
+        #     else:
+        #         pass
+        #         # self.logger.debug(f"Skipping transform {transform['__class_fullname__']} for LiDAR")
         
         lidar = torch.from_numpy(lidar)
         
@@ -249,7 +250,7 @@ class DefaultDataset(Dataset):
             corner_mask = augmentations['masks'][1]
             corner_coords = np.array(augmentations['keypoints'])
 
-                
+            # lidar = torch.from_numpy(lidar)
             
             # if len(corner_coords) > 0:
             #     # self.debug_vis(corner_coords, point_ids, augmented_image)

@@ -15,6 +15,7 @@
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
+                "experiment_name=debug"
             ],
             "justMyCode": false
         },

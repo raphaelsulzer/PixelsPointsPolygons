@@ -79,7 +79,7 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
 
 def get_val_loader_lidarpoly(cfg,tokenizer):
     
-    val_transforms = A.Compose(
+    val_transforms = A.ReplayCompose(
         [
             A.Resize(height=cfg.model.encoder.input_height, width=cfg.model.encoder.input_width),
             A.Normalize(mean=[0.0, 0.0, 0.0],std=[1.0, 1.0, 1.0],max_pixel_value=255.0),

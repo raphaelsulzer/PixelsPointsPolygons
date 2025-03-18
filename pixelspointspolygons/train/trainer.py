@@ -12,11 +12,11 @@ from torch import nn
 from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
-from .models.tokenizer import Tokenizer
-from .misc import seed_everything, load_checkpoint, compute_dynamic_cfg_vars, init_distributed, make_logger, is_main_process
-from .datasets import get_train_loader, get_val_loader
-from .train_val_pix2poly import train_val
-from .models import get_model
+from ..models.tokenizer import Tokenizer
+from ..misc import seed_everything, load_checkpoint, compute_dynamic_cfg_vars, init_distributed, make_logger, is_main_process
+from ..datasets import get_train_loader, get_val_loader
+from .train_val import train_val_pix2poly
+from ..models import get_model
 
 
 class Trainer:
@@ -104,7 +104,7 @@ class Trainer:
         self.logger.info(f"Configuration saved to {config_save_path}")
         
         # Start tain_val loop
-        train_val(
+        train_val_pix2poly(
             model,
             train_loader,
             val_loader,
