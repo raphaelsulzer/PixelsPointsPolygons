@@ -63,7 +63,8 @@ class Trainer:
         # Get model
         model = get_model(self.cfg,tokenizer=tokenizer)
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        self.logger.info(f"Model has {n_params/10**6:.2f}M parameters")
+        if is_main_process():
+            self.logger.info(f"Model has {n_params/10**6:.2f}M parameters")
         
         # Get dataloaders
         train_loader = get_train_loader(self.cfg,tokenizer)
@@ -100,9 +101,10 @@ class Trainer:
             model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
         
         # Store config to file, after all the dynamic variables have been computed
-        config_save_path = os.path.join(self.cfg.output_dir, 'config.yaml')
-        OmegaConf.save(config=self.cfg, f=config_save_path)
-        self.logger.info(f"Configuration saved to {config_save_path}")
+        if is_main_process():
+            config_save_path = os.path.join(self.cfg.output_dir, 'config.yaml')
+            OmegaConf.save(config=self.cfg, f=config_save_path)
+            self.logger.info(f"Configuration saved to {config_save_path}")
         
         # Start tain_val loop
         train_val_pix2poly(
