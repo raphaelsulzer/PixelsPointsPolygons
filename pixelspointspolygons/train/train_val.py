@@ -280,7 +280,7 @@ def train_val_pix2poly(model,
                         
                         evaluator.load_predictions(prediction_outfile)
                         evaluator.print_info()
-                        val_metrics_dict = evaluator()
+                        val_metrics_dict = evaluator.evaluate()
 
                         for metric, value in val_metrics_dict.items():
                             wandb_dict[f"val_{metric}"] = value
