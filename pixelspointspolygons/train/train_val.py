@@ -279,13 +279,13 @@ def train_val_pix2poly(model,
                             shutil.copyfile(prediction_outfile, best_prediction_outfile)
                         
                         evaluator.load_predictions(prediction_outfile)
-                        evaluator.print_info()
                         val_metrics_dict = evaluator.evaluate()
 
                         for metric, value in val_metrics_dict.items():
                             wandb_dict[f"val_{metric}"] = value
-                            
-                            
+                    
+                    except FileExistsError:
+                        raise
                     except Exception as e:
                         print(f"Error evaluating predictions: {e}")
                 else:
