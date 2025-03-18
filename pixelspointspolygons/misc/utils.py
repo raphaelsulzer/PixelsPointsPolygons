@@ -26,10 +26,12 @@ def suppress_stdout():
 
 def init_wandb(cfg):
     
+    if cfg.host.name == "jeanzay":
+        os.environ["WANDB_MODE"] = "offline"
+    
     cfg_container = OmegaConf.to_container(
         cfg, resolve=True, throw_on_missing=True
     )
-
 
     # start a new wandb run to track this script
     wandb.init(
