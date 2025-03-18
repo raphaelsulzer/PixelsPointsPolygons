@@ -21,7 +21,7 @@ dataset:
   subset: ${..run_type.subset}
 num_workers: ${.run_type.num_workers}
 
-use_lidar: false
+use_lidar: true
 use_images: true
 
 debug_vis: false
