@@ -1,14 +1,17 @@
+import os
+import sys
 import timm
 import torch
+
 from torch import nn
 from torch.nn import functional as F
 from timm.models.layers import trunc_normal_
+from timm.models.vision_transformer import VisionTransformer
+
 # from spconv.pytorch.utils import PointToVoxel, gather_features_by_pc_voxel_id
 import open3d.ml.torch as ml3d
 
-import os
-import sys
-sys.path.insert(1, os.getcwd())
+# sys.path.insert(1, os.getcwd())
 
 from ..misc import create_mask
 
@@ -154,11 +157,16 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         
     def forward(self, x_lidar):
         """Extract features from points."""
+        
+        list_of_tensors = list(torch.unbind(x_lidar, dim=0))
+        
         voxels, num_points, coors = self.voxelize(x_lidar)
         voxel_features = self.voxel_encoder(voxels, num_points, coors)
         batch_size = coors[-1, 0].item() + 1
         x = self.middle_encoder(voxel_features, coors, batch_size)
 
+        # flatten patches, NCHW -> NLC. Needed to pass directly to next layer of VisionTransformer (self.vit)
+        x = x.flatten(2).transpose(1, 2)  # NCHW -> NLC
         return x
 
 
@@ -168,24 +176,28 @@ class LiDAREncoder(nn.Module):
         super().__init__()
         self.cfg = cfg
         
-        self.vit = timm.create_model(
+        # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
+        self.point_pillars = PointPillarsWithoutHead(cfg)
+        
+        self.vision_transformer = timm.create_model(
             model_name=cfg.model.encoder.type,
             num_classes=0,
             global_pool='',
             pretrained=cfg.model.encoder.pretrained
         )
-        
-        # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
-        self.point_pillars = PointPillarsWithoutHead(cfg)
-        
+        # replace VisionTransformer patch embedding with LiDAR encoder
+        self.vision_transformer.patch_embed = self.point_pillars
+                        
         self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
 
 
     def forward(self, x_images=None, x_lidar=None):
         
-        x = self.point_pillars(x_lidar)
+        # x = self.point_pillars(x_lidar)
+        x = self.vision_transformer(x_lidar)
+        x = self.bottleneck(x[:, 1:,:])
         
-        a=5
+        return x
     
 
 class ImageEncoder(nn.Module):

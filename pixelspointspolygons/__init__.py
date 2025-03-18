@@ -1,2 +1,2 @@
-from .predictor import Predictor
-from .trainer import Trainer
+from .predict.predictor import Predictor
+from .train.trainer import Trainer

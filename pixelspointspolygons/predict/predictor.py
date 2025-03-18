@@ -15,10 +15,10 @@ import numpy as np
 
 from tqdm import tqdm
 
-from .misc import *
-from .models.tokenizer import Tokenizer
-from .datasets import get_val_loader
-from .models import get_model
+from ..misc import *
+from ..models.tokenizer import Tokenizer
+from ..datasets import get_val_loader
+from ..models import get_model
 
 # import warnings
 # warnings.filterwarnings("error", message="Support for mismatched key_padding_mask and attn_mask is deprecated. Use same type for both instead.")

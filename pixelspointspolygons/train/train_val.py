@@ -9,9 +9,9 @@ from tqdm import tqdm
 
 import torch.distributed as dist
 
-from .misc import *
-from .eval import Evaluator
-from .predictor import Predictor
+from ..misc import *
+from ..eval import Evaluator
+from ..predict.predictor import Predictor
 
 def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cfg):
     print(f"\nValidating...")
@@ -28,7 +28,14 @@ def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cf
 
     with torch.no_grad():
         for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
-            x_image = x_image.to(cfg.device, non_blocking=True)
+            
+            batch_size = x_image.size(0) if cfg.use_images else x_lidar.size(0)
+            
+            if cfg.use_images:
+                x_image = x_image.to(cfg.device, non_blocking=True)
+            if cfg.use_lidar:
+                x_lidar = x_lidar.to(cfg.device, non_blocking=True)    
+            
             y_sequence = y_sequence.to(cfg.device, non_blocking=True)
             y_perm = y_perm.to(cfg.device, non_blocking=True)
 
@@ -48,9 +55,9 @@ def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cf
 
             loss = vertex_loss + perm_loss
 
-            loss_meter.update(loss.item(), x_image.size(0))
-            vertex_loss_meter.update(vertex_loss.item(), x_image.size(0))
-            perm_loss_meter.update(perm_loss.item(), x_image.size(0))
+            loss_meter.update(loss.item(), batch_size)
+            vertex_loss_meter.update(vertex_loss.item(), batch_size)
+            perm_loss_meter.update(perm_loss.item(), batch_size)
 
         loss_dict = {
         'total_loss': loss_meter.avg,
@@ -76,6 +83,8 @@ def train_one_epoch(epoch, iter_idx,
     loader = tqdm(train_loader, total=len(train_loader), file=sys.stdout, dynamic_ncols=True, mininterval=20.0)
 
     for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
+        
+        batch_size = x_image.size(0) if cfg.use_images else x_lidar.size(0)
         
         # ### debug vis
         if cfg.debug_vis:
@@ -114,9 +123,9 @@ def train_one_epoch(epoch, iter_idx,
         if lr_scheduler is not None:
             lr_scheduler.step()
 
-        loss_meter.update(loss.item(), x_image.size(0))
-        vertex_loss_meter.update(vertex_loss.item(), x_image.size(0))
-        perm_loss_meter.update(perm_loss.item(), x_image.size(0))
+        loss_meter.update(loss.item(), batch_size)
+        vertex_loss_meter.update(vertex_loss.item(), batch_size)
+        perm_loss_meter.update(perm_loss.item(), batch_size)
 
         lr = get_lr(optimizer)
 
@@ -138,7 +147,7 @@ def train_one_epoch(epoch, iter_idx,
 
 
 
-def train_val(model, 
+def train_val_pix2poly(model, 
                 train_loader, val_loader,
                 tokenizer,
                 vertex_loss_fn, perm_loss_fn,

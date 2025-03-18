@@ -218,10 +218,11 @@ def permutations_to_polygons(perm, graph, out='torch'):
 
 
 def test_generate(model, x_images, x_lidar, tokenizer, max_len=50, top_k=0, top_p=1):
-    if x_images is not None:
-        batch_preds = torch.ones((x_images.size(0), 1), device=x_images.device).fill_(tokenizer.BOS_code).long()
-    else:
-        batch_preds = torch.ones((x_lidar.size(0), 1), device=x_lidar.device).fill_(tokenizer.BOS_code).long()
+    
+    batch_size = x_images.size(0) if len(x_images) else x_lidar.size(0)
+    device = x_images.device if len(x_images) else x_lidar.device
+    
+    batch_preds = torch.ones((batch_size, 1), device=device).fill_(tokenizer.BOS_code).long()
 
     confs = []
 
