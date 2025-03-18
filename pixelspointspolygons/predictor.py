@@ -56,6 +56,8 @@ class Predictor:
         self.logger.info(f"Loading model from checkpoint: {checkpoint_file}")
         checkpoint = torch.load(checkpoint_file, map_location=self.cfg.device)
         single_gpu_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["state_dict"].items()}
+        # single_gpu_state_dict = {k.replace("encoder.image_encoder", "encoder.encoder"): v for k, v in checkpoint["state_dict"].items()}
+        
         # single_gpu_state_dict = checkpoint["state_dict"]
         model.load_state_dict(single_gpu_state_dict)
         epoch = checkpoint['epochs_run']

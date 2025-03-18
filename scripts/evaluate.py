@@ -1,7 +1,7 @@
 import hydra
 from omegaconf import OmegaConf
 
-from pixelspointspolygons.eval import evaluate
+from pixelspointspolygons.eval import Evaluator
 
 
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
@@ -10,9 +10,9 @@ def main(cfg):
     print("\nConfiguration:")
     print(OmegaConf.to_yaml(cfg))
     
-    outfile = cfg.eval.pred_file.replace("/predictions/", "/eval/").replace(".json", ".csv")
-    evaluate(cfg.eval.gt_file, cfg.eval.pred_file, modes=cfg.eval.modes,
-            exp_name=cfg.experiment_name, outfile=outfile, num_workers=cfg.num_workers)
+    ee = Evaluator(cfg)
+    ee.load_predictions()
+    ee.evaluate()
     
 
 if __name__ == "__main__":
