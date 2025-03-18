@@ -215,6 +215,7 @@ def train_eval(
                 "loss": train_loss_dict["total_loss"]
             }
             checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", "validation_best.pth")
+            os.makedirs(os.path.dirname(checkpoint_file), exist_ok=True)
             torch.save(checkpoint, checkpoint_file)
             validation_best = True
             print(f"Save model 'validation_best' to {checkpoint_file}")
@@ -229,6 +230,7 @@ def train_eval(
                     "loss": train_loss_dict["total_loss"]
                 }
             checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", "latest.pth")
+            os.makedirs(os.path.dirname(checkpoint_file), exist_ok=True)
             torch.save(checkpoint, checkpoint_file)
             print(f"Save model 'latest' to {checkpoint_file}")
 
@@ -241,6 +243,7 @@ def train_eval(
                 "loss": train_loss_dict["total_loss"]
             }
             checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
+            os.makedirs(os.path.dirname(checkpoint_file), exist_ok=True)
             torch.save(checkpoint, checkpoint_file)
             print(f"Save model 'epoch_{epoch}' to {checkpoint_file}")
 
@@ -251,7 +254,7 @@ def train_eval(
             print("Predict and evaluate validation set with latest model...")
             coco_predictions = pp.predict_from_loader(model,tokenizer,val_loader)
             if len(coco_predictions) > 0:
-                print(f"Predicted {len(coco_predictions)}. Evaluating...")
+                print(f"Predicted {len(coco_predictions)} polygons. Evaluating...")
                 wandb_dict[f"val_num_polygons"] = len(coco_predictions)
                 try:
                     
