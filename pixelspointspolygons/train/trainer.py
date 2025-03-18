@@ -90,7 +90,7 @@ class Trainer:
         # Load checkpoint if provided
         local_rank = int(os.environ["LOCAL_RANK"]) if self.cfg.multi_gpu else 0
         if self.cfg.checkpoint is not None:
-            self.load_checkpoint(model,optimizer,lr_scheduler=None)
+            self.load_checkpoint(model,optimizer,lr_scheduler,local_rank)
 
 
         # Wrap model with distributed data parallel.

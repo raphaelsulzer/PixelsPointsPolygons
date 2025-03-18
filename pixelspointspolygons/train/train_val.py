@@ -191,7 +191,10 @@ def train_val_pix2poly(model,
             perm_loss_fn,
             cfg=cfg
         )
-        
+        # Sync all processes before validation
+        if cfg.multi_gpu:
+            dist.barrier()
+            
         if is_main_process():
             
             wandb_dict ={}
@@ -269,34 +272,35 @@ def train_val_pix2poly(model,
                     print(f"Predicted {len(coco_predictions)} out of {len(val_loader.dataset.coco.getAnnIds())} polygons in the validation set.") 
                     # print("Evaluating...")
                     wandb_dict[f"val_num_polygons"] = len(coco_predictions)
-                    try:
-                        prediction_outfile = os.path.join(cfg.output_dir, "predictions", f"epoch_{epoch}.json")
-                        os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
-                        with open(prediction_outfile, "w") as fp:
-                            fp.write(json.dumps(coco_predictions))
-                        if validation_best:
-                            best_prediction_outfile = os.path.join(cfg.output_dir, "predictions", "validation_best.json")
-                            shutil.copyfile(prediction_outfile, best_prediction_outfile)
-                        
-                        evaluator.load_predictions(prediction_outfile)
-                        val_metrics_dict = evaluator.evaluate()
+                    # try:
 
-                        for metric, value in val_metrics_dict.items():
-                            wandb_dict[f"val_{metric}"] = value
+                    prediction_outfile = os.path.join(cfg.output_dir, "predictions", f"epoch_{epoch}.json")
+                    os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
+                    with open(prediction_outfile, "w") as fp:
+                        fp.write(json.dumps(coco_predictions))
+                    if validation_best:
+                        best_prediction_outfile = os.path.join(cfg.output_dir, "predictions", "validation_best.json")
+                        shutil.copyfile(prediction_outfile, best_prediction_outfile)
                     
-                    except FileExistsError as e:
-                        print(e)
-                        raise
-                    except Exception as e:
-                        print(f"Error evaluating predictions: {e}")
+                    evaluator.load_predictions(prediction_outfile)
+                    val_metrics_dict = evaluator.evaluate()
+
+                    for metric, value in val_metrics_dict.items():
+                        wandb_dict[f"val_{metric}"] = value
+                    
+                    # except FileExistsError as e:
+                    #     print(e)
+                    #     raise
+                    # except Exception as e:
+                    #     print(f"Error evaluating predictions: {e}")
                 else:
                     print("No polygons predicted. Skipping evaluation...")
 
             print("Validation finished...\n")
             
-        # # Sync all processes before next epoch
-        # if cfg.multi_gpu:
-        #     dist.barrier()
+        # Sync all processes before next epoch
+        if cfg.multi_gpu:
+            dist.barrier()
 
         if cfg.log_to_wandb:
             if is_main_process():

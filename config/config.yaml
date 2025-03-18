@@ -8,7 +8,7 @@ defaults:
 # experiment_name: images_only
 # experiment_name: debug
 # experiment_name: inria_D4_aug
-experiment_name: debug
+experiment_name: lidarpoly_D4_aug_bs32
 multi_gpu: false
 device: cuda
 log_to_wandb: ${.run_type.log_to_wandb}
@@ -21,12 +21,12 @@ dataset:
   subset: ${..run_type.subset}
 num_workers: ${.run_type.num_workers}
 
-use_lidar: true
-use_images: false
+use_lidar: false
+use_images: true
 
 debug_vis: false
 
-checkpoint: null
+checkpoint: latest
 checkpoint_file: null # override for loading a specific checkpoint file
 
 eval:
