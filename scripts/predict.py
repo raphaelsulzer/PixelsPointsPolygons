@@ -1,6 +1,6 @@
 import hydra
 from omegaconf import OmegaConf
-from pixelspointspolygons import Predictor
+from pixelspointspolygons.predict import Predictor
 
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
