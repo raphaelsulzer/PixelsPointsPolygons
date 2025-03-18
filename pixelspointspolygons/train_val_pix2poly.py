@@ -138,17 +138,12 @@ def train_one_epoch(epoch, iter_idx,
 
 
 
-def train_eval(
-    model,
-    train_loader,
-    val_loader,
-    tokenizer,
-    vertex_loss_fn,
-    perm_loss_fn,
-    optimizer,
-    lr_scheduler,
-    step,
-    cfg
+def train_val(model, 
+                train_loader, val_loader,
+                tokenizer,
+                vertex_loss_fn, perm_loss_fn,
+                optimizer, lr_scheduler, step,
+                cfg
 ):
 
     if cfg.log_to_wandb:
@@ -167,6 +162,10 @@ def train_eval(
     for epoch in tqdm(epoch_iterator, position=0, leave=True, file=sys.stdout, dynamic_ncols=True, mininterval=20.0):
         if is_main_process():
             print(f"\n\nEPOCH: {epoch + 1}\n\n")
+        
+        ############################################
+        ################# Training #################
+        ############################################
         
         # important to shuffle the data differently for each epoch, see: https://pytorch.org/docs/stable/data.html#torch.utils.data.distributed.DistributedSampler
         if cfg.multi_gpu:
@@ -191,6 +190,9 @@ def train_eval(
             wandb_dict['lr'] = get_lr(optimizer)
 
 
+        ############################################
+        ################ Validation ################
+        ############################################
         if is_main_process():
             val_loss_dict = valid_one_epoch(
                 epoch,
