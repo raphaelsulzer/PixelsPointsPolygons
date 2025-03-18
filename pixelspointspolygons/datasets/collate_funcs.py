@@ -11,7 +11,7 @@ def collate_fn_pix2poly(batch, cfg):
     pad_idx = cfg.model.tokenizer.pad_idx
     max_len = cfg.model.tokenizer.max_len
     
-    image_batch, lidar_batch, lidar_pcd_id_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, image_id_batch = [], [], [], [], [], [], [], []
+    image_batch, lidar_batch, lidar_pcd_id_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, tile_id_batch = [], [], [], [], [], [], [], []
     for i, (image, lidar, mask, c_mask, seq, perm_mat, idx) in enumerate(batch):
         if cfg.use_images:
             image_batch.append(image)
@@ -24,7 +24,7 @@ def collate_fn_pix2poly(batch, cfg):
         coords_mask_batch.append(c_mask)
         coords_seq_batch.append(seq)
         perm_matrix_batch.append(perm_mat)
-        image_id_batch.append(idx)
+        tile_id_batch.append(idx)
 
     coords_seq_batch = pad_sequence(
         coords_seq_batch,
@@ -38,14 +38,20 @@ def collate_fn_pix2poly(batch, cfg):
 
     if cfg.use_images:
         image_batch = torch.stack(image_batch)
+    else:
+        image_batch = None
+        
     if cfg.use_lidar:
         # lidar_batch = torch.cat(lidar_batch)
         # lidar_pcd_id_batch = torch.cat(lidar_pcd_id_batch)
         ### try nested tensor instead of manuel indexing
         lidar_batch = torch.nested.nested_tensor(lidar_batch, layout=torch.jagged)
+    else:
+        lidar_batch = None
         
     mask_batch = torch.stack(mask_batch)
     coords_mask_batch = torch.stack(coords_mask_batch)
     perm_matrix_batch = torch.stack(perm_matrix_batch)
-    image_id_batch = torch.stack(image_id_batch)
-    return image_batch, lidar_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, image_id_batch
+    tile_id_batch = torch.stack(tile_id_batch)
+    
+    return image_batch, lidar_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, tile_id_batch

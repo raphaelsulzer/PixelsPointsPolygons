@@ -113,7 +113,7 @@ class Predictor:
                 polygons_mask = self.get_pixel_mask_from_prediction(x_image,batch_polygons)
                 file_names = get_image_file_name_from_dataloader(loader.dataset.coco.imgs, image_ids)
                 file_names = None
-                plot_pix2poly(image_batch=x_image, image_names=file_names, mask_batch=polygons_mask, polygon_batch=batch_polygons_processed)
+                plot_pix2poly(image_batch=x_image, tile_names=file_names, mask_batch=polygons_mask, polygon_batch=batch_polygons_processed)
                 
         return coco_predictions
     
