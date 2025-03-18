@@ -280,7 +280,7 @@ def postprocess(batch_preds, batch_confs, tokenizer):
 
     return all_coords, all_confs
 
-def get_image_file_name_from_dataloader(img_dict, ids):
+def get_tile_names_from_dataloader(img_dict, ids):
     file_names = []
     for id in ids:
         file_names.append(img_dict[id.item()]['file_name'])

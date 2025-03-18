@@ -113,46 +113,55 @@ class DefaultDataset(Dataset):
     
     
     
-    def apply_augmentations_to_lidar(self, augmentation_replay, lidar):
+    def apply_augmentations_to_lidar(self, augmentation_replay, lidar, id=0):
         
-    
-        # transforms = augmentation_replay["transforms"]      
-        # for transform in transforms:
-        #     if transform["__class_fullname__"] == "D4":
-        #         if not transform['applied']:
-        #             continue
-        #         group_element = transform['params']['group_element']
-        #         if group_element == 'e':
-        #             # Identity, no change
-        #             pass
-        #         elif group_element == 'r90':
-        #             lidar[:, [0, 1]] = lidar[:, [1, 0]]
-        #             lidar[:, 0] = -lidar[:, 0]
-        #         elif group_element == 'r180':
-        #             lidar[:, 0] = -lidar[:, 0]
-        #             lidar[:, 1] = -lidar[:, 1]
-        #         elif group_element == 'r270':
-        #             lidar[:, [0, 1]] = lidar[:, [1, 0]]
-        #             lidar[:, 1] = -lidar[:, 1]
-        #         elif group_element == 'v':
-        #             lidar[:, 1] = -lidar[:, 1]
-        #         elif group_element == 'hvt':
-        #             lidar[:, [0, 1]] = lidar[:, [1, 0]]
-        #             lidar[:, 0] = -lidar[:, 0]
-        #             lidar[:, 1] = -lidar[:, 1]
-        #         elif group_element == 'h':
-        #             lidar[:, 0] = -lidar[:, 0]
-        #         elif group_element == 't':
-        #             lidar[:, [0, 1]] = lidar[:, [1, 0]]
 
-        #     else:
-        #         pass
-        #         # self.logger.debug(f"Skipping transform {transform['__class_fullname__']} for LiDAR")
+        if self.split == 'val':
+            return torch.from_numpy(lidar)
+    
+        d4_transform = augmentation_replay["transforms"][0]
         
-        lidar = torch.from_numpy(lidar)
+        assert d4_transform["__class_fullname__"] == "D4"
         
-        return lidar
-            
+
+        if not d4_transform['applied']:
+            return torch.from_numpy(lidar)
+        
+        # translate to center so all the transformations are easily applied around the center
+        center = [self.cfg.model.encoder.input_width // 2, self.cfg.model.encoder.input_height // 2]
+        lidar[:, :2] -= center
+        
+        group_element = d4_transform['params']['group_element']
+        if group_element == 'e':
+            # Identity, no change
+            pass
+        elif group_element == 'r90':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'r180':
+            lidar[:, 0] = -lidar[:, 0]
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'r270':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+            lidar[:, 0] = -lidar[:, 0]
+        elif group_element == 'v':
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'hvt':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+            lidar[:, 0] = -lidar[:, 0]
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'h':
+            lidar[:, 0] = -lidar[:, 0]
+        elif group_element == 't':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+        else:
+            raise ValueError(f"Unknown group element {group_element}")
+        
+        lidar[:, :2] += center
+
+        # self.logger.debug(f"Applied '{group_element}' transformation to lidar tile {id}.")
+        
+        return torch.from_numpy(lidar)
         
         
         
@@ -243,7 +252,7 @@ class DefaultDataset(Dataset):
             augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
             
             if self.use_lidar:
-                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar)
+                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar, img_info['id'])
             
             image = augmentations['image']
             mask = augmentations['masks'][0]

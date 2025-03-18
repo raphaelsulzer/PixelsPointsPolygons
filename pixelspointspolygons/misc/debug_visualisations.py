@@ -105,7 +105,7 @@ def plot_corners(corner_image, ax=None, show_axis='off', show=False):
     
     # Plot a red cross at each 1 value
     for y, x, _ in ones_coords:
-        ax.plot(x,y, color='red', linewidth=25, marker='x')
+        ax.plot(x,y, color='magenta', linewidth=25, marker='x')
         
     #     # Plot a red cross at each 1 value
     # for x, y, _ in ones_coords:
@@ -115,15 +115,21 @@ def plot_corners(corner_image, ax=None, show_axis='off', show=False):
         plt.show(block=False)
     
     
-def plot_pix2poly(image_batch,image_names=None,mask_batch=None,corner_image_batch=None,polygon_batch=None,polygon_format="xy"):
+def plot_pix2poly(image_batch=None,lidar_batch=None,tile_names=None,mask_batch=None,corner_image_batch=None,polygon_batch=None,polygon_format="xy"):
     
-    n_rows = np.ceil(np.sqrt(len(image_batch))).astype(int)
+    batch_size = len(image_batch) if image_batch is not None else len(lidar_batch)
+    
+    n_rows = np.ceil(np.sqrt(batch_size)).astype(int)
     n_cols = n_rows
     
     fig, ax = plt.subplots(n_rows,n_cols,figsize=(int(n_cols*2), int(n_cols*2)), dpi=150)
     ax = ax.flatten()
 
-    image_batch = image_batch.permute(0, 2, 3, 1).cpu().numpy()
+    if image_batch is not None:
+        image_batch = image_batch.permute(0, 2, 3, 1).cpu().numpy()
+        
+    if lidar_batch is not None:
+        lidar_batch = list(torch.unbind(lidar_batch, dim=0))
     
     if mask_batch is not None:
         mask_batch = mask_batch.permute(0, 2, 3, 1).cpu().numpy()
@@ -131,16 +137,19 @@ def plot_pix2poly(image_batch,image_names=None,mask_batch=None,corner_image_batc
     if corner_image_batch is not None:
         corner_image_batch = corner_image_batch.permute(0, 2, 3, 1).cpu().numpy()
     
-    for i in range(image_batch.shape[0]):
-        plot_image(image_batch[i], show=False, ax=ax[i])
+    for i in range(batch_size):
+        if image_batch is not None:
+            plot_image(image_batch[i], show=False, ax=ax[i])
+        if lidar_batch is not None:
+            plot_point_cloud(lidar_batch[i], show=False, ax=ax[i])    
         if mask_batch is not None:
-            plot_mask(mask_batch[i], alpha=0.5 , show=False, ax=ax[i])
+            plot_mask(mask_batch[i], alpha=0.8 , show=False, ax=ax[i])
         if corner_image_batch is not None:
             plot_corners(corner_image_batch[i], show=False, ax=ax[i])
         if polygon_batch is not None:              
             plot_polygons(polygon_batch[i], show=False, ax=ax[i], polygon_format=polygon_format)
-        if image_names is not None:
-            ax[i].set_title(image_names[i], fontsize=4)
+        if tile_names is not None:
+            ax[i].set_title(tile_names[i], fontsize=4)
     
     plt.tight_layout()
     plt.show(block=True)

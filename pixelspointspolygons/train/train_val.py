@@ -82,14 +82,14 @@ def train_one_epoch(epoch, iter_idx,
     loader = train_loader
     loader = tqdm(train_loader, total=len(train_loader), file=sys.stdout, dynamic_ncols=True, mininterval=20.0)
 
-    for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
+    for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids in loader:
         
         batch_size = x_image.size(0) if cfg.use_images else x_lidar.size(0)
         
         # ### debug vis
         if cfg.debug_vis:
-            file_names = get_image_file_name_from_dataloader(train_loader.dataset.coco.imgs, image_ids)
-            plot_pix2poly(image_batch=x_image,mask_batch=y_mask,corner_image_batch=y_corner_mask,file_names=file_names)        
+            file_names = get_tile_names_from_dataloader(train_loader.dataset.coco.imgs, tile_ids)
+            plot_pix2poly(image_batch=x_image,lidar_batch=x_lidar,mask_batch=y_mask,corner_image_batch=y_corner_mask,tile_names=file_names)        
         
         if cfg.use_images:
             x_image = x_image.to(cfg.device, non_blocking=True)
