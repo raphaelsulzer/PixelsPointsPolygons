@@ -297,6 +297,9 @@ def train_val_pix2poly(model,
                     print("No polygons predicted. Skipping evaluation...")
 
             print("Validation finished...\n")
+        else:
+            rank = dist.get_rank()
+            print(f"Rank {rank} out of {dist.get_world_size()} processes skipped evaluation...")
             
         # Sync all processes before next epoch
         if cfg.multi_gpu:

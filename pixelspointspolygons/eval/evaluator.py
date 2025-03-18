@@ -112,11 +112,11 @@ class Evaluator:
         num_vert_gt = 0
         num_vert_pred = 0
         for ann in self.cocoGt.dataset['annotations']:
-            if ann['segmentation']:
+            if len(ann['segmentation']):
                 num_vert_gt += len(ann['segmentation'][0])//2
                 
         for ann in self.cocoDt.dataset['annotations']:
-            if ann['segmentation']:
+            if len(ann['segmentation']):
                 num_vert_pred += len(ann['segmentation'][0])//2
         
         self.logger.info(f"Number of vertices (gt/pred): {num_vert_gt}/{num_vert_pred}")

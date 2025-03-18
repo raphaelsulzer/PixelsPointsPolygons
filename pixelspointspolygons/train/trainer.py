@@ -13,7 +13,7 @@ from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
 from ..models.tokenizer import Tokenizer
-from ..misc import seed_everything, load_checkpoint, compute_dynamic_cfg_vars, init_distributed, make_logger, is_main_process
+from ..misc import seed_everything, load_checkpoint, compute_dynamic_cfg_vars, init_distributed, make_logger, is_main_process, print_all_ranks
 from ..datasets import get_train_loader, get_val_loader
 from .train_val import train_val_pix2poly
 from ..models import get_model
@@ -45,6 +45,7 @@ class Trainer:
         if self.cfg.multi_gpu:
             n_gpus = init_distributed()
             self.logger.info(f"Training on {n_gpus} GPUs")
+            print_all_ranks()
         else:
             n_gpus = 1
             self.logger.info(f"Training on single GPU")
