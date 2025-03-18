@@ -12,7 +12,7 @@ import torch.distributed as dist
 from .misc import *
 from .misc.ddp_utils import is_main_process
 
-from .eval import evaluate
+from .eval import Evaluator
 from .predictor import Predictor
 
 def valid_one_epoch(epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cfg):
@@ -162,8 +162,10 @@ def train_eval(
     iter_idx=cfg.model.start_epoch * len(train_loader)
     epoch_iterator = range(cfg.model.start_epoch, cfg.model.num_epochs)
 
-    pp = Predictor(cfg)
-
+    if is_main_process():
+        predictor = Predictor(cfg)
+        evaluator = Evaluator(cfg)
+        
     for epoch in tqdm(epoch_iterator, position=0, leave=True, file=sys.stdout, dynamic_ncols=True, mininterval=20.0):
         if is_main_process():
             print(f"\n\nEPOCH: {epoch + 1}\n\n")
@@ -252,7 +254,7 @@ def train_eval(
         #############################################
         if (epoch + 1) % cfg.val_every == 0 and is_main_process():
             print("Predict and evaluate validation set with latest model...")
-            coco_predictions = pp.predict_from_loader(model,tokenizer,val_loader)
+            coco_predictions = predictor.predict_from_loader(model,tokenizer,val_loader)
             if len(coco_predictions) > 0:
                 print(f"Predicted {len(coco_predictions)} out of {len(val_loader.dataset.coco.getAnnIds())} polygons in the validation set.") 
                 print("Evaluating...")
@@ -267,7 +269,8 @@ def train_eval(
                         best_prediction_outfile = os.path.join(cfg.output_dir, "predictions", "validation_best.json")
                         shutil.copyfile(prediction_outfile, best_prediction_outfile)
                     
-                    val_metrics_dict = evaluate(val_loader.dataset.ann_file, prediction_outfile, modes=cfg.eval.modes)
+                    evaluator.load_predictions(prediction_outfile)
+                    val_metrics_dict = evaluator()
 
                     for metric, value in val_metrics_dict.items():
                         wandb_dict[f"val_{metric}"] = value
