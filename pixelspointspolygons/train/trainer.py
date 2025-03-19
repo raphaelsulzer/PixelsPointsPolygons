@@ -52,14 +52,13 @@ class Trainer:
         
         self.update_pbar_every = 1
         
-        
     def setup_ddp(self):
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = "12355"
         dist.init_process_group("nccl", rank=self.rank, world_size=self.world_size)
         torch.cuda.set_device(self.rank)
         
-    def init_wandb(self):
+    def setup_wandb(self):
     
         if self.cfg.host.name == "jeanzay":
             os.environ["WANDB_MODE"] = "offline"
@@ -93,7 +92,7 @@ class Trainer:
             max_len=self.cfg.model.tokenizer.max_len
         )
     
-    def compute_dynamic_cfg_vars(self):
+    def setup_dynamic_cfg_vars(self):
     
         self.cfg.model.tokenizer.pad_idx = self.tokenizer.PAD_code
         self.cfg.model.tokenizer.max_len = self.cfg.model.tokenizer.n_vertices*2+2
@@ -114,7 +113,7 @@ class Trainer:
         decoder = Decoder(
             vocab_size=self.tokenizer.vocab_size,
             encoder_len=self.cfg.model.encoder.num_patches,
-            dim=256,
+            dim=self.cfg.model.encoder.out_dim,
             num_heads=8,
             num_layers=6,
             max_len=self.cfg.model.tokenizer.max_len,
@@ -131,6 +130,10 @@ class Trainer:
             model = DDP(model, device_ids=[self.rank])
         
         self.model = model
+
+    def setup_dataloader(self):
+        self.train_loader = get_train_loader(self.cfg,tokenizer=self.tokenizer)
+        self.val_loader = get_val_loader(self.cfg,tokenizer=self.tokenizer)
 
     def setup_optimizer(self):
         # Get optimizer
@@ -167,10 +170,15 @@ class Trainer:
         self.logger.info(f"Save model {os.path.split(outfile)[-1]} to {outfile}")
 
 
-    def average_across_gpus(self, tensor):
+    def average_across_gpus(self, meter):
+        
+        if not self.is_ddp:
+            return meter.avg
+        
+        tensor = torch.tensor([meter.avg], device=self.device)
         dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
         tensor /= self.world_size
-        return tensor
+        return tensor.item()
     
     def setup_loss_fn_dict(self):
         
@@ -225,11 +233,14 @@ class Trainer:
                 vertex_loss_meter.update(vertex_loss.item(), batch_size)
                 perm_loss_meter.update(perm_loss.item(), batch_size)
 
-            loss_dict = {
-            'total_loss': loss_meter.avg,
-            'vertex_loss': vertex_loss_meter.avg,
-            'perm_loss': perm_loss_meter.avg,
+
+        loss_dict = {
+            'total_loss': self.average_across_gpus(loss_meter),
+            'vertex_loss': self.average_across_gpus(vertex_loss_meter),
+            'perm_loss': self.average_across_gpus(perm_loss_meter),
         }
+        
+        self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict
 
@@ -299,12 +310,14 @@ class Trainer:
             if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
                 break
 
-        self.logger.info(f"Total train loss: {loss_meter.avg}")
+        
         loss_dict = {
-            'total_loss': loss_meter.avg,
-            'vertex_loss': vertex_loss_meter.avg,
-            'perm_loss': perm_loss_meter.avg,
+            'total_loss': self.average_across_gpus(loss_meter),
+            'vertex_loss': self.average_across_gpus(vertex_loss_meter),
+            'perm_loss': self.average_across_gpus(perm_loss_meter),
         }
+        
+        self.logger.info(f"Train loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict, iter_idx
 
@@ -313,7 +326,7 @@ class Trainer:
     def train_val_loop(self):
 
         if self.cfg.log_to_wandb and is_main_process:
-            self.init_wandb()
+            self.setup_wandb()
 
         best_loss = float('inf')
 
@@ -354,7 +367,6 @@ class Trainer:
             val_loss_dict = self.valid_one_epoch()
             for k, v in val_loss_dict.items():
                 wandb_dict[f"val_{k}"] = v
-            self.logger.info(f"Valid loss: {val_loss_dict['total_loss']:.3f}\n\n")
 
             validation_best = False
             # Save best validation loss epoch.
@@ -417,13 +429,13 @@ class Trainer:
 
 
     def train(self):
+        seed_everything(42)
+
         self.setup_ddp()
-        
         self.setup_tokenizer()
-        self.compute_dynamic_cfg_vars()
+        self.setup_dynamic_cfg_vars()
         self.setup_model()
-        self.train_loader = get_train_loader(self.cfg,tokenizer=self.tokenizer)
-        self.val_loader = get_val_loader(self.cfg,tokenizer=self.tokenizer)
+        self.setup_dataloader()
         self.setup_optimizer()
         self.setup_loss_fn_dict()
         self.train_val_loop()
@@ -432,7 +444,6 @@ class Trainer:
 
 def spawn_worker(rank, world_size, cfg):
     
-    seed_everything(42)
     trainer = Trainer(cfg, rank, world_size)
     trainer.train()
 
