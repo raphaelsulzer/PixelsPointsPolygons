@@ -264,6 +264,8 @@ class Trainer:
 
         for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids in loader:
             
+            self.logger.info(f"Starting iteration on rank {self.rank}...")
+            
             batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
             
             # ### debug vis
@@ -312,8 +314,12 @@ class Trainer:
 
             iter_idx += 1
 
+            self.logger.info(f"Ended iteration on rank {self.rank}...")
+
             if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
                 break
+            
+        self.logger.info(f"Ended epoch on rank {self.rank}...")
 
         
         loss_dict = {
