@@ -24,12 +24,18 @@ from ..models import get_model
 # warnings.filterwarnings("error", message="Support for mismatched key_padding_mask and attn_mask is deprecated. Use same type for both instead.")
 
 class Predictor:
-    def __init__(self, cfg, verbosity=logging.INFO):
+    def __init__(self, cfg, local_rank=0, world_size=1):
         self.cfg = cfg
-        # self.logger = make_logger("Prediction",level=verbosity,filepath=os.path.join(cfg.output_dir, 'predict.log'))
-        self.logger = make_logger("Prediction",level=verbosity)
+        
+        self.local_rank = local_rank
+        self.world_size = world_size
+        
+        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO) if local_rank == 0 else logging.WARNING
+        self.logger = make_logger("Predictor",level=verbosity)
+        self.logger.log(logging.INFO, f"Init Predictor on rank {local_rank} in world size {world_size}...")
         self.logger.info(f"Create output directory {cfg.output_dir}")
-        os.makedirs(cfg.output_dir, exist_ok=True)
+        if self.local_rank == 0:
+            os.makedirs(cfg.output_dir, exist_ok=True)
 
     def get_pixel_mask_from_prediction(self, x, batch_polygons):
         B, C, H, W = x.shape
