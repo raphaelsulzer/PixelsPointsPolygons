@@ -36,9 +36,10 @@ class Trainer:
         logging_level = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger("Trainer",level=logging_level)
         
+        self.logger.info(f"Init Trainer on rank {rank} in world size {world_size}...")
         if is_main_process():
             self.logger.info("Configuration:")
-            self.logger.info(OmegaConf.to_yaml(cfg))
+            self.logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
             self.logger.info(f"Create output directory {self.cfg.output_dir}")
             os.makedirs(self.cfg.output_dir, exist_ok=True)
         
@@ -403,8 +404,11 @@ class Trainer:
                     coco_predictions = torch.tensor(coco_predictions, device=self.device)
                     output = torch.empty(self.world_size, *coco_predictions.shape, device=coco_predictions.device)
                     dist.all_gather_into_tensor(output, coco_predictions)
-                    coco_predictions = output.view(-1, coco_predictions.shape[-1])
-                    coco_predictions = coco_predictions.numpy().tolist()
+                    if output.numel() > 0:
+                        coco_predictions = output.view(-1, coco_predictions.shape[-1])
+                        coco_predictions = coco_predictions.numpy().tolist()
+                    else:
+                        coco_predictions = []
                 
                 if not len(coco_predictions):
                     self.logger.info("No polygons predicted. Skipping coco evaluation...")
@@ -464,9 +468,7 @@ class Trainer:
 
 
 def spawn_worker(rank, world_size, cfg):
-    
-    print(f"Spawn worker {rank}...")
-    
+        
     trainer = Trainer(cfg, rank, world_size)
     trainer.train()
 
