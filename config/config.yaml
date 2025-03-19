@@ -8,7 +8,7 @@ defaults:
 # experiment_name: images_only
 # experiment_name: debug
 # experiment_name: inria_D4_aug
-experiment_name: lidarpoly_D4_aug_bs32
+experiment_name: lidar_only_bs32
 multi_gpu: false
 device: cuda
 log_to_wandb: ${.run_type.log_to_wandb}
@@ -21,8 +21,8 @@ dataset:
   subset: ${..run_type.subset}
 num_workers: ${.run_type.num_workers}
 
-use_lidar: false
-use_images: true
+use_lidar: true
+use_images: false
 
 debug_vis: false
 
