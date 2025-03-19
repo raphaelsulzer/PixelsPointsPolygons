@@ -1,2 +1,3 @@
 name: g5k
 data_root: /home/rsulzer/data
+update_pbar_every: 60

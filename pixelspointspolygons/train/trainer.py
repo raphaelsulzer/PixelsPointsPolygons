@@ -38,7 +38,8 @@ class Trainer:
             verbosity = logging.WARNING
         self.verbosity = verbosity
         self.logger = make_logger(f"Trainer (rank {local_rank})",level=verbosity)
-        
+        self.update_pbar_every = cfg.update_pbar_every
+
         self.logger.log(logging.INFO, f"Init Trainer on rank {local_rank} in world size {world_size}...")
         if local_rank == 0:
             # self.logger.info("Configuration:")
@@ -58,7 +59,6 @@ class Trainer:
         
         self.is_ddp = self.cfg.multi_gpu
         
-        self.update_pbar_every = 1
         
     def progress_bar(self,item):
         

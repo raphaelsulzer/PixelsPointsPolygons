@@ -31,14 +31,16 @@ class Predictor:
         if verbosity == logging.INFO and local_rank != 0:
             verbosity = logging.WARNING
         self.verbosity = verbosity
-        self.update_pbar_every = 1
+        self.update_pbar_every = cfg.update_pbar_every
 
         self.logger = make_logger(f"Predictor (rank {local_rank})",level=verbosity)
         self.logger.log(logging.INFO, f"Init Predictor on rank {local_rank} in world size {world_size}...")
         self.logger.info(f"Create output directory {cfg.output_dir}")
         if self.local_rank == 0:
             os.makedirs(cfg.output_dir, exist_ok=True)
-
+            
+        self.is_ddp = cfg.multi_gpu
+        
     def progress_bar(self,item):
         
         disable = self.verbosity >= logging.WARNING

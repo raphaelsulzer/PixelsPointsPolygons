@@ -114,17 +114,17 @@ class Evaluator:
         self.logger.info(f"Number of images (gt/pred): {len(self.cocoGt.getImgIds())}/{len(self.cocoDt.getImgIds())}")
         self.logger.info(f"Number of polygons (gt/pred): {len(self.cocoGt.getAnnIds())}/{len(self.cocoDt.getAnnIds())}")
         
-        num_vert_gt = 0
-        num_vert_pred = 0
-        for ann in self.cocoGt.dataset['annotations']:
-            if len(ann['segmentation']):
-                num_vert_gt += len(ann['segmentation'][0])//2
+        # num_vert_gt = 0
+        # num_vert_pred = 0
+        # for ann in self.cocoGt.dataset['annotations']:
+        #     if len(ann['segmentation']):
+        #         num_vert_gt += len(ann['segmentation'][0])//2
                 
-        for ann in self.cocoDt.dataset['annotations']:
-            if len(ann['segmentation']):
-                num_vert_pred += len(ann['segmentation'][0])//2
-        
-        self.logger.info(f"Number of vertices (gt/pred): {num_vert_gt}/{num_vert_pred}")
+        # for ann in self.cocoDt.dataset['annotations']:
+        #     if len(ann['segmentation']):
+        #         num_vert_pred += len(ann['segmentation'][0])//2
+ 
+        # self.logger.info(f"Number of vertices (gt/pred): {num_vert_gt}/{num_vert_pred}")
 
 
     def evaluate(self):
