@@ -38,8 +38,8 @@ class Trainer:
         
         self.logger.info(f"Init Trainer on rank {rank} in world size {world_size}...")
         if is_main_process():
-            self.logger.info("Configuration:")
-            self.logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
+            # self.logger.info("Configuration:")
+            # self.logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
             self.logger.info(f"Create output directory {self.cfg.output_dir}")
             os.makedirs(self.cfg.output_dir, exist_ok=True)
         
