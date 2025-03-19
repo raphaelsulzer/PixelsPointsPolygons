@@ -33,10 +33,10 @@ class Trainer:
     def __init__(self, cfg, local_rank, world_size):
         
         self.cfg = cfg
-        logging_level = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
-        self.logger = make_logger("Trainer",level=logging_level)
+        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO) if local_rank == 0 else logging.WARNING
+        self.logger = make_logger("Trainer",level=verbosity)
         
-        self.logger.info(f"Init Trainer on rank {local_rank} in world size {world_size}...")
+        self.logger.log(logging.INFO, f"Init Trainer on rank {local_rank} in world size {world_size}...")
         if local_rank == 0:
             # self.logger.info("Configuration:")
             # self.logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
@@ -145,6 +145,7 @@ class Trainer:
         model.to(self.cfg.device)
         
         if self.is_ddp:
+            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = DDP(model, device_ids=[self.local_rank])
         
         self.model = model
@@ -187,6 +188,20 @@ class Trainer:
         
         self.logger.info(f"Save model {os.path.split(outfile)[-1]} to {outfile}")
 
+    def load_checkpoint(self):
+        
+        map_location = {'cuda:%d' % 0: 'cuda:%d' % self.local_rank}
+        checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
+        if not os.path.isfile(checkpoint_file):
+            raise FileExistsError(f"Checkpoint file {checkpoint_file} does not exist.")
+
+        checkpoint = torch.load(checkpoint_file, map_location=map_location)
+        self.model.load_state_dict(checkpoint["state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer"])
+        self.lr_scheduler.load_state_dict(checkpoint["scheduler"])
+        
+        start_epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))
+        self.cfg.model.start_epoch = start_epoch + 1
 
     def average_across_gpus(self, meter):
         
@@ -261,8 +276,7 @@ class Trainer:
             'perm_loss': self.average_across_gpus(perm_loss_meter),
         }
         
-        if self.local_rank == 0:
-            self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
+        self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict
 
@@ -346,8 +360,7 @@ class Trainer:
             'perm_loss': self.average_across_gpus(perm_loss_meter),
         }
         
-        if self.local_rank == 0:
-            self.logger.info(f"Train loss: {loss_dict['total_loss']:.3f}")
+        self.logger.info(f"Train loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict, iter_idx
 
@@ -355,6 +368,9 @@ class Trainer:
 
     def train_val_loop(self):
 
+        if self.cfg.checkpoint is not None:
+            self.load_checkpoint()
+            
         if self.cfg.log_to_wandb and self.local_rank == 0:
             self.setup_wandb()
 
@@ -363,11 +379,12 @@ class Trainer:
         iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
         epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
 
-        predictor = Predictor(self.cfg)
+        predictor = Predictor(self.cfg,local_rank=self.local_rank,world_size=self.world_size)
 
         if self.local_rank == 0:
             evaluator = Evaluator(self.cfg)
-        
+        else:
+            evaluator = None
         
         for epoch in tqdm(epoch_iterator, position=0, leave=True, file=sys.stdout, dynamic_ncols=True, mininterval=20.0, disable=self.local_rank!=0):
             
@@ -467,8 +484,7 @@ class Trainer:
                 else:
                     self.logger.info("Rank {self.rank} waiting until coco evaluation is done...")
 
-            if self.local_rank == 0:
-                self.logger.info("Validation finished...\n")
+            self.logger.info("Validation finished...\n")
                 
             # Sync all processes before next epoch
             if self.is_ddp:
