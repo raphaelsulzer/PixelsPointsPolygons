@@ -35,8 +35,12 @@ class Trainer:
         self.cfg = cfg
         logging_level = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger("Trainer",level=logging_level)
-        self.logger.info(f"Create output directory {self.cfg.output_dir}")
-        os.makedirs(self.cfg.output_dir, exist_ok=True)
+        
+        if is_main_process():
+            self.logger.info("Configuration:")
+            self.logger.info(OmegaConf.to_yaml(cfg))
+            self.logger.info(f"Create output directory {self.cfg.output_dir}")
+            os.makedirs(self.cfg.output_dir, exist_ok=True)
         
         self.rank = rank
         self.world_size = world_size
@@ -353,47 +357,62 @@ class Trainer:
             # Sync all processes before validation
             if self.is_ddp:
                 dist.barrier()
-                
-            wandb_dict ={}
-            wandb_dict['epoch'] = epoch
-            for k, v in train_loss_dict.items():
-                wandb_dict[f"train_{k}"] = v
-            wandb_dict['lr'] = get_lr(self.optimizer)
+            
+            if is_main_process():
+                wandb_dict ={}
+                wandb_dict['epoch'] = epoch
+                for k, v in train_loss_dict.items():
+                    wandb_dict[f"train_{k}"] = v
+                wandb_dict['lr'] = get_lr(self.optimizer)
 
 
             ############################################
             ################ Validation ################
             ############################################
             val_loss_dict = self.valid_one_epoch()
-            for k, v in val_loss_dict.items():
-                wandb_dict[f"val_{k}"] = v
+            if is_main_process():
+                for k, v in val_loss_dict.items():
+                    wandb_dict[f"val_{k}"] = v
 
-            validation_best = False
-            # Save best validation loss epoch.
-            if val_loss_dict['total_loss'] < best_loss and self.cfg.save_best:
-                validation_best = True
-                best_loss = val_loss_dict['total_loss']
-                checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "validation_best.pth")
-                self.save_checkpoint(checkpoint_file, epoch=epoch)
+                validation_best = False
+                # Save best validation loss epoch.
+                if val_loss_dict['total_loss'] < best_loss and self.cfg.save_best:
+                    validation_best = True
+                    best_loss = val_loss_dict['total_loss']
+                    checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "validation_best.pth")
+                    self.save_checkpoint(checkpoint_file, epoch=epoch)
 
-            # Save latest checkpoint every epoch.
-            if self.cfg.save_latest:
-                checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "latest.pth")
-                self.save_checkpoint(checkpoint_file, epoch=epoch)
+                # Save latest checkpoint every epoch.
+                if self.cfg.save_latest:
+                    checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "latest.pth")
+                    self.save_checkpoint(checkpoint_file, epoch=epoch)
 
 
-            if (epoch + 1) % self.cfg.save_every == 0:
-                checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
-                self.save_checkpoint(checkpoint_file, epoch=epoch)
+                if (epoch + 1) % self.cfg.save_every == 0:
+                    checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
+                    self.save_checkpoint(checkpoint_file, epoch=epoch)
 
             #############################################
             ############## COCO Evaluation ##############
             #############################################
             if (epoch + 1) % self.cfg.val_every == 0:
-                self.logger.info("Predict and evaluate validation set with latest model...")
+                self.logger.info("Predict validation set with latest model...")
                 coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)
-                if len(coco_predictions) > 0:
-                    self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons in the validation set.") 
+                
+                if self.is_ddp:
+                    coco_predictions = torch.tensor(coco_predictions, device=self.device)
+                    output = torch.empty(self.world_size, *coco_predictions.shape, device=coco_predictions.device)
+                    dist.all_gather_into_tensor(output, coco_predictions)
+                    coco_predictions = output.view(-1, coco_predictions.shape[-1])
+                    coco_predictions = coco_predictions.numpy().tolist()
+                
+                if not len(coco_predictions):
+                    self.logger.info("No polygons predicted. Skipping coco evaluation...")
+                    continue
+                    
+                if is_main_process():
+                    self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 
+                    self.logger.info(f"Run coco evaluation on rank {self.rank}...")
 
                     wandb_dict[f"val_num_polygons"] = len(coco_predictions)
 
@@ -401,10 +420,12 @@ class Trainer:
                     os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
                     with open(prediction_outfile, "w") as fp:
                         fp.write(json.dumps(coco_predictions))
+                    self.logger.info(f"Saved predictions to {prediction_outfile}")
                     if validation_best:
                         best_prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", "validation_best.json")
                         shutil.copyfile(prediction_outfile, best_prediction_outfile)
-                    
+                        self.logger.info(f"Copied predictions to {best_prediction_outfile}")
+
                     evaluator.load_predictions(prediction_outfile)
                     val_metrics_dict = evaluator.evaluate()
 
@@ -412,7 +433,7 @@ class Trainer:
                         wandb_dict[f"val_{metric}"] = value
                     
                 else:
-                    self.logger.info("No polygons predicted. Skipping evaluation...")
+                    self.logger.info("Rank {self.rank} waiting until coco evaluation is done...")
 
             self.logger.info("Validation finished...\n")
 
@@ -443,6 +464,8 @@ class Trainer:
 
 
 def spawn_worker(rank, world_size, cfg):
+    
+    print(f"Spawn worker {rank}...")
     
     trainer = Trainer(cfg, rank, world_size)
     trainer.train()

@@ -102,10 +102,8 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
         val_ds.ann_file = ann_file
         val_ds.coco = coco
 
-
     sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.multi_gpu else None
-
-        
+    
     val_loader = DataLoader(
         val_ds,
         batch_size=cfg.model.batch_size,

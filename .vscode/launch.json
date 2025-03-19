@@ -3,6 +3,25 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "train_ddp",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "run_type=debug",
+                "host=gin",
+                "device=cuda",
+                "log_to_wandb=false",
+                "multi_gpu=true",
+                // "experiment_name=debug"
+            ],
+            // "env": {
+            //     "CUDA_VISIBLE_DEVICES": "0"
+            // },
+            "justMyCode": false
+        },
+        {
             "name": "train",
             "type": "debugpy",
             "request": "launch",
@@ -48,6 +67,8 @@
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
+                "checkpoint=epoch_1",
+                "experiment_name=lidar_only_bs32"
             ],
             "justMyCode": false
         }
