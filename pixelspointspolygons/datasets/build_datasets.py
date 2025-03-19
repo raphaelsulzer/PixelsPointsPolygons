@@ -76,7 +76,7 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
         batch_size=cfg.model.batch_size,
         collate_fn=partial(collate_fn_pix2poly, cfg=cfg),
         num_workers=cfg.num_workers,
-        pin_memory=True,
+        pin_memory=cfg.run_type.name!='debug',
         drop_last=False,
         sampler=sampler,
         shuffle=(sampler is None)
@@ -116,7 +116,7 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
         batch_size=cfg.model.batch_size,
         collate_fn=partial(collate_fn_pix2poly, cfg=cfg),
         num_workers=cfg.num_workers,
-        pin_memory=True,
+        pin_memory=cfg.run_type.name!='debug',
         drop_last=False,
         sampler=sampler,
         shuffle=False
@@ -165,7 +165,7 @@ def get_train_loader_inria(cfg,tokenizer):
         batch_size=cfg.model.batch_size,
         collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
         num_workers=cfg.num_workers,
-        pin_memory=True,
+        pin_memory=cfg.run_type.name!='debug',
         drop_last=True,
         sampler=sampler,
         shuffle=(sampler is None)
@@ -209,7 +209,7 @@ def get_val_loader_inria(cfg,tokenizer):
         batch_size=cfg.model.batch_size,
         collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
         num_workers=cfg.num_workers,
-        pin_memory=True,
+        pin_memory=cfg.run_type.name!='debug',
         drop_last=False,
         # sampler=sampler,
         shuffle=False

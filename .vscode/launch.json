@@ -3,25 +3,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "train_ddp",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/scripts/train.py",
-            "console": "integratedTerminal",
-            "args": [
-                "run_type=debug",
-                "host=gin",
-                "device=cuda",
-                "log_to_wandb=false",
-                "multi_gpu=true",
-                // "experiment_name=debug"
-            ],
-            // "env": {
-            //     "CUDA_VISIBLE_DEVICES": "0"
-            // },
-            "justMyCode": false
-        },
-        {
             "name": "train",
             "type": "debugpy",
             "request": "launch",
@@ -29,11 +10,13 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=debug",
+                "run_type=release",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
+                "checkpoint=null",
+                "run_type.logging=DEBUG"
                 // "experiment_name=debug"
             ],
             "justMyCode": false
