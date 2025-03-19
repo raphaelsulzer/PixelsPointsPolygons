@@ -1,6 +1,8 @@
+import torch
+import torch.multiprocessing as mp
 import hydra
 from omegaconf import OmegaConf
-from pixelspointspolygons.train import Trainer
+from pixelspointspolygons.train import NewTrainer, spawn_worker
 
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
@@ -8,8 +10,10 @@ def main(cfg):
     print("\nConfiguration:")
     print(OmegaConf.to_yaml(cfg))
 
-    tt = Trainer(cfg)
-    tt.train()
+    # tt = Trainer(cfg)
+    # tt.train()
+    world_size = torch.cuda.device_count()
+    mp.spawn(spawn_worker, args=(world_size, cfg), nprocs=world_size, join=True)
 
 if __name__ == "__main__":
     main()
