@@ -474,7 +474,10 @@ class Trainer:
 
 
 def spawn_worker(rank, world_size, cfg):
-        
+    
+    world_size = torch.cuda.device_count()
+    rank = os.environ['LOCAL_RANK']
+    
     trainer = Trainer(cfg, rank, world_size)
     trainer.train()
 
