@@ -10,9 +10,9 @@ from pixelspointspolygons.train import Trainer, spawn_worker
 def main(cfg):
 
     OmegaConf.resolve(cfg)
-    world_size = torch.cuda.device_count()
-    mp.spawn(spawn_worker, args=(world_size, cfg), nprocs=world_size, join=True)
-
+    # world_size = torch.cuda.device_count()
+    # mp.spawn(spawn_worker, args=(world_size, cfg), nprocs=world_size, join=True)
+    spawn_worker(None,None, cfg)
 
 if __name__ == "__main__":
     main()
