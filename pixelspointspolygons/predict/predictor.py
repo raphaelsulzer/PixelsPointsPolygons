@@ -20,9 +20,6 @@ from ..models.tokenizer import Tokenizer
 from ..datasets import get_val_loader
 from ..models import get_model
 
-# import warnings
-# warnings.filterwarnings("error", message="Support for mismatched key_padding_mask and attn_mask is deprecated. Use same type for both instead.")
-
 class Predictor:
     def __init__(self, cfg, local_rank=0, world_size=1):
         self.cfg = cfg
@@ -33,6 +30,8 @@ class Predictor:
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         if verbosity == logging.INFO and local_rank != 0:
             verbosity = logging.WARNING
+        self.verbosity = verbosity
+        self.update_pbar_every = 1
 
         self.logger = make_logger(f"Predictor (rank {local_rank})",level=verbosity)
         self.logger.log(logging.INFO, f"Init Predictor on rank {local_rank} in world size {world_size}...")

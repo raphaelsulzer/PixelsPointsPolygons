@@ -66,7 +66,6 @@ class Trainer:
         
         pbar = tqdm(item, total=len(item), 
                       file=sys.stdout, 
-                    #   dynamic_ncols=True, 
                       mininterval=self.update_pbar_every,                      
                       disable=disable,
                       position=0,
@@ -455,18 +454,17 @@ class Trainer:
                 print(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
                 
                 if self.is_ddp:
-                    coco_predictions = torch.tensor(coco_predictions, device=self.device)
-                    output = torch.empty(self.world_size, *coco_predictions.shape, device=coco_predictions.device)
-                    dist.all_gather_into_tensor(output, coco_predictions)
-                    if output.numel() > 0:
-                        coco_predictions = output.view(-1, coco_predictions.shape[-1])
-                        coco_predictions = coco_predictions.numpy().tolist()
-                    else:
-                        coco_predictions = []
+                    
+                    # Gather the list of dictionaries from all ranks
+                    gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects
+                    dist.all_gather_object(gathered_predictions, coco_predictions)
+
+                    # Flatten the list of lists into a single list
+                    coco_predictions = [item for sublist in gathered_predictions for item in sublist]
+                    
                 
                 if not len(coco_predictions):
-                    if self.local_rank == 0:
-                        self.logger.info("No polygons predicted. Skipping coco evaluation...")
+                    self.logger.info("No polygons predicted. Skipping coco evaluation...")
                     continue
                     
                 if self.local_rank == 0:
