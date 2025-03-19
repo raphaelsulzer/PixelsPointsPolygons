@@ -10,8 +10,13 @@ from pixelspointspolygons.train import Trainer
 def main(cfg):
 
     OmegaConf.resolve(cfg)
-    world_size = torch.cuda.device_count()
-    local_rank = int(os.environ['LOCAL_RANK'])
+    
+    if cfg.multi_gpu:
+        world_size = torch.cuda.device_count()
+        local_rank = int(os.environ['LOCAL_RANK'])
+    else:
+        world_size = 1
+        local_rank = 0
     
     trainer = Trainer(cfg, local_rank, world_size)
     trainer.train()
