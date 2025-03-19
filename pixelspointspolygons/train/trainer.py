@@ -37,7 +37,7 @@ class Trainer:
         self.logger = make_logger("Trainer",level=logging_level)
         
         self.logger.info(f"Init Trainer on rank {rank} in world size {world_size}...")
-        if rank == 0():
+        if rank == 0:
             # self.logger.info("Configuration:")
             # self.logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
             self.logger.info(f"Create output directory {self.cfg.output_dir}")
