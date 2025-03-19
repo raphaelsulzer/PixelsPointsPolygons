@@ -18,7 +18,8 @@ output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.experi
 model:
   batch_size: ${..run_type.batch_size}
 dataset:
-  subset: ${..run_type.subset}
+  train_subset: ${..run_type.train_subset}
+  val_subset: ${..run_type.val_subset}
 num_workers: ${.run_type.num_workers}
 
 use_lidar: true

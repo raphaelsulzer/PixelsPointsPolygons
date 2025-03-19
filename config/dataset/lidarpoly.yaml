@@ -4,4 +4,5 @@ annotations:
   train: ${..path}/annotations_train.json
   val: ${..path}/annotations_val.json
   test: ${..path}/annotations_test.json
-subset: null
+train_subset: null
+val_subset: null

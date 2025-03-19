@@ -34,8 +34,6 @@ def init_distributed():
         rank=rank
     )
     
-    print()
-
     # this will make all .cuda() calls work properly.
     torch.cuda.set_device(local_rank)
 

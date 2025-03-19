@@ -57,11 +57,7 @@ class Trainer:
         
         self.update_pbar_every = 1
         
-    # def setup_ddp(self):
-    #     os.environ["MASTER_ADDR"] = "localhost"
-    #     os.environ["MASTER_PORT"] = "12355"
-    #     dist.init_process_group("nccl", rank=self.rank, world_size=self.world_size)
-    #     torch.cuda.set_device(self.rank)
+
     def setup_ddp(self):
 
         # Initializes the distributed backend which will take care of synchronizing nodes/GPUs.
@@ -79,7 +75,6 @@ class Trainer:
 
         # synchronizes all threads to reach this point before moving on.
         dist.barrier()
-            
         
     def setup_wandb(self):
     
@@ -266,7 +261,8 @@ class Trainer:
             'perm_loss': self.average_across_gpus(perm_loss_meter),
         }
         
-        self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
+        if self.local_rank == 0:
+            self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict
 
@@ -340,8 +336,8 @@ class Trainer:
 
             iter_idx += 1
 
-            if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
-                break
+            # if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
+            #     break
             
         
         loss_dict = {
@@ -350,7 +346,8 @@ class Trainer:
             'perm_loss': self.average_across_gpus(perm_loss_meter),
         }
         
-        self.logger.info(f"Train loss: {loss_dict['total_loss']:.3f}")
+        if self.local_rank == 0:
+            self.logger.info(f"Train loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict, iter_idx
 
@@ -426,7 +423,8 @@ class Trainer:
             ############## COCO Evaluation ##############
             #############################################
             if (epoch + 1) % self.cfg.val_every == 0:
-                self.logger.info("Predict validation set with latest model...")
+                if self.local_rank == 0:
+                    self.logger.info("Predict validation set with latest model...")
                 coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)
                 
                 if self.is_ddp:
@@ -440,7 +438,8 @@ class Trainer:
                         coco_predictions = []
                 
                 if not len(coco_predictions):
-                    self.logger.info("No polygons predicted. Skipping coco evaluation...")
+                    if self.local_rank == 0:
+                        self.logger.info("No polygons predicted. Skipping coco evaluation...")
                     continue
                     
                 if self.local_rank == 0:
@@ -468,8 +467,8 @@ class Trainer:
                 else:
                     self.logger.info("Rank {self.rank} waiting until coco evaluation is done...")
 
-            self.logger.info("Validation finished...\n")
-
+            if self.local_rank == 0:
+                self.logger.info("Validation finished...\n")
                 
             # Sync all processes before next epoch
             if self.is_ddp:
@@ -494,14 +493,3 @@ class Trainer:
         self.setup_loss_fn_dict()
         self.train_val_loop()
         self.cleanup()
-
-
-def spawn_worker(rank, world_size, cfg):
-    
-    world_size = torch.cuda.device_count()
-    rank = int(os.environ['LOCAL_RANK'])
-    
-    trainer = Trainer(cfg, rank, world_size)
-    trainer.train()
-
-
