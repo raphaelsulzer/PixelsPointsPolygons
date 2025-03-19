@@ -21,7 +21,8 @@ class Evaluator:
         self.gt_file = cfg.eval.gt_file
         self.pred_file = cfg.eval.pred_file
         
-        self.cocoGt = COCO(cfg.eval.gt_file)
+        with suppress_stdout():
+            self.cocoGt = COCO(cfg.eval.gt_file)
         # self.cocoDt = self.cocoGt.loadRes(self.eval.pred_file)
         self.cocoDt = None
         

@@ -2,7 +2,7 @@ import torch
 import torch.multiprocessing as mp
 import hydra
 from omegaconf import OmegaConf
-from pixelspointspolygons.train import NewTrainer, spawn_worker
+from pixelspointspolygons.train import spawn_worker
 
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
