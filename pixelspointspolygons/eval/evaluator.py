@@ -38,7 +38,11 @@ class Evaluator:
             if not os.path.isfile(pred_file):
                 raise FileExistsError(f"File {pred_file} does not exist.")
             self.pred_file = pred_file
-        self.cocoDt = self.cocoGt.loadRes(pred_file)
+        
+        self.logger.info(f"Loading predictions from {pred_file}")
+        with suppress_stdout():
+            self.cocoDt = self.cocoGt.loadRes(pred_file)
+        
 
     def compute_coco_metrics(self, annType='segm'):
         
@@ -148,7 +152,7 @@ class Evaluator:
                 res_dict.update(self.compute_coco_metrics())
         
         
-        self.logger.info(f"\nResults for {self.pred_file}:")
+        self.logger.info(f"Results for {self.pred_file}:")
         
         
         df = pd.DataFrame.from_dict(res_dict, orient='index').transpose()
