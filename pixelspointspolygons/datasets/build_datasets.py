@@ -61,6 +61,13 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
         transform=train_transforms,
         tokenizer=tokenizer
     )
+    if cfg.dataset.train_subset is not None:
+        indices = list(range(cfg.dataset.train_subset))
+        ann_file = train_ds.ann_file
+        coco = train_ds.coco
+        train_ds = Subset(train_ds, indices)
+        train_ds.ann_file = ann_file
+        train_ds.coco = coco    
     
     sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.multi_gpu else None
 
@@ -94,8 +101,8 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
         tokenizer=tokenizer
     )
     
-    if cfg.dataset.subset is not None:
-        indices = list(range(cfg.dataset.subset))
+    if cfg.dataset.val_subset is not None:
+        indices = list(range(cfg.dataset.val_subset))
         ann_file = val_ds.ann_file
         coco = val_ds.coco
         val_ds = Subset(val_ds, indices)
@@ -149,7 +156,7 @@ def get_train_loader_inria(cfg,tokenizer):
         transform=train_transforms,
         tokenizer=tokenizer,
     )
-        
+    
     sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.multi_gpu else None
 
 
