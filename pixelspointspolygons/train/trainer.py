@@ -483,8 +483,8 @@ class Trainer:
 
     def train(self):
         seed_everything(42)
-
-        self.setup_ddp()
+        if self.is_ddp:
+            self.setup_ddp()
         self.setup_tokenizer()
         self.setup_dynamic_cfg_vars()
         self.setup_model()
