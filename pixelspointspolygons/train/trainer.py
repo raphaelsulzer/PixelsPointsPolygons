@@ -30,22 +30,22 @@ from ..predict import Predictor
 from ..eval import Evaluator
 
 class Trainer:
-    def __init__(self, cfg, rank, world_size):
+    def __init__(self, cfg, local_rank, world_size):
         
         self.cfg = cfg
         logging_level = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger("Trainer",level=logging_level)
         
-        self.logger.info(f"Init Trainer on rank {rank} in world size {world_size}...")
-        if rank == 0:
+        self.logger.info(f"Init Trainer on rank {local_rank} in world size {world_size}...")
+        if local_rank == 0:
             # self.logger.info("Configuration:")
             # self.logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
             self.logger.info(f"Create output directory {self.cfg.output_dir}")
             os.makedirs(self.cfg.output_dir, exist_ok=True)
         
-        self.rank = rank
+        self.local_rank = local_rank
         self.world_size = world_size
-        self.device = torch.device(f"cuda:{rank}")
+        self.device = torch.device(f"cuda:{local_rank}")
         self.model = None
         self.optimizer = None
         self.train_loader = None
@@ -57,11 +57,29 @@ class Trainer:
         
         self.update_pbar_every = 1
         
+    # def setup_ddp(self):
+    #     os.environ["MASTER_ADDR"] = "localhost"
+    #     os.environ["MASTER_PORT"] = "12355"
+    #     dist.init_process_group("nccl", rank=self.rank, world_size=self.world_size)
+    #     torch.cuda.set_device(self.rank)
     def setup_ddp(self):
-        os.environ["MASTER_ADDR"] = "localhost"
-        os.environ["MASTER_PORT"] = "12355"
-        dist.init_process_group("nccl", rank=self.rank, world_size=self.world_size)
-        torch.cuda.set_device(self.rank)
+
+        # Initializes the distributed backend which will take care of synchronizing nodes/GPUs.
+        dist_url = "env://"  # default
+
+        dist.init_process_group(
+            backend="nccl",
+            init_method=dist_url,
+            world_size=self.world_size,
+            rank=int(os.environ["RANK"])
+        )
+        
+        # this will make all .cuda() calls work properly.
+        torch.cuda.set_device(self.local_rank)
+
+        # synchronizes all threads to reach this point before moving on.
+        dist.barrier()
+            
         
     def setup_wandb(self):
     
@@ -132,7 +150,7 @@ class Trainer:
         model.to(self.cfg.device)
         
         if self.is_ddp:
-            model = DDP(model, device_ids=[self.rank])
+            model = DDP(model, device_ids=[self.local_rank])
         
         self.model = model
 
@@ -196,7 +214,8 @@ class Trainer:
         
     def valid_one_epoch(self):
         
-        self.logger.info("Validate...")
+        if self.local_rank == 0:
+            self.logger.info("Validate...")
         self.model.eval()
         self.loss_fn_dict["vertex"].eval()
         self.loss_fn_dict["perm"].eval()
@@ -205,7 +224,9 @@ class Trainer:
         vertex_loss_meter = AverageMeter()
         perm_loss_meter = AverageMeter()
 
-        loader = tqdm(self.val_loader, total=len(self.val_loader), file=sys.stdout, dynamic_ncols=True, mininterval=self.update_pbar_every)
+        loader = tqdm(self.val_loader, total=len(self.val_loader), 
+                      file=sys.stdout, dynamic_ncols=True, mininterval=self.update_pbar_every,
+                      disable=self.local_rank!=0)
 
         with torch.no_grad():
             for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
@@ -251,7 +272,9 @@ class Trainer:
 
 
     def train_one_epoch(self, epoch, iter_idx):
-        self.logger.info(f"Train epoch {epoch}...")
+        if self.local_rank == 0:
+            self.logger.info(f"Train epoch {epoch}...")
+        
         self.model.train()
         self.loss_fn_dict["vertex"].train()
         self.loss_fn_dict["perm"].train()
@@ -260,12 +283,15 @@ class Trainer:
         vertex_loss_meter = AverageMeter()
         perm_loss_meter = AverageMeter()
 
-        loader = tqdm(self.train_loader, total=len(self.train_loader), file=sys.stdout, dynamic_ncols=True, mininterval=self.update_pbar_every)
+        
+        loader = tqdm(self.train_loader, 
+                      total=len(self.train_loader), 
+                      file=sys.stdout, dynamic_ncols=True, 
+                      mininterval=self.update_pbar_every,
+                      disable=self.local_rank!=0)
 
         for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids in loader:
-            
-            self.logger.info(f"Starting iteration on rank {self.rank}...")
-            
+                        
             batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
             
             # ### debug vis
@@ -314,13 +340,9 @@ class Trainer:
 
             iter_idx += 1
 
-            self.logger.info(f"Ended iteration on rank {self.rank}...")
-
             if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
                 break
             
-        self.logger.info(f"Ended epoch on rank {self.rank}...")
-
         
         loss_dict = {
             'total_loss': self.average_across_gpus(loss_meter),
@@ -336,7 +358,7 @@ class Trainer:
 
     def train_val_loop(self):
 
-        if self.cfg.log_to_wandb and self.rank == 0:
+        if self.cfg.log_to_wandb and self.local_rank == 0:
             self.setup_wandb()
 
         best_loss = float('inf')
@@ -346,10 +368,11 @@ class Trainer:
 
         predictor = Predictor(self.cfg)
 
-        if self.rank == 0:
+        if self.local_rank == 0:
             evaluator = Evaluator(self.cfg)
-            
-        for epoch in tqdm(epoch_iterator, position=0, leave=True, file=sys.stdout, dynamic_ncols=True, mininterval=20.0):
+        
+        
+        for epoch in tqdm(epoch_iterator, position=0, leave=True, file=sys.stdout, dynamic_ncols=True, mininterval=20.0, disable=self.local_rank!=0):
             
             ############################################
             ################# Training #################
@@ -365,7 +388,7 @@ class Trainer:
             if self.is_ddp:
                 dist.barrier()
             
-            if self.rank == 0:
+            if self.local_rank == 0:
                 wandb_dict ={}
                 wandb_dict['epoch'] = epoch
                 for k, v in train_loss_dict.items():
@@ -377,7 +400,7 @@ class Trainer:
             ################ Validation ################
             ############################################
             val_loss_dict = self.valid_one_epoch()
-            if self.rank == 0:
+            if self.local_rank == 0:
                 for k, v in val_loss_dict.items():
                     wandb_dict[f"val_{k}"] = v
 
@@ -420,9 +443,9 @@ class Trainer:
                     self.logger.info("No polygons predicted. Skipping coco evaluation...")
                     continue
                     
-                if self.rank == 0:
+                if self.local_rank == 0:
                     self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 
-                    self.logger.info(f"Run coco evaluation on rank {self.rank}...")
+                    self.logger.info(f"Run coco evaluation on rank {self.local_rank}...")
 
                     wandb_dict[f"val_num_polygons"] = len(coco_predictions)
 
@@ -453,7 +476,7 @@ class Trainer:
                 dist.barrier()
 
             if self.cfg.log_to_wandb:
-                if self.rank == 0:
+                if self.local_rank == 0:
                     wandb.log(wandb_dict)
 
     
@@ -476,7 +499,7 @@ class Trainer:
 def spawn_worker(rank, world_size, cfg):
     
     world_size = torch.cuda.device_count()
-    rank = os.environ['LOCAL_RANK']
+    rank = int(os.environ['LOCAL_RANK'])
     
     trainer = Trainer(cfg, rank, world_size)
     trainer.train()
