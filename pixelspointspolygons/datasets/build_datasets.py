@@ -97,8 +97,10 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
     if cfg.dataset.subset is not None:
         indices = list(range(cfg.dataset.subset))
         ann_file = val_ds.ann_file
+        coco = val_ds.coco
         val_ds = Subset(val_ds, indices)
         val_ds.ann_file = ann_file
+        val_ds.coco = coco
 
 
     sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.multi_gpu else None
