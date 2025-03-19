@@ -37,7 +37,7 @@ class Trainer:
         self.logger = make_logger("Trainer",level=logging_level)
         
         self.logger.info(f"Init Trainer on rank {rank} in world size {world_size}...")
-        if is_main_process():
+        if rank == 0():
             # self.logger.info("Configuration:")
             # self.logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
             self.logger.info(f"Create output directory {self.cfg.output_dir}")
@@ -330,7 +330,7 @@ class Trainer:
 
     def train_val_loop(self):
 
-        if self.cfg.log_to_wandb and is_main_process:
+        if self.cfg.log_to_wandb and self.rank == 0:
             self.setup_wandb()
 
         best_loss = float('inf')
@@ -340,7 +340,7 @@ class Trainer:
 
         predictor = Predictor(self.cfg)
 
-        if is_main_process():
+        if self.rank == 0:
             evaluator = Evaluator(self.cfg)
             
         for epoch in tqdm(epoch_iterator, position=0, leave=True, file=sys.stdout, dynamic_ncols=True, mininterval=20.0):
@@ -359,7 +359,7 @@ class Trainer:
             if self.is_ddp:
                 dist.barrier()
             
-            if is_main_process():
+            if self.rank == 0:
                 wandb_dict ={}
                 wandb_dict['epoch'] = epoch
                 for k, v in train_loss_dict.items():
@@ -371,7 +371,7 @@ class Trainer:
             ################ Validation ################
             ############################################
             val_loss_dict = self.valid_one_epoch()
-            if is_main_process():
+            if self.rank == 0:
                 for k, v in val_loss_dict.items():
                     wandb_dict[f"val_{k}"] = v
 
@@ -414,7 +414,7 @@ class Trainer:
                     self.logger.info("No polygons predicted. Skipping coco evaluation...")
                     continue
                     
-                if is_main_process():
+                if self.rank == 0:
                     self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 
                     self.logger.info(f"Run coco evaluation on rank {self.rank}...")
 
@@ -447,7 +447,7 @@ class Trainer:
                 dist.barrier()
 
             if self.cfg.log_to_wandb:
-                if is_main_process():
+                if self.rank == 0:
                     wandb.log(wandb_dict)
 
     
