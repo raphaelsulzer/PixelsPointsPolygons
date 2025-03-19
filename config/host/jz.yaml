@@ -1,2 +1,3 @@
 name: jeanzay
 data_root: /lustre/fswork/projects/rech/cso/uku93eu/data
+update_pbar_every: 60
