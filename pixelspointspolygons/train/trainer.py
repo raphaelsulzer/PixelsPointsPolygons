@@ -15,7 +15,7 @@ from transformers import get_linear_schedule_with_warmup
 from ..models.tokenizer import Tokenizer
 from ..misc import seed_everything, load_checkpoint, compute_dynamic_cfg_vars, init_distributed, make_logger, is_main_process, print_all_ranks
 from ..datasets import get_train_loader, get_val_loader
-from .train_val import train_val_pix2poly
+# from .trainer_pix2poly import train_val_pix2poly
 from ..models import get_model
 
 
@@ -26,6 +26,8 @@ class Trainer:
         self.logger = make_logger("Training",level=verbosity)
         self.logger.info(f"Create output directory {cfg.output_dir}")
         os.makedirs(cfg.output_dir, exist_ok=True)
+        
+        self.is_ddp = cfg.multi_gpu
         
     def load_checkpoint(self,model,optimizer,lr_scheduler,local_rank=0):
 
@@ -40,6 +42,34 @@ class Trainer:
             lr_scheduler
         )
         self.cfg.model.start_epoch = start_epoch + 1
+        
+    def save_checkpoint(self,model,optimizer,lr_scheduler,epoch):
+        
+        if self.is_ddp:
+            state_dict = self.model.module.state_dict()
+        else:
+            state_dict = self.model.state_dict()
+        
+        checkpoint = {
+            "state_dict": state_dict,
+            "optimizer": optimizer.state_dict(),
+            "scheduler": lr_scheduler.state_dict(),
+            "epochs_run": epoch,
+            "loss": train_loss_dict["total_loss"],
+            "cfg" : self.cfg
+        }
+        checkpoint_file = os.path.join(cfg.output_dir, "checkpoints", "validation_best.pth")
+        os.makedirs(os.path.dirname(checkpoint_file), exist_ok=True)
+        torch.save(checkpoint, checkpoint_file)
+        validation_best = True
+        print(f"Save model 'validation_best' to {checkpoint_file}")
+        
+        torch.save({
+        'epoch': epoch,
+        'model_state': model.module.state_dict(),  # Note: model.module for DDP
+        'optimizer_state': optimizer.state_dict(),
+        'loss': loss,
+        }, path)
 
     def train(self):
         if self.cfg.multi_gpu:
@@ -107,16 +137,16 @@ class Trainer:
             OmegaConf.save(config=self.cfg, f=config_save_path)
             self.logger.info(f"Configuration saved to {config_save_path}")
         
-        # Start tain_val loop
-        train_val_pix2poly(
-            model,
-            train_loader,
-            val_loader,
-            tokenizer,
-            vertex_loss_fn,
-            perm_loss_fn,
-            optimizer,
-            lr_scheduler=lr_scheduler,
-            step='batch',
-            cfg=self.cfg
-        )
+        # # Start tain_val loop
+        # train_val_pix2poly(
+        #     model,
+        #     train_loader,
+        #     val_loader,
+        #     tokenizer,
+        #     vertex_loss_fn,
+        #     perm_loss_fn,
+        #     optimizer,
+        #     lr_scheduler=lr_scheduler,
+        #     step='batch',
+        #     cfg=self.cfg
+        # )
