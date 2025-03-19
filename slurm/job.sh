@@ -31,4 +31,4 @@ torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=g5k run_type
 experiment_name=image_only_bs4x16 checkpoint=null model.batch_size=16 use_lidar=False use_images=True
 
 torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true dataset=lidarpoly \
-experiment_name=image_only_bs2x16 checkpoint=validation_best model.batch_size=8 use_lidar=False use_images=True run_type=debug
+experiment_name=lidarpoly_D4_aug_bs2x16 checkpoint=backup model.batch_size=8 use_lidar=False use_images=True run_type=debug log_to_wandb=false
