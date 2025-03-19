@@ -4,6 +4,7 @@ import pandas as pd
 
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
+from copy import deepcopy
 
 from ..misc import suppress_stdout, make_logger
 
@@ -55,7 +56,8 @@ class Evaluator:
         # print("\npred: ", cocoDt.loadAnns(cocoDt.getAnnIds(imgIds=[0]))[2])
         # print("\ngt: ", cocoGt.loadAnns(cocoGt.getAnnIds(imgIds=[0]))[1])
         
-        cocoEval = COCOeval(self.cocoGt, self.cocoDt, iouType=annType)
+        # have to pass a deepcopy here, otherwise the self.cocoGt object will be modified
+        cocoEval = COCOeval(deepcopy(self.cocoGt), deepcopy(self.cocoDt), iouType=annType)
         
 
         # cocoEval.params.imgIds = [0]
@@ -114,17 +116,17 @@ class Evaluator:
         self.logger.info(f"Number of images (gt/pred): {len(self.cocoGt.getImgIds())}/{len(self.cocoDt.getImgIds())}")
         self.logger.info(f"Number of polygons (gt/pred): {len(self.cocoGt.getAnnIds())}/{len(self.cocoDt.getAnnIds())}")
         
-        # num_vert_gt = 0
-        # num_vert_pred = 0
-        # for ann in self.cocoGt.dataset['annotations']:
-        #     if len(ann['segmentation']):
-        #         num_vert_gt += len(ann['segmentation'][0])//2
+        num_vert_gt = 0
+        num_vert_pred = 0
+        for ann in self.cocoGt.dataset['annotations']:
+            if len(ann['segmentation']):
+                num_vert_gt += len(ann['segmentation'][0])//2
                 
-        # for ann in self.cocoDt.dataset['annotations']:
-        #     if len(ann['segmentation']):
-        #         num_vert_pred += len(ann['segmentation'][0])//2
+        for ann in self.cocoDt.dataset['annotations']:
+            if len(ann['segmentation']):
+                num_vert_pred += len(ann['segmentation'][0])//2
  
-        # self.logger.info(f"Number of vertices (gt/pred): {num_vert_gt}/{num_vert_pred}")
+        self.logger.info(f"Number of vertices (gt/pred): {num_vert_gt}/{num_vert_pred}")
 
 
     def evaluate(self):
