@@ -26,7 +26,7 @@ def make_logger(name="MyLogger",level=logging.INFO,
     # logging.captureWarnings(capture_warnings)
 
     formatter = colorlog.ColoredFormatter(
-        "%(log_color)s[%(asctime)s] [(%(filename)s:%(lineno)3s)] [%(levelname)s] %(message)s",
+        "%(log_color)s[%(name)s] [%(asctime)s] [(%(filename)s:%(lineno)3s)] [%(levelname)s] %(message)s",
         datefmt="%H:%M:%S",
         reset=True,
         log_colors={
@@ -53,7 +53,7 @@ def make_logger(name="MyLogger",level=logging.INFO,
         stream_handler.setFormatter(formatter)
         logger.addHandler(stream_handler)
 
-    formatter = logging.Formatter("[%(asctime)s] [(%(filename)s:%(lineno)3s)] [%(levelname)s] %(message)s")
+    formatter = logging.Formatter("[%(name)s] [%(asctime)s] [(%(filename)s:%(lineno)3s)] [%(levelname)s] %(message)s")
 
     if filepath and not any([isinstance(handler, logging.FileHandler) for handler in logger.handlers]):
         file_handler = logging.FileHandler(filepath)

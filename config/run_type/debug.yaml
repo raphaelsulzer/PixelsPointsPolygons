@@ -1,6 +1,6 @@
 name: debug
 batch_size: 16
-train_subset: 4096
+train_subset: 512
 val_subset: null
 logging: DEBUG
 num_workers: 1

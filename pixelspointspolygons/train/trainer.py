@@ -33,8 +33,11 @@ class Trainer:
     def __init__(self, cfg, local_rank, world_size):
         
         self.cfg = cfg
-        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO) if local_rank == 0 else logging.WARNING
-        self.logger = make_logger("Trainer",level=verbosity)
+        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
+        if verbosity == logging.INFO and local_rank != 0:
+            verbosity = logging.WARNING
+        self.verbosity = verbosity
+        self.logger = make_logger(f"Trainer (rank {local_rank})",level=verbosity)
         
         self.logger.log(logging.INFO, f"Init Trainer on rank {local_rank} in world size {world_size}...")
         if local_rank == 0:
@@ -57,7 +60,20 @@ class Trainer:
         
         self.update_pbar_every = 1
         
-
+    def progress_bar(self,item):
+        
+        disable = self.verbosity >= logging.WARNING
+        
+        pbar = tqdm(item, total=len(item), 
+                      file=sys.stdout, 
+                    #   dynamic_ncols=True, 
+                      mininterval=self.update_pbar_every,                      
+                      disable=disable,
+                      position=0,
+                      leave=True)
+    
+        return pbar
+    
     def setup_ddp(self):
 
         # Initializes the distributed backend which will take care of synchronizing nodes/GPUs.
@@ -170,15 +186,10 @@ class Trainer:
     def save_checkpoint(self, outfile, **kwargs):
         
         os.makedirs(os.path.dirname(outfile), exist_ok=True)
-        
-        if self.is_ddp:
-            model_state_dict = self.model.module.state_dict()
-        else:
-            model_state_dict = self.model.state_dict()
             
         checkpoint = {
             "cfg": self.cfg,
-            "model": model_state_dict,
+            "model": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
             "scheduler": self.lr_scheduler.state_dict(),
             **kwargs
@@ -195,8 +206,10 @@ class Trainer:
         if not os.path.isfile(checkpoint_file):
             raise FileExistsError(f"Checkpoint file {checkpoint_file} does not exist.")
 
+        self.logger.info(f"Load checkpoint {self.cfg.checkpoint} from {checkpoint_file}...")
+        
         checkpoint = torch.load(checkpoint_file, map_location=map_location)
-        self.model.load_state_dict(checkpoint["state_dict"])
+        self.model.load_state_dict(checkpoint.get("model",checkpoint.get("state_dict")))
         self.optimizer.load_state_dict(checkpoint["optimizer"])
         self.lr_scheduler.load_state_dict(checkpoint["scheduler"])
         
@@ -223,9 +236,8 @@ class Trainer:
         
         
     def valid_one_epoch(self):
-        
-        if self.local_rank == 0:
-            self.logger.info("Validate...")
+
+        self.logger.info("Validate...")
         self.model.eval()
         self.loss_fn_dict["vertex"].eval()
         self.loss_fn_dict["perm"].eval()
@@ -234,9 +246,7 @@ class Trainer:
         vertex_loss_meter = AverageMeter()
         perm_loss_meter = AverageMeter()
 
-        loader = tqdm(self.val_loader, total=len(self.val_loader), 
-                      file=sys.stdout, dynamic_ncols=True, mininterval=self.update_pbar_every,
-                      disable=self.local_rank!=0)
+        loader = self.progress_bar(self.val_loader)
 
         with torch.no_grad():
             for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
@@ -270,20 +280,20 @@ class Trainer:
                 perm_loss_meter.update(perm_loss.item(), batch_size)
 
 
+        self.logger.debug(f"Validation loss: {loss_meter.avg:.3f}")
         loss_dict = {
             'total_loss': self.average_across_gpus(loss_meter),
             'vertex_loss': self.average_across_gpus(vertex_loss_meter),
             'perm_loss': self.average_across_gpus(perm_loss_meter),
         }
-        
         self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict
 
 
     def train_one_epoch(self, epoch, iter_idx):
-        if self.local_rank == 0:
-            self.logger.info(f"Train epoch {epoch}...")
+        
+        self.logger.info(f"Train epoch {epoch}...")
         
         self.model.train()
         self.loss_fn_dict["vertex"].train()
@@ -294,11 +304,7 @@ class Trainer:
         perm_loss_meter = AverageMeter()
 
         
-        loader = tqdm(self.train_loader, 
-                      total=len(self.train_loader), 
-                      file=sys.stdout, dynamic_ncols=True, 
-                      mininterval=self.update_pbar_every,
-                      disable=self.local_rank!=0)
+        loader = self.progress_bar(self.train_loader)
 
         for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids in loader:
                         
@@ -354,6 +360,7 @@ class Trainer:
             #     break
             
         
+        self.logger.debug(f"Train loss: {loss_meter.avg:.3f}")
         loss_dict = {
             'total_loss': self.average_across_gpus(loss_meter),
             'vertex_loss': self.average_across_gpus(vertex_loss_meter),
@@ -386,7 +393,7 @@ class Trainer:
         else:
             evaluator = None
         
-        for epoch in tqdm(epoch_iterator, position=0, leave=True, file=sys.stdout, dynamic_ncols=True, mininterval=20.0, disable=self.local_rank!=0):
+        for epoch in self.progress_bar(epoch_iterator):
             
             ############################################
             ################# Training #################
@@ -440,9 +447,12 @@ class Trainer:
             ############## COCO Evaluation ##############
             #############################################
             if (epoch + 1) % self.cfg.val_every == 0:
-                if self.local_rank == 0:
-                    self.logger.info("Predict validation set with latest model...")
+
+                self.logger.info("Predict validation set with latest model...")
                 coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)
+                
+                
+                print(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
                 
                 if self.is_ddp:
                     coco_predictions = torch.tensor(coco_predictions, device=self.device)
