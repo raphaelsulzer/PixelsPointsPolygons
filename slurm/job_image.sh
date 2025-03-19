@@ -3,11 +3,11 @@
 ##rm ./slurm/output.log
 ##rm ./slurm/error.log
 #SBATCH --account=cso@v100
-#SBATCH --job-name=lidar_only_bs4x16  # Job name
+#SBATCH --job-name=image_only_bs4x16  # Job name
 #SBATCH --output=./slurm/output.log       # Standard output and error log
 #SBATCH --error=./slurm/error.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
-#SBATCH --ntasks=1 # reserve 4 tasks (or processes)
+#SBATCH --ntasks=4 # reserve 4 tasks (or processes)
 #SBATCH --gres=gpu:4              # Request 2 GPUs
 ##SBATCH --constraint v100-32g
 #SBATCH --cpus-per-task=16         # Request 8 CPU cores
@@ -31,4 +31,4 @@ set -x
 
 # Run your Python script
 torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true dataset=lidarpoly \
-experiment_name=lidar_only_bs4x16 checkpoint=null model.batch_size=16 use_lidar=True use_images=False run_type.logging=DEBUG
+experiment_name=image_only_bs4x16 checkpoint=null model.batch_size=16 use_lidar=false use_images=true
