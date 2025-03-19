@@ -1,2 +1,2 @@
 from .predict.predictor import Predictor
-from .train.trainer import Trainer
+from .train.trainer_old import OldTrainer

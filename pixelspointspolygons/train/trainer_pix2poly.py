@@ -12,9 +12,9 @@ import torch.distributed as dist
 from ..misc import *
 from ..eval import Evaluator
 from ..predict.predictor import Predictor
-from .trainer import Trainer
+from .trainer_old import OldTrainer
 
-class TrainerPix2Poly(Trainer):
+class TrainerPix2Poly(OldTrainer):
     
     
     def valid_one_epoch(self, epoch, model, valid_loader, vertex_loss_fn, perm_loss_fn, cfg):
