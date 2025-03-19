@@ -30,13 +30,30 @@ class Predictor:
         self.local_rank = local_rank
         self.world_size = world_size
         
-        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO) if local_rank == 0 else logging.WARNING
-        self.logger = make_logger("Predictor",level=verbosity)
+        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
+        if verbosity == logging.INFO and local_rank != 0:
+            verbosity = logging.WARNING
+
+        self.logger = make_logger(f"Predictor (rank {local_rank})",level=verbosity)
         self.logger.log(logging.INFO, f"Init Predictor on rank {local_rank} in world size {world_size}...")
         self.logger.info(f"Create output directory {cfg.output_dir}")
         if self.local_rank == 0:
             os.makedirs(cfg.output_dir, exist_ok=True)
 
+    def progress_bar(self,item):
+        
+        disable = self.verbosity >= logging.WARNING
+        
+        pbar = tqdm(item, total=len(item), 
+                      file=sys.stdout, 
+                    #   dynamic_ncols=True, 
+                      mininterval=self.update_pbar_every,                      
+                      disable=disable,
+                      position=0,
+                      leave=True)
+    
+        return pbar
+    
     def get_pixel_mask_from_prediction(self, x, batch_polygons):
         B, C, H, W = x.shape
 
@@ -78,7 +95,7 @@ class Predictor:
         model.eval()
         
         coco_predictions = []
-        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in tqdm(loader):
+        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in self.progress_bar(loader):
             
             if self.cfg.use_images:
                 x_image = x_image.to(self.cfg.device, non_blocking=True)
