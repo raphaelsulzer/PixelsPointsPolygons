@@ -19,9 +19,13 @@ asd
 - A library for training and evaluating state-of-the-art deep learning methods on the dataset
 
 
-## Datasets download and preparation
+## Dataset
 
-### Properties
+### Numbers
+
+#TODO put some images and numbers about the dataset
+
+<!-- ### Properties -->
 
 We provide train and val splits of the dataset in two different sizes 224 $\times$ 224 and 512 $\times$ 512. Both sized versions cover the same areas. The tiles of the test split have a fixed size of 2000 $\times$ 2000.
 
