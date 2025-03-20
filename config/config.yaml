@@ -23,11 +23,11 @@ dataset:
 num_workers: ${.run_type.num_workers}
 
 use_lidar: true
-use_images: false
+use_images: true
 
 debug_vis: false
 
-checkpoint: epoch_13
+checkpoint: null
 checkpoint_file: null # override for loading a specific checkpoint file
 
 eval:

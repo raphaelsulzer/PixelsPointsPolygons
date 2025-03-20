@@ -19,7 +19,6 @@ import shapely.validation
 
 import numpy as np
 import random
-import multiprocessing
 from multiprocessing import Pool
 from tqdm import tqdm
 from collections import defaultdict
@@ -94,8 +93,9 @@ def fix_polygons(polygons, buffer=0.0):
             # this can throw an error
             try:
                 temp.append(poly.buffer(0))
-            except:
-                pass
+            except Exception as e:
+                print("Error in fixing polygons. Passing this one...")
+                print(e)
             
     polygons = temp
     del temp

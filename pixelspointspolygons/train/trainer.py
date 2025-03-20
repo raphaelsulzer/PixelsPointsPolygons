@@ -41,9 +41,9 @@ class Trainer:
         self.update_pbar_every = cfg.update_pbar_every
 
         self.logger.log(logging.INFO, f"Init Trainer on rank {local_rank} in world size {world_size}...")
+        self.logger.info("Configuration:")
+        self.logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
         if local_rank == 0:
-            # self.logger.info("Configuration:")
-            # self.logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
             self.logger.info(f"Create output directory {self.cfg.output_dir}")
             os.makedirs(self.cfg.output_dir, exist_ok=True)
         
@@ -312,7 +312,8 @@ class Trainer:
             # ### debug vis
             if self.cfg.debug_vis:
                 file_names = get_tile_names_from_dataloader(self.train_loader.dataset.coco.imgs, tile_ids)
-                plot_pix2poly(image_batch=x_image,lidar_batch=x_lidar,mask_batch=y_mask,corner_image_batch=y_corner_mask,tile_names=file_names)        
+                # plot_pix2poly(image_batch=x_image,lidar_batch=x_lidar,mask_batch=y_mask,corner_image_batch=y_corner_mask,tile_names=file_names)        
+                plot_pix2poly(image_batch=x_image,lidar_batch=x_lidar,corner_image_batch=y_corner_mask,tile_names=file_names)        
             
             if self.cfg.use_images:
                 x_image = x_image.to(self.cfg.device, non_blocking=True)
