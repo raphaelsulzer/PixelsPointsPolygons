@@ -17,7 +17,8 @@
                 "multi_gpu=false",
                 "checkpoint=null",
                 "run_type.logging=DEBUG",
-                "experiment_name=debug"
+                "experiment_name=debug",
+                "model.fusion=patch_concat"
             ],
             "justMyCode": false
         },
