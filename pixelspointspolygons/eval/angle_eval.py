@@ -19,7 +19,6 @@ import shapely.validation
 
 import numpy as np
 import random
-import multiprocessing
 from multiprocessing import Pool
 from tqdm import tqdm
 from collections import defaultdict
