@@ -180,10 +180,7 @@ class LiDAREncoder(nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.cfg = cfg
-        
-
-        self.point_pillars = PointPillarsWithoutHead(cfg)
-        
+        self.point_pillars = PointPillarsWithoutHead(cfg)        
         self.vision_transformer = timm.create_model(
             model_name=cfg.model.encoder.type,
             num_classes=0,
@@ -221,20 +218,59 @@ class ImageEncoder(nn.Module):
         
         features = self.model(x_images)
         return self.bottleneck(features[:, 1:,:])
-    
 
-class MultiEncoder(nn.Module):
-    
+
+class FusionLayer(nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
-        self.point_pillars = PointPillarsWithoutHead(cfg)
+        self.cfg = cfg
+        self.point_pillars = PointPillarsWithoutHead(cfg)        
+        self.vit_patch_embed = timm.create_model(
+            model_name=cfg.model.encoder.type,
+            num_classes=0,
+            global_pool='',
+            pretrained=cfg.model.encoder.pretrained
+        ).patch_embed                
+                                
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
         
         
 
         
     def forward(self, x_images, x_lidar):
         
-        x = self.point_pillars(x_lidar)
+        x_lidar = self.point_pillars(x_lidar)
+        x_images = self.vit_patch_embed(x_images)
+        
+        
+        
+        pass
+
+class MultiEncoder(nn.Module):
+    
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.cfg = cfg
+        self.multi_vision_transformer = timm.create_model(
+            model_name=cfg.model.encoder.type,
+            num_classes=0,
+            global_pool='',
+            pretrained=cfg.model.encoder.pretrained
+        )
+        self.multi_vision_transformer.patch_embed = nn.Identity()
+
+        self.fusion_layer = FusionLayer(cfg)
+          
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
+        
+        
+
+        
+    def forward(self, x_images, x_lidar):
+        
+        x = self.fusion_layer(x_images, x_lidar)
+        x = self.multi_vision_transformer(x)
+        
         return x
 
 
