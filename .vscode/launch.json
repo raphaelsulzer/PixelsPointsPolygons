@@ -50,8 +50,6 @@
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
-                "checkpoint=epoch_1",
-                "experiment_name=lidar_only_bs32"
             ],
             "justMyCode": false
         }
