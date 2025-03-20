@@ -10,14 +10,14 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=release",
+                "run_type=debug",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
                 "checkpoint=null",
-                "run_type.logging=DEBUG"
-                // "experiment_name=debug"
+                "run_type.logging=DEBUG",
+                "experiment_name=debug"
             ],
             "justMyCode": false
         },
