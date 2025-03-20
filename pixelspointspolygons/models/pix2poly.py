@@ -220,7 +220,7 @@ class ImageEncoder(nn.Module):
         return self.bottleneck(features[:, 1:,:])
 
 
-class FusionLayer(nn.Module):
+class SimpleFusionLayer(nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.cfg = cfg
@@ -231,10 +231,8 @@ class FusionLayer(nn.Module):
             global_pool='',
             pretrained=cfg.model.encoder.pretrained
         ).patch_embed                
-                                
-        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
-        
-        
+                
+        self.fusion = nn.Linear(384*2, 384)
 
         
     def forward(self, x_images, x_lidar):
@@ -242,9 +240,10 @@ class FusionLayer(nn.Module):
         x_lidar = self.point_pillars(x_lidar)
         x_images = self.vit_patch_embed(x_images)
         
+        x = torch.cat([x_images, x_lidar], dim=-1)
+        x = self.fusion(x)
         
-        
-        pass
+        return x
 
 class MultiEncoder(nn.Module):
     
@@ -259,7 +258,7 @@ class MultiEncoder(nn.Module):
         )
         self.multi_vision_transformer.patch_embed = nn.Identity()
 
-        self.fusion_layer = FusionLayer(cfg)
+        self.fusion_layer = SimpleFusionLayer(cfg)
           
         self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
         
@@ -270,6 +269,8 @@ class MultiEncoder(nn.Module):
         
         x = self.fusion_layer(x_images, x_lidar)
         x = self.multi_vision_transformer(x)
+        
+        x = self.bottleneck(x[:, 1:,:])
         
         return x
 
