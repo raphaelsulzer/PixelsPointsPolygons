@@ -9,9 +9,21 @@
 
 <!-- [[Project Webpage]()]    [[Paper](https://arxiv.org/abs/2412.07899)]    [[Video]()] -->
 
-### Abstract:
+## Abstract:
 
 asd
+
+## Features
+
+- A global, multimodal dataset of aerial images, aerial lidar point clouds and building polygons
+- A library for training and evaluating SOTA deep learning methods on the dataset
+
+
+## Datasets download and preparation
+
+#TODO
+<!-- See [datasets preprocessing](data_preprocess) for instructions on preparing the various datasets for training/inference. -->
+
 
 ## Installation
 
@@ -26,15 +38,10 @@ pip install -r requirements-torch-cuda.txt
 pip install .
 ```
 
-
-## Datasets download and preparation
-
-See [datasets preprocessing](data_preprocess) for instructions on preparing the various datasets for training/inference.
-
 ## Configurations
 
 
-The project uses hydra-conf which allows to modify any parameter from the command line.
+The project supports hydra configuration which allows to modify any parameter from the command line.
 To view all available options run
 ```
 python train.py --help
@@ -46,7 +53,7 @@ python train.py --help
 Start training with the following command:
 
 ```
-torchrun --nproc_per_node=<num GPUs> train.py model=<pix2poly,hisup,ffl> use_lidar=true use_images=true model.batch_size=<batch size> multi_gpu=true ...
+torchrun --nproc_per_node=<num GPUs> train.py model=<pix2poly,hisup,ffl> use_lidar=<true,false> use_images=<true,false> model.batch_size=<batch size> ...
 
 ```
 
