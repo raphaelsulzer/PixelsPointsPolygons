@@ -120,7 +120,6 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         
         max_voxels = [(cfg.model.encoder.input_size // cfg.model.encoder.patch_size)**2] * 2
         
-        vit_out_dim = 384 # this is coherent with the vision transform patch_embed size
         
         voxelize={
             'max_num_points': cfg.model.lidar_encoder.max_num_points_per_voxel,
@@ -129,11 +128,11 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         }
         voxel_encoder={
             'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
-            'feat_channels': [64,vit_out_dim],
+            'feat_channels': [64,cfg.model.encoder.patch_embed_dim],
             'voxel_size': voxel_size
         }
         scatter={
-            "in_channels" : vit_out_dim, 
+            "in_channels" : cfg.model.encoder.patch_embed_dim, 
             "output_shape" : output_shape
         }
         augment={
@@ -220,7 +219,7 @@ class ImageEncoder(nn.Module):
         return self.bottleneck(features[:, 1:,:])
 
 
-class SimpleFusionLayer(nn.Module):
+class FeatureFusionLayer(nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.cfg = cfg
@@ -232,7 +231,7 @@ class SimpleFusionLayer(nn.Module):
             pretrained=cfg.model.encoder.pretrained
         ).patch_embed                
                 
-        self.fusion = nn.Linear(384*2, 384)
+        self.fusion = nn.Linear(cfg.model.encoder.patch_embed_dim*2, cfg.model.encoder.patch_embed_dim)
 
         
     def forward(self, x_images, x_lidar):
@@ -245,6 +244,29 @@ class SimpleFusionLayer(nn.Module):
         
         return x
 
+class PatchFusionLayer(nn.Module):
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.cfg = cfg
+        self.point_pillars = PointPillarsWithoutHead(cfg)        
+        self.vit_patch_embed = timm.create_model(
+            model_name=cfg.model.encoder.type,
+            num_classes=0,
+            global_pool='',
+            pretrained=cfg.model.encoder.pretrained
+        ).patch_embed
+
+        
+    def forward(self, x_images, x_lidar):
+        
+        x_lidar = self.point_pillars(x_lidar)
+        x_images = self.vit_patch_embed(x_images)
+        
+        x = torch.cat([x_images, x_lidar], dim=1)
+        
+        return x
+
+
 class MultiEncoder(nn.Module):
     
     def __init__(self, cfg) -> None:
@@ -256,24 +278,56 @@ class MultiEncoder(nn.Module):
             global_pool='',
             pretrained=cfg.model.encoder.pretrained
         )
+        # identity patch embedding, which is already done in fusion layer
         self.multi_vision_transformer.patch_embed = nn.Identity()
 
-        self.fusion_layer = SimpleFusionLayer(cfg)
+        num_patches = (cfg.model.encoder.input_size // cfg.model.encoder.patch_size)**2
+
+        if cfg.model.fusion == "patch_concat":
+            self.fusion_layer1 = PatchFusionLayer(cfg)
+            self.fusion_layer2 = nn.Linear(num_patches*2,num_patches)
+            self.forward = self.forward_patch_concat
+        elif cfg.model.fusion == "feature_concat":
+            self.fusion_layer1 = FeatureFusionLayer(cfg)
+            self.forward = self.forward_feature_concat
+        else:
+            raise ValueError(f"Invalid fusion layer type {cfg.model.fusion} specified. Choose from 'patch_concat' or 'feature_concat'")
           
+        self.modality_embed = nn.Embedding(2, cfg.model.encoder.patch_embed_dim)
+
+        modality_ids = torch.cat([
+            torch.zeros((1, 1), dtype=torch.long),      # CLS
+            torch.zeros((1, num_patches), dtype=torch.long),      # image patches
+            torch.ones((1, num_patches), dtype=torch.long)        # lidar patches
+        ], dim=1)  # (1, 2L+1)
+
+        self.register_buffer("modality_ids", modality_ids)
+
         self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
         
-        
+        # fix the pos_embeding to also account for lidar patches and then add the modality embedding
+        self.multi_vision_transformer.pos_embed = \
+            nn.Parameter(torch.cat([self.multi_vision_transformer.pos_embed, self.multi_vision_transformer.pos_embed[:,1:,:] ], dim=1)+ \
+                + self.modality_embed(self.modality_ids))
 
+
+    def forward_patch_concat(self, x_images, x_lidar):
         
-    def forward(self, x_images, x_lidar):
-        
-        x = self.fusion_layer(x_images, x_lidar)
+        x = self.fusion_layer1(x_images, x_lidar)        
         x = self.multi_vision_transformer(x)
-        
-        x = self.bottleneck(x[:, 1:,:])
+        x = x.permute(0, 2, 1)
+        x = self.fusion_layer2(x[:, :,1:]).permute(0, 2, 1)
+        x = self.bottleneck(x)
         
         return x
 
+    def forward_feature_concat(self, x_images, x_lidar):
+        
+        x = self.fusion_layer1(x_images, x_lidar)        
+        x = self.multi_vision_transformer(x)
+        x = self.bottleneck(x[:, 1:,:])
+        
+        return x
 
 class Decoder(nn.Module):
     def __init__(
