@@ -4,7 +4,7 @@ import matplotlib.colors as mcolors
 import torch
 
 
-def plot_point_cloud(point_cloud, ax=None, show=False):
+def plot_point_cloud(point_cloud, ax=None, show=False, alpha=0.15):
     
     if ax is None:
         fig, ax = plt.subplots(figsize=(5, 5), dpi=50)
@@ -15,7 +15,9 @@ def plot_point_cloud(point_cloud, ax=None, show=False):
     cmap = plt.cm.turbo  # 'turbo' colormap
 
     # Plot point cloud below polygons
-    ax.scatter(point_cloud[:, 0], point_cloud[:, 1], c=cmap(norm(point_cloud[:, 2])), s=0.2, zorder=2)
+    ax.scatter(point_cloud[:, 0], point_cloud[:, 1], 
+               c=cmap(norm(point_cloud[:, 2])), s=0.1, zorder=2,
+               alpha=alpha)
     
     if show:
         plt.show(block=False)
@@ -143,7 +145,7 @@ def plot_pix2poly(image_batch=None,lidar_batch=None,tile_names=None,mask_batch=N
         if lidar_batch is not None:
             plot_point_cloud(lidar_batch[i], show=False, ax=ax[i])    
         if mask_batch is not None:
-            plot_mask(mask_batch[i], alpha=0.8 , show=False, ax=ax[i])
+            plot_mask(mask_batch[i], alpha=0.7 , show=False, ax=ax[i])
         if corner_image_batch is not None:
             plot_corners(corner_image_batch[i], show=False, ax=ax[i])
         if polygon_batch is not None:              
