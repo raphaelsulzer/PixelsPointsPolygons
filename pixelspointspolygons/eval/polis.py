@@ -64,7 +64,7 @@ def polis(coords, bndry):
 
 class PolisEval():
 
-    def __init__(self, cocoGt=None, cocoDt=None, iou_threshold=0.5):
+    def __init__(self, cocoGt=None, cocoDt=None, iou_threshold=0.5, pbar_disable=False):
         self.cocoGt   = cocoGt
         self.cocoDt   = cocoDt
         self.evalImgs = defaultdict(list)
@@ -74,6 +74,8 @@ class PolisEval():
         self.stats    = []
         self.imgIds = list(sorted(self.cocoGt.imgs.keys()))
         self.iou_threshold = iou_threshold
+        
+        self.pbar_disable = pbar_disable
 
     def _prepare(self):
         gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=self.imgIds))
@@ -126,7 +128,7 @@ class PolisEval():
         polis_tot = 0
 
         num_valid_imgs = 0
-        for imgId in tqdm(self.imgIds):
+        for imgId in tqdm(self.imgIds, disable=self.pbar_disable):
             img_polis_avg = self.evaluateImg(imgId)
 
             if img_polis_avg == 0:
@@ -148,9 +150,9 @@ class PolisEval():
     
 
 
-def compute_polis(annFile, resFile):
+def compute_polis(annFile, resFile, pbar_disable=False):
     gt_coco = COCO(annFile)
     dt_coco = gt_coco.loadRes(resFile)
-    polisEval = PolisEval(gt_coco, dt_coco, iou_threshold=0.5)
+    polisEval = PolisEval(gt_coco, dt_coco, iou_threshold=0.5, pbar_disable=pbar_disable)
     return polisEval.evaluate()
     

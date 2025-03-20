@@ -1,5 +1,7 @@
 import logging
 import os
+import tqdm
+import sys
 import pandas as pd
 
 from pycocotools.coco import COCO
@@ -22,15 +24,32 @@ class Evaluator:
         self.gt_file = cfg.eval.gt_file
         self.pred_file = cfg.eval.pred_file
         
+        
+        
         with suppress_stdout():
             self.cocoGt = COCO(cfg.eval.gt_file)
         # self.cocoDt = self.cocoGt.loadRes(self.eval.pred_file)
         self.cocoDt = None
         
-        logging_level = getattr(logging, cfg.run_type.logging.upper(), logging.INFO)
-        self.logger = make_logger("Evaluator",level=logging_level)
+        self.verbosity = getattr(logging, cfg.run_type.logging.upper(), logging.INFO)
+        self.logger = make_logger("Evaluator",level=self.verbosity)
+        self.pbar_updata_every = cfg.update_pbar_every
+        self.pbar_disable = self.verbosity >= logging.INFO
 
+
+    def progress_bar(self,item):
         
+        
+        pbar = tqdm(item, total=len(item), 
+                      file=sys.stdout, 
+                    #   dynamic_ncols=True, 
+                      mininterval=self.pbar_update_every,                      
+                      disable=self.pbar_disable,
+                      position=0,
+                      leave=True)
+    
+        return pbar
+    
     def load_predictions(self, pred_file=None):
         
         if pred_file is None:
@@ -141,11 +160,11 @@ class Evaluator:
         with suppress_stdout():
 
             if "polis" in self.cfg.eval.modes:  
-                res_dict.update(compute_polis(self.gt_file, self.pred_file))
+                res_dict.update(compute_polis(self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
             if "mta" in self.cfg.eval.modes:
                 res_dict.update(compute_max_angle_error(self.gt_file, self.pred_file, num_workers=self.cfg.num_workers))
             if "iou" in self.cfg.eval.modes:
-                res_dict.update(compute_IoU_cIoU(self.pred_file, self.gt_file))
+                res_dict.update(compute_IoU_cIoU(self.pred_file, self.gt_file, pbar_disable=self.pbar_disable))
             if "topdig" in self.cfg.eval.modes:
                 res_dict.update(compute_mask_metrics(self.pred_file, self.gt_file))
             if "boundary-coco" in self.cfg.eval.modes:

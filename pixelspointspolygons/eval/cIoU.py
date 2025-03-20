@@ -34,7 +34,7 @@ def calc_IoU(a, b):
     else:
         return iou
 
-def compute_IoU_cIoU(input_json, gti_annotations):
+def compute_IoU_cIoU(input_json, gti_annotations, pbar_disable=False):
     # Ground truth annotations
     coco_gt = COCO(gti_annotations)
 
@@ -51,7 +51,7 @@ def compute_IoU_cIoU(input_json, gti_annotations):
     # get all gt images regardless if they have an annotation or not
     image_ids = coco_gt.getImgIds()
     
-    bar = tqdm(image_ids)
+    bar = tqdm(image_ids, disable=pbar_disable)
 
     list_iou = []
     list_ciou = []

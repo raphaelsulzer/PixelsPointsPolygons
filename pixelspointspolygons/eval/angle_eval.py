@@ -91,7 +91,11 @@ def fix_polygons(polygons, buffer=0.0):
         if poly.is_valid:
             temp.append(poly)
         else:    
-            temp.append(poly.buffer(0))
+            # this can throw an error
+            try:
+                temp.append(poly.buffer(0))
+            except:
+                pass
             
     polygons = temp
     del temp
@@ -351,6 +355,7 @@ def compute_max_angle_error(annFile, resFile, num_workers=8):
     dt_coco = gt_coco.loadRes(resFile)
     contour_eval = ContourEval(gt_coco, dt_coco)
     
+    num_workers = max(1, num_workers)
     if num_workers == 1:
         pool = None
     else:
