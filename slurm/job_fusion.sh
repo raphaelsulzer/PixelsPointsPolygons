@@ -2,7 +2,7 @@
 
 #SBATCH --account=cso@h100
 #SBATCH --constraint=h100
-#SBATCH --job-name=fusion_simple_bs4x32  # Job name
+#SBATCH --job-name=patch_concat_bs4x32  # Job name
 #SBATCH --output=./slurm/h100_fusion.log       # Standard output and error log
 #SBATCH --error=./slurm/h100_fusion.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
@@ -32,4 +32,4 @@ set -x
 # Run your Python script
 
 torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true dataset=lidarpoly \
-experiment_name=fusion_simple_bs4x32 checkpoint=null model.batch_size=32 use_lidar=True use_images=True
+experiment_name=patch_concat_bs4x32 checkpoint=null model.batch_size=32 use_lidar=True use_images=True model.fusion=patch_concat
