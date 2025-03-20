@@ -41,9 +41,9 @@ class Trainer:
         self.update_pbar_every = cfg.update_pbar_every
 
         self.logger.log(logging.INFO, f"Init Trainer on rank {local_rank} in world size {world_size}...")
+        self.logger.info("Configuration:")
+        self.logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
         if local_rank == 0:
-            # self.logger.info("Configuration:")
-            # self.logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
             self.logger.info(f"Create output directory {self.cfg.output_dir}")
             os.makedirs(self.cfg.output_dir, exist_ok=True)
         
