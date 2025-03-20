@@ -7,7 +7,7 @@
 </div>
 
 
-[[Project Webpage]()]    [[Paper](https://arxiv.org/abs/2412.07899)]    [[Video]()]
+<!-- [[Project Webpage]()]    [[Paper](https://arxiv.org/abs/2412.07899)]    [[Video]()] -->
 
 ### Abstract:
 
@@ -15,24 +15,53 @@ asd
 
 ## Installation
 
-`bash install.sh`
+To create a conda environment named `ppp` and install as a python package with all dependencies run
+```
+bash install.sh
+```
 
-## Datasets preparation
+or, if you want to manage the environment yourself run
+```
+pip install -r requirements-torch-cuda.txt
+pip install .
+```
+
+
+## Datasets download and preparation
 
 See [datasets preprocessing](data_preprocess) for instructions on preparing the various datasets for training/inference.
 
 ## Configurations
+
+
+The project uses hydra-conf which allows to modify any parameter from the command line.
+To view all available options run
+```
+python train.py --help
+```
+
 
 ## Training
 
 Start training with the following command:
 
 ```
-torchrun --nproc_per_node=<num GPUs> train_ddp.py 
+torchrun --nproc_per_node=<num GPUs> train.py model=<pix2poly,hisup,ffl> use_lidar=true use_images=true model.batch_size=<batch size> multi_gpu=true ...
+
 ```
 
 ## Prediction
 
+```
+torchrun --nproc_per_node=<num GPUs> predict.py model=<pix2poly,hisup,ffl> checkpoint=validation_best ...
+
+```
+
+## Evaluation
+
+```
+python evaluate.py model=<pix2poly,hisup,ffl> checkpoint=validation_best
+```
 
 
 ## Citation
