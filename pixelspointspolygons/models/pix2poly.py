@@ -1,5 +1,3 @@
-import os
-import sys
 import timm
 import torch
 
@@ -7,11 +5,7 @@ from torch import nn
 from torch.nn import functional as F
 from timm.models.layers import trunc_normal_
 from timm.models.vision_transformer import VisionTransformer
-
-# from spconv.pytorch.utils import PointToVoxel, gather_features_by_pc_voxel_id
 import open3d.ml.torch as ml3d
-
-# sys.path.insert(1, os.getcwd())
 
 from ..misc import create_mask
 
@@ -113,27 +107,37 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
 
     def __init__(self,cfg):
         
-        
+        # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
         point_cloud_range = [0, 0, 0, 
                              cfg.model.encoder.input_width, cfg.model.encoder.input_height, cfg.model.lidar_encoder.z_max]
+        voxel_size = list(cfg.model.lidar_encoder.voxel_size.values())
+        
+        
+        # the following three values are adapted such that the PointPillars layer can be used as a drop in for the 
+        # patch_embed layer of the vision transformer - vit_small_patch8_224_dino (specified in cfg.model.encoder)
+        output_shape = [cfg.model.encoder.input_width // cfg.model.encoder.patch_size, 
+                        cfg.model.encoder.input_height // cfg.model.encoder.patch_size]
+        
+        max_voxels = [(cfg.model.encoder.input_size // cfg.model.encoder.patch_size)**2] * 2
+        
+        vit_out_dim = 384 # this is coherent with the vision transform patch_embed size
         
         voxelize={
-            'max_num_points': 128,
-            'voxel_size': [8, 8, 100],
-            # 'max_voxels': [64,64],
-            'max_voxels': [784,784], # careful, this is in total over all batches!!
+            'max_num_points': cfg.model.lidar_encoder.max_num_points_per_voxel,
+            'voxel_size': voxel_size,
+            'max_voxels': max_voxels,
         }
         voxel_encoder={
-            'in_channels': 3,
-            'feat_channels': [64,384],
-            'voxel_size': [8, 8, 100]
+            'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
+            'feat_channels': [64,vit_out_dim],
+            'voxel_size': voxel_size
         }
         scatter={
-            "in_channels" : 384,
-            "output_shape" : [28, 28]
+            "in_channels" : vit_out_dim, 
+            "output_shape" : output_shape
         }
         augment={
-            "PointShuffle": False
+            "PointShuffle": True
         }
             
         super(PointPillarsWithoutHead,self).__init__(
@@ -145,6 +149,7 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
                  scatter=scatter,
                  augment=augment)
         
+        # remove unsused modules from PointPillars
         del self.backbone
         del self.neck
         del self.bbox_head
@@ -158,7 +163,7 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
     def forward(self, x_lidar):
         """Extract features from points."""
         
-        list_of_tensors = list(torch.unbind(x_lidar, dim=0))
+        # list_of_tensors = list(torch.unbind(x_lidar, dim=0))
         
         voxels, num_points, coors = self.voxelize(x_lidar)
         voxel_features = self.voxel_encoder(voxels, num_points, coors)
@@ -176,7 +181,7 @@ class LiDAREncoder(nn.Module):
         super().__init__()
         self.cfg = cfg
         
-        # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
+
         self.point_pillars = PointPillarsWithoutHead(cfg)
         
         self.vision_transformer = timm.create_model(
@@ -222,13 +227,15 @@ class MultiEncoder(nn.Module):
     
     def __init__(self, cfg) -> None:
         super().__init__()
-        self.image_encoder = ImageEncoder(cfg)
-        self.lidar_encoder = LiDAREncoder(cfg)
+        self.point_pillars = PointPillarsWithoutHead(cfg)
+        
+        
 
-        # raise NotImplementedError("This class is not implemented yet")
         
     def forward(self, x_images, x_lidar):
-        raise NotImplementedError("This class is not implemented yet")
+        
+        x = self.point_pillars(x_lidar)
+        return x
 
 
 class Decoder(nn.Module):
