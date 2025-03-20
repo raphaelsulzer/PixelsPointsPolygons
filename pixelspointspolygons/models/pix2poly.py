@@ -286,29 +286,31 @@ class MultiEncoder(nn.Module):
         if cfg.model.fusion == "patch_concat":
             self.fusion_layer1 = PatchFusionLayer(cfg)
             self.fusion_layer2 = nn.Linear(num_patches*2,num_patches)
+            
+            modality_embed = nn.Embedding(2, cfg.model.encoder.patch_embed_dim)
+
+            modality_ids = torch.cat([
+                torch.zeros((1, 1), dtype=torch.long),      # CLS
+                torch.zeros((1, num_patches), dtype=torch.long),      # image patches
+                torch.ones((1, num_patches), dtype=torch.long)        # lidar patches
+            ], dim=1)  # (1, 2L+1)
+
+
+            # fix the pos_embeding to also account for lidar patches and then add the modality embedding
+            self.multi_vision_transformer.pos_embed = \
+                nn.Parameter(torch.cat([self.multi_vision_transformer.pos_embed, self.multi_vision_transformer.pos_embed[:,1:,:] ], dim=1)+ \
+                    + modality_embed(modality_ids))
+            
             self.forward = self.forward_patch_concat
+
+            
         elif cfg.model.fusion == "feature_concat":
             self.fusion_layer1 = FeatureFusionLayer(cfg)
             self.forward = self.forward_feature_concat
         else:
             raise ValueError(f"Invalid fusion layer type {cfg.model.fusion} specified. Choose from 'patch_concat' or 'feature_concat'")
-          
-        self.modality_embed = nn.Embedding(2, cfg.model.encoder.patch_embed_dim)
-
-        modality_ids = torch.cat([
-            torch.zeros((1, 1), dtype=torch.long),      # CLS
-            torch.zeros((1, num_patches), dtype=torch.long),      # image patches
-            torch.ones((1, num_patches), dtype=torch.long)        # lidar patches
-        ], dim=1)  # (1, 2L+1)
-
-        self.register_buffer("modality_ids", modality_ids)
-
+            
         self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
-        
-        # fix the pos_embeding to also account for lidar patches and then add the modality embedding
-        self.multi_vision_transformer.pos_embed = \
-            nn.Parameter(torch.cat([self.multi_vision_transformer.pos_embed, self.multi_vision_transformer.pos_embed[:,1:,:] ], dim=1)+ \
-                + self.modality_embed(self.modality_ids))
 
 
     def forward_patch_concat(self, x_images, x_lidar):
