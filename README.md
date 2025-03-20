@@ -16,16 +16,25 @@ asd
 ## Features
 
 - A global, multimodal dataset of aerial images, aerial lidar point clouds and building polygons
-- A library for training and evaluating SOTA deep learning methods on the dataset
+- A library for training and evaluating state-of-the-art deep learning methods on the dataset
 
 
 ## Datasets download and preparation
 
-#TODO
-<!-- See [datasets preprocessing](data_preprocess) for instructions on preparing the various datasets for training/inference. -->
+### Properties
+
+We provide train and val splits of the dataset in two different sizes 224 $\times$ 224 and 512 $\times$ 512. Both sized versions cover the same areas. The tiles of the test split have a fixed size of 2000 $\times$ 2000.
+
+### Download
+
+hugginface link
+
+### Prepare custom tile size
+
+See [datasets preprocessing](data_preprocess) for instructions on preparing a dataset with different tile sizes.
 
 
-## Installation
+## Requirements
 
 To create a conda environment named `ppp` and install as a python package with all dependencies run
 ```
@@ -37,6 +46,8 @@ or, if you want to manage the environment yourself run
 pip install -r requirements-torch-cuda.txt
 pip install .
 ```
+⚠️ **Warning**: the implementation for the lidar point cloud encoder uses Open3D-ML. Currently, Open3D-ML officially only supports the PyTorch version specified in `requirements-torch-cuda.txt`.
+
 
 ## Configurations
 
@@ -70,6 +81,9 @@ torchrun --nproc_per_node=<num GPUs> predict.py model=<pix2poly,hisup,ffl> check
 python evaluate.py model=<pix2poly,hisup,ffl> checkpoint=validation_best
 ```
 
+## Pretrained models
+
+asd
 
 ## Citation
 
