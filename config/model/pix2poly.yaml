@@ -6,6 +6,7 @@ encoder:
     type: vit_small_patch${.patch_size}_${.input_size}.dino
     patch_size: 8
     num_patches: null
+    patch_embed_dim: 384
     out_dim: 256
     pretrained: True
 
@@ -17,6 +18,7 @@ tokenizer:
     pad_idx: null
     generation_steps: null
 
+fusion: patch_concat # or feature_concat
 
 # optimization
 sinkhorn_iterations: 100
