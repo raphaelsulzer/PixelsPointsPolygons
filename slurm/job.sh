@@ -7,7 +7,7 @@
 #SBATCH --output=./slurm/output.log       # Standard output and error log
 #SBATCH --error=./slurm/error.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
-#SBATCH --ntasks=1 # reserve 4 tasks (or processes)
+#SBATCH --ntasks=4 # reserve 4 tasks (or processes)
 #SBATCH --gres=gpu:4              # Request 2 GPUs
 ##SBATCH --constraint v100-32g
 #SBATCH --cpus-per-task=16         # Request 8 CPU cores
