@@ -4,7 +4,7 @@
     <!-- <h3 align="center"><a href="https://raphaelsulzer.de/">Raphael Sulzer<sup>1,2</sup></a><br></h3> -->
     <h3><align="center">Raphael Sulzer<sup>1,2</sup></a></h3>
     <align="center"><sup>1</sup>LuxCarta   <sup>2</sup>Inria
-    <img src="./media/teaser.png" width=100% height=100%>
+    <img src="./media/teaser.jpg" width=100% height=100%>
     <b>Figure 1</b>: A view of our dataset of Zurich, Switzerland
 </div>
 
@@ -72,6 +72,9 @@ torchrun --nproc_per_node=<num GPUs> predict.py model=<pix2poly,hisup,ffl> check
 python evaluate.py model=<pix2poly,hisup,ffl> checkpoint=validation_best
 ```
 
+## Results
+
+#TODO Put paper main results table here
 
 ## Citation
 

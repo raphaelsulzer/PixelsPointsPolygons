@@ -29,7 +29,7 @@ wandb/*
 *.gif
 
 # Files ignore
-!media/teaser.png
+!media/teaser.jpg
 
 
 oar/runs/*
