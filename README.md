@@ -1,8 +1,9 @@
 <div align="center">
     <h2 align="center">Pixels, Points, Polygons: A Global Dataset and Baseline for Multimodal Building Vectorization</h2>
-    <h3 align="center">Arxiv</h3>
-    <a href="https://raphaelsulzer.de/">Raphael Sulzer<sup>1,2</sup></a><br>
-    <sup>1</sup>LuxCarta <sup>2</sup>Inria
+    <!-- <h3 align="center">Arxiv</h3> -->
+    <!-- <h3 align="center"><a href="https://raphaelsulzer.de/">Raphael Sulzer<sup>1,2</sup></a><br></h3> -->
+    <h3 align="center">Raphael Sulzer<sup>1,2</sup></a><br></h3>
+    <h4 align="center"><sup>1</sup>LuxCarta   <sup>2</sup>Inria</h4>
     <img src="./media/teaser.png" width=100% height=100%>
 </div>
 
@@ -13,7 +14,7 @@
 
 asd
 
-## Features
+## Highlights
 
 - A global, multimodal dataset of aerial images, aerial lidar point clouds and building polygons
 - A library for training and evaluating SOTA deep learning methods on the dataset
@@ -38,7 +39,7 @@ pip install -r requirements-torch-cuda.txt
 pip install .
 ```
 
-## Configurations
+## Configuration
 
 
 The project supports hydra configuration which allows to modify any parameter from the command line.
