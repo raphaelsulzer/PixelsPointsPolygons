@@ -5,7 +5,7 @@
     <h3><align="center">Raphael Sulzer<sup>1,2</sup></a></h3>
     <align="center"><sup>1</sup>LuxCarta   <sup>2</sup>Inria
     <img src="./media/teaser.png" width=100% height=100%>
-    <b>Figure 1</b>: A view of our dataset in Zurich, Switzerland
+    <b>Figure 1</b>: A view of our dataset of Zurich, Switzerland
 </div>
 
 
