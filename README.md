@@ -3,7 +3,7 @@
     <h3 align="center">Arxiv</h3>
     <a href="https://raphaelsulzer.de/">Raphael Sulzer<sup>1,2</sup></a><br>
     <sup>1</sup>LuxCarta <sup>2</sup>Inria
-    <!-- <img src="./assets/sfo7.png" width=80% height=80%> -->
+    <img src="./media/teaser.png" width=100% height=100%>
 </div>
 
 
