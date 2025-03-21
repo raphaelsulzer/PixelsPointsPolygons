@@ -18,7 +18,7 @@ asd
 ## Highlights
 
 - A global, multimodal dataset with aerial images, aerial lidar point clouds and building polygons
-- A library for training and evaluating SOTA deep learning methods on the dataset
+- A library for training and evaluating state-of-the-art deep learning methods on the dataset
 
 
 ## Datasets download and preparation
