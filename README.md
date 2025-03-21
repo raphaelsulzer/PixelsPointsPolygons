@@ -29,7 +29,7 @@ asd
 
 ## Installation
 
-To create a conda environment named `ppp` and install as a python package with all dependencies run
+To create a conda environment named `ppp` and install the repository as a python package with all dependencies run
 ```
 bash install.sh
 ```
