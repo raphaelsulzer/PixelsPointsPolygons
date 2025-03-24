@@ -17,17 +17,30 @@ asd
 
 ## Highlights
 
-- A global, multimodal dataset with aerial images, aerial lidar point clouds and building polygons
+- A global, multimodal dataset of aerial images, aerial lidar point clouds and building polygons
 - A library for training and evaluating state-of-the-art deep learning methods on the dataset
 
 
-## Datasets download and preparation
+## Dataset
 
-#TODO
-<!-- See [datasets preprocessing](data_preprocess) for instructions on preparing the various datasets for training/inference. -->
+### Numbers
+
+#TODO put some images and numbers about the dataset
+
+<!-- ### Properties -->
+
+We provide train and val splits of the dataset in two different sizes 224 $\times$ 224 and 512 $\times$ 512. Both sized versions cover the same areas. The tiles of the test split have a fixed size of 2000 $\times$ 2000.
+
+### Download
+
+hugginface link
+
+### Prepare custom tile size
+
+See [datasets preprocessing](data_preprocess) for instructions on preparing a dataset with different tile sizes.
 
 
-## Installation
+## Requirements
 
 To create a conda environment named `ppp` and install the repository as a python package with all dependencies run
 ```
@@ -39,6 +52,8 @@ or, if you want to manage the environment yourself run
 pip install -r requirements-torch-cuda.txt
 pip install .
 ```
+⚠️ **Warning**: the implementation for the lidar point cloud encoder uses Open3D-ML. Currently, Open3D-ML officially only supports the PyTorch version specified in `requirements-torch-cuda.txt`.
+
 
 ## Configuration
 
@@ -71,10 +86,15 @@ torchrun --nproc_per_node=<num GPUs> predict.py model=<pix2poly,hisup,ffl> check
 ```
 python evaluate.py model=<pix2poly,hisup,ffl> checkpoint=validation_best
 ```
+## Trained models
+
+asd
+
 
 ## Results
 
 #TODO Put paper main results table here
+
 
 ## Citation
 
