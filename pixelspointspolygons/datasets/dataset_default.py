@@ -82,14 +82,6 @@ class DefaultDataset(Dataset):
 
         else:
             raise FileExistsError(f"Lidar file {lidar_file_name} missing.")
-            # self.logger.debug(f'Lidar file {lidar_file_name} missing. Generating random point cloud.')
-
-            # n = 5
-            # # make a random point cloud
-            # x = np.random.uniform(0, img_info['width'], n)
-            # y = np.random.uniform(0, img_info['height'], n)
-            # z = np.random.uniform(z_scale[0], z_scale[1], n)
-            # points = np.vstack((x, y, z)).T
 
         return points
 
@@ -108,67 +100,56 @@ class DefaultDataset(Dataset):
     def __getitem__(self, idx):
 
         if self.model_type == 'hisup':
-            pass
+            return self.__getitem__hisup(idx)
         elif self.model_type == 'pix2poly':
             return self.__getitem__pix2poly(idx)
         else:
             raise NotImplementedError(f"Model type {self.model_type} not implemented.")
-    
-    
-    
-    def apply_augmentations_to_lidar(self, augmentation_replay, lidar, id=0):
         
+        
+    def __getitem__hisup(self, index):
 
-        if self.split == 'val':
-            return torch.from_numpy(lidar)
-    
-        d4_transform = augmentation_replay["transforms"][0]
-        
-        assert d4_transform["__class_fullname__"] == "D4"
-        
+        img_id = self.tile_ids[index]
+        img_info = self.coco.loadImgs(img_id)[0]
+        ann_ids = self.coco.getAnnIds(imgIds=img_info['id'])
+        annotations = self.coco.loadAnns(ann_ids)  # annotations of all instances in an image.
 
-        if not d4_transform['applied']:
-            return torch.from_numpy(lidar)
-        
-        # translate to center so all the transformations are easily applied around the center
-        center = [self.cfg.model.encoder.input_width // 2, self.cfg.model.encoder.input_height // 2]
-        lidar[:, :2] -= center
-        
-        group_element = d4_transform['params']['group_element']
-        if group_element == 'e':
-            # Identity, no change
-            pass
-        elif group_element == 'r90':
-            lidar[:, [0, 1]] = lidar[:, [1, 0]]
-            lidar[:, 1] = -lidar[:, 1]
-        elif group_element == 'r180':
-            lidar[:, 0] = -lidar[:, 0]
-            lidar[:, 1] = -lidar[:, 1]
-        elif group_element == 'r270':
-            lidar[:, [0, 1]] = lidar[:, [1, 0]]
-            lidar[:, 0] = -lidar[:, 0]
-        elif group_element == 'v':
-            lidar[:, 1] = -lidar[:, 1]
-        elif group_element == 'hvt':
-            lidar[:, [0, 1]] = lidar[:, [1, 0]]
-            lidar[:, 0] = -lidar[:, 0]
-            lidar[:, 1] = -lidar[:, 1]
-        elif group_element == 'h':
-            lidar[:, 0] = -lidar[:, 0]
-        elif group_element == 't':
-            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+        # load image
+        if self.use_images:
+            filename = self.get_image_file(img_info)
+            image = np.array(Image.open(filename).convert("RGB"))
         else:
-            raise ValueError(f"Unknown group element {group_element}")
-        
-        lidar[:, :2] += center
+            # make dummy image for albumentations to work
+            image = np.zeros((img_info['width'], 
+                            img_info['height'], 1), dtype=np.uint8)
 
-        # self.logger.debug(f"Applied '{group_element}' transformation to lidar tile {id}.")
+        # load lidar
+        if self.use_lidar:
+            filename = self.get_lidar_file(img_info)
+            lidar = self.load_lidar_points(filename, img_info)
+        else:
+            lidar = None
         
-        return torch.from_numpy(lidar)
+        annotations = self.make_hisup_annotations(annotations, img_info['height'], img_info['width'])
         
-        
-        
+        if self.transform is not None: 
+            masks = None
+            augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
+            
+            # TODO: make the hisup annotations compatible with albumentations
+            
+            if self.use_lidar:
+                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar, img_info['id'])
+            
+            image = augmentations['image']
+            mask = augmentations['masks'][0]
+            corner_mask = augmentations['masks'][1]
+            corner_coords = np.array(augmentations['keypoints'])
 
+        return image, lidar, annotations
+        
+        
+        
     def __getitem__pix2poly(self, index):
 
         img_id = self.tile_ids[index]
@@ -262,16 +243,6 @@ class DefaultDataset(Dataset):
             corner_mask = augmentations['masks'][1]
             corner_coords = np.array(augmentations['keypoints'])
 
-            # lidar = torch.from_numpy(lidar)
-            
-            # if len(corner_coords) > 0:
-            #     # self.debug_vis(corner_coords, point_ids, augmented_image)
-            #     augmented_image = (image.permute(1, 2, 0).numpy() * 255.0).astype(np.uint8)
-            #     self.debug_vis(np.flip(corner_coords,axis=-1), point_ids, augmented_image)
-            #     self.debug_vis_mask(mask)
-            #     self.debug_vis_mask(corner_mask)
-            #     a=5
-
         if self.tokenizer is not None:
             coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.model.tokenizer.shuffle_tokens)
             coords_seqs = torch.LongTensor(coords_seqs)
@@ -283,6 +254,55 @@ class DefaultDataset(Dataset):
         return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
 
 
+
+    def apply_augmentations_to_lidar(self, augmentation_replay, lidar, id=0):
+        
+        if self.split == 'val':
+            return torch.from_numpy(lidar)
+    
+        d4_transform = augmentation_replay["transforms"][0]
+        
+        assert d4_transform["__class_fullname__"] == "D4"
+        
+
+        if not d4_transform['applied']:
+            return torch.from_numpy(lidar)
+        
+        # translate to center so all the transformations are easily applied around the center
+        center = [self.cfg.model.encoder.input_width // 2, self.cfg.model.encoder.input_height // 2]
+        lidar[:, :2] -= center
+        
+        group_element = d4_transform['params']['group_element']
+        if group_element == 'e':
+            # Identity, no change
+            pass
+        elif group_element == 'r90':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'r180':
+            lidar[:, 0] = -lidar[:, 0]
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'r270':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+            lidar[:, 0] = -lidar[:, 0]
+        elif group_element == 'v':
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'hvt':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+            lidar[:, 0] = -lidar[:, 0]
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'h':
+            lidar[:, 0] = -lidar[:, 0]
+        elif group_element == 't':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+        else:
+            raise ValueError(f"Unknown group element {group_element}")
+        
+        lidar[:, :2] += center
+
+        # self.logger.debug(f"Applied '{group_element}' transformation to lidar tile {id}.")
+        
+        return torch.from_numpy(lidar)
 
 
     def make_hisup_annotations(self, ann_coco, height, width):

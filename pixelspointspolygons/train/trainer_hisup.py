@@ -66,11 +66,7 @@ class HiSupTrainer(Trainer):
     
     def setup_loss_fn_dict(self):
         
-        # Get loss functions
-        weight = torch.ones(self.cfg.model.tokenizer.pad_idx + 1, device=self.cfg.device)
-        weight[self.tokenizer.num_bins:self.tokenizer.BOS_code] = 0.0
-        self.loss_fn_dict["vertex"] = nn.CrossEntropyLoss(ignore_index=self.cfg.model.tokenizer.pad_idx, label_smoothing=self.cfg.model.label_smoothing, weight=weight)
-        self.loss_fn_dict["perm"] = nn.BCELoss()
+        pass
         
     def valid_one_epoch(self):
 
@@ -133,8 +129,6 @@ class HiSupTrainer(Trainer):
         self.logger.info(f"Train epoch {epoch}...")
         
         self.model.train()
-        self.loss_fn_dict["vertex"].train()
-        self.loss_fn_dict["perm"].train()
 
         loss_meter = AverageMeter()
         vertex_loss_meter = AverageMeter()
