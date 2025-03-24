@@ -19,7 +19,7 @@ def get_val_loader(cfg,tokenizer):
     else:
         raise NotImplementedError
 
-def get_train_loader(cfg,tokenizer):
+def get_train_loader(cfg,tokenizer=None):
     if cfg.dataset.name == 'inria':
         return get_train_loader_inria(cfg,tokenizer)
     elif cfg.dataset.name == 'lidarpoly':

@@ -1,17 +1,11 @@
-name: hisup
+name: ffl
 encoder:
-    type: HRNet48v2
-    pretrained: True
-
     input_size: 512
     input_height: ${.input_size}
     input_width: ${.input_size}
-    
-    output_size: 128
-    output_height: ${.output_size}
-    output_width: ${.output_size}
-    
-    out_feature_channels: 384
+    type: HRNet48v2
+    out_dim: 128
+    pretrained: True
 
 
 fusion: patch_concat # or feature_concat
