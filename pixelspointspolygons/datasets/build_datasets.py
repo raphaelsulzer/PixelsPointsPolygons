@@ -11,7 +11,7 @@ from .dataset_val import ValDataset
 from .collate_funcs import collate_fn_pix2poly
 
 
-def get_val_loader(cfg,tokenizer):
+def get_val_loader(cfg,tokenizer=None):
     if cfg.dataset.name == 'inria':
         return get_val_loader_inria(cfg,tokenizer)
     elif cfg.dataset.name == 'lidarpoly':
@@ -28,22 +28,6 @@ def get_train_loader(cfg,tokenizer=None):
         raise NotImplementedError
 
 def get_train_loader_lidarpoly(cfg,tokenizer):
-    
-    ### ORIGINAL
-    # train_transforms = A.Compose(
-    #     [
-    #         A.Affine(rotate=[-360, 360], fit_output=True, p=0.8),
-    #         A.Resize(height=cfg.model.encoder.input_height, width=cfg.model.encoder.input_width),
-    #         A.RandomRotate90(p=1.),
-    #         A.RandomBrightnessContrast(p=0.5),
-    #         A.ColorJitter(),
-    #         A.ToGray(p=0.4),
-    #         A.GaussNoise(),
-    #         A.Normalize(mean=[0.0, 0.0, 0.0],std=[1.0, 1.0, 1.0],max_pixel_value=255.0),
-    #         ToTensorV2(),
-    #     ],
-    #     keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
-    # )
     
     train_transforms = A.ReplayCompose([
         A.D4(p=1.0),
