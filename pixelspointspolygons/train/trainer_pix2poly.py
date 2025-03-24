@@ -28,8 +28,9 @@ from ..datasets import get_train_loader, get_val_loader
 from ..models.pix2poly import EncoderDecoder, ImageEncoder, LiDAREncoder, MultiEncoder, Decoder
 from ..predict import Predictor
 from ..eval import Evaluator
+from .trainer import Trainer
 
-class Trainer:
+class Pix2PolyTrainer(Trainer):
     def __init__(self, cfg, local_rank, world_size):
         
         self.cfg = cfg
@@ -116,6 +117,21 @@ class Trainer:
 
     def cleanup(self):
         dist.destroy_process_group()
+
+    def setup_tokenizer(self):
+        self.tokenizer = Tokenizer(num_classes=1,
+            num_bins=self.cfg.model.tokenizer.num_bins,
+            width=self.cfg.model.encoder.input_width,
+            height=self.cfg.model.encoder.input_height,
+            max_len=self.cfg.model.tokenizer.max_len
+        )
+    
+    def setup_dynamic_cfg_vars(self):
+    
+        self.cfg.model.tokenizer.pad_idx = self.tokenizer.PAD_code
+        self.cfg.model.tokenizer.max_len = self.cfg.model.tokenizer.n_vertices*2+2
+        self.cfg.model.tokenizer.generation_steps = self.cfg.model.tokenizer.n_vertices*2+1
+        self.cfg.model.encoder.num_patches = int((self.cfg.model.encoder.input_size // self.cfg.model.encoder.patch_size) ** 2)
     
     def setup_model(self):
         
@@ -151,8 +167,8 @@ class Trainer:
         self.model = model
 
     def setup_dataloader(self):
-        self.train_loader = get_train_loader(self.cfg)
-        self.val_loader = get_val_loader(self.cfg)
+        self.train_loader = get_train_loader(self.cfg,tokenizer=self.tokenizer)
+        self.val_loader = get_val_loader(self.cfg,tokenizer=self.tokenizer)
 
     def setup_optimizer(self):
         # Get optimizer
@@ -209,6 +225,7 @@ class Trainer:
         dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
         tensor /= self.world_size
         return tensor.item()
+    
     
     def setup_loss_fn_dict(self):
         
@@ -494,6 +511,8 @@ class Trainer:
         seed_everything(42)
         if self.is_ddp:
             self.setup_ddp()
+        self.setup_tokenizer()
+        self.setup_dynamic_cfg_vars()
         self.setup_model()
         self.setup_dataloader()
         self.setup_optimizer()

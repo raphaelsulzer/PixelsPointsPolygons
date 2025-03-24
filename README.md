@@ -52,7 +52,7 @@ or, if you want to manage the environment yourself run
 pip install -r requirements-torch-cuda.txt
 pip install .
 ```
-⚠️ **Warning**: the implementation for the lidar point cloud encoder uses Open3D-ML. Currently, Open3D-ML officially only supports the PyTorch version specified in `requirements-torch-cuda.txt`.
+⚠️ **Warning**: The implementation of the LiDAR point cloud encoder uses Open3D-ML. Currently, Open3D-ML officially only supports the PyTorch version specified in `requirements-torch-cuda.txt`.
 
 
 ## Configuration
