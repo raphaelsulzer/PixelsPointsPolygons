@@ -64,7 +64,7 @@ def polis(coords, bndry):
 
 class PolisEval():
 
-    def __init__(self, cocoGt=None, cocoDt=None):
+    def __init__(self, cocoGt=None, cocoDt=None, iou_threshold=0.5, pbar_disable=False):
         self.cocoGt   = cocoGt
         self.cocoDt   = cocoDt
         self.evalImgs = defaultdict(list)
@@ -73,6 +73,9 @@ class PolisEval():
         self._dts     = defaultdict(list)
         self.stats    = []
         self.imgIds = list(sorted(self.cocoGt.imgs.keys()))
+        self.iou_threshold = iou_threshold
+        
+        self.pbar_disable = pbar_disable
 
     def _prepare(self):
         gts = self.cocoGt.loadAnns(self.cocoGt.getAnnIds(imgIds=self.imgIds))
@@ -109,7 +112,7 @@ class PolisEval():
         for i, gt_poly in enumerate(gt_polygons):
             matched_idx = np.argmax(ious[:,i])
             iou = ious[matched_idx, i]
-            if iou > 0.5: # iouThres:
+            if iou > self.iou_threshold: # iouThres:
                 polis = compare_polys(Polygon(gt_poly), Polygon(dt_polygons[matched_idx]))
                 img_polis_avg += polis
                 num_sample += 1
@@ -125,7 +128,7 @@ class PolisEval():
         polis_tot = 0
 
         num_valid_imgs = 0
-        for imgId in tqdm(self.imgIds):
+        for imgId in tqdm(self.imgIds, disable=self.pbar_disable):
             img_polis_avg = self.evaluateImg(imgId)
 
             if img_polis_avg == 0:
@@ -134,19 +137,22 @@ class PolisEval():
                 polis_tot += img_polis_avg
                 num_valid_imgs += 1
         
-        polis_avg = polis_tot / num_valid_imgs
+        if num_valid_imgs > 0:
+            polis_avg = polis_tot / num_valid_imgs
+            print('average polis: %f' % (polis_avg))
+        else:
+            polis_avg = np.nan
+            print('no valid images in polis evaluation')
 
-        print('average polis: %f' % (polis_avg))
-
-        return polis_avg
+        return {"POLIS":polis_avg}
 
 
     
 
 
-def compute_polis(annFile, resFile):
+def compute_polis(annFile, resFile, pbar_disable=False):
     gt_coco = COCO(annFile)
     dt_coco = gt_coco.loadRes(resFile)
-    polisEval = PolisEval(gt_coco, dt_coco)
-    polisEval.evaluate()
+    polisEval = PolisEval(gt_coco, dt_coco, iou_threshold=0.5, pbar_disable=pbar_disable)
+    return polisEval.evaluate()
     

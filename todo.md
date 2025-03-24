@@ -1,0 +1,2 @@
+- implement overlapping tilling
+- think about using the sqlite st_union function for merging predictions from overlapping tiles

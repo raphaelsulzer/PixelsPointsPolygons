@@ -1,39 +1,80 @@
 <div align="center">
     <h2 align="center">Pixels, Points, Polygons: A Global Dataset and Baseline for Multimodal Building Vectorization</h2>
-    <h3 align="center">Arxiv</h3>
-    <a href="https://raphaelsulzer.de/">Raphael Sulzer<sup>1</sup></a><br>
-    <sup>1</sup>LuxCarta <sup>2</sup>Inria
-    <!-- <img src="./assets/sfo7.png" width=80% height=80%> -->
+    <!-- <h3 align="center">Arxiv</h3> -->
+    <!-- <h3 align="center"><a href="https://raphaelsulzer.de/">Raphael Sulzer<sup>1,2</sup></a><br></h3> -->
+    <h3><align="center">Raphael Sulzer<sup>1,2</sup></a></h3>
+    <align="center"><sup>1</sup>LuxCarta   <sup>2</sup>Inria
+    <img src="./media/teaser.jpg" width=100% height=100%>
+    <b>Figure 1</b>: A view of our dataset of Zurich, Switzerland
 </div>
 
 
-[[Project Webpage]()]    [[Paper](https://arxiv.org/abs/2412.07899)]    [[Video]()]
+<!-- [[Project Webpage]()]    [[Paper](https://arxiv.org/abs/2412.07899)]    [[Video]()] -->
 
-### Abstract:
+## Abstract:
 
 asd
 
+## Highlights
+
+- A global, multimodal dataset with aerial images, aerial lidar point clouds and building polygons
+- A library for training and evaluating state-of-the-art deep learning methods on the dataset
+
+
+## Datasets download and preparation
+
+#TODO
+<!-- See [datasets preprocessing](data_preprocess) for instructions on preparing the various datasets for training/inference. -->
+
+
 ## Installation
 
-`bash install.sh`
+To create a conda environment named `ppp` and install the repository as a python package with all dependencies run
+```
+bash install.sh
+```
 
-## Datasets preparation
+or, if you want to manage the environment yourself run
+```
+pip install -r requirements-torch-cuda.txt
+pip install .
+```
 
-See [datasets preprocessing](data_preprocess) for instructions on preparing the various datasets for training/inference.
+## Configuration
 
-## Configurations
+
+The project supports hydra configuration which allows to modify any parameter from the command line.
+To view all available options run
+```
+python train.py --help
+```
+
 
 ## Training
 
 Start training with the following command:
 
 ```
-torchrun --nproc_per_node=<num GPUs> train_ddp.py 
+torchrun --nproc_per_node=<num GPUs> train.py model=<pix2poly,hisup,ffl> use_lidar=<true,false> use_images=<true,false> model.batch_size=<batch size> ...
+
 ```
 
 ## Prediction
 
+```
+torchrun --nproc_per_node=<num GPUs> predict.py model=<pix2poly,hisup,ffl> checkpoint=validation_best ...
 
+```
+
+## Evaluation
+
+```
+python evaluate.py model=<pix2poly,hisup,ffl> checkpoint=validation_best
+```
+
+## Results
+
+#TODO Put paper main results table here
 
 ## Citation
 

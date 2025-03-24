@@ -1,5 +1,18 @@
 # Directories
+slurm/*log
+core-python*
 __pycache__
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/*.so
+**/*.dylib
+**/*.dll
+
+*.egg-info/
+*.egg
+
 data
 outputs
 runs
@@ -14,12 +27,9 @@ wandb/*
 *.png
 *.tar.xz
 *.gif
-*.txt
 
 # Files ignore
-!assets/sfo7.png
-!assets/pix2poly_overall_bg_white.png
-!assets/vertex_sequence_detector.png
-!assets/optimal_matching_network.png
+!media/teaser.jpg
+
 
 oar/runs/*

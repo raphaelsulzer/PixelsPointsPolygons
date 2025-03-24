@@ -14,7 +14,8 @@ from shapely.geometry import Polygon
 from torch.utils.data import Dataset
 from torch.utils.data.dataloader import default_collate
 
-from pixelspointspolygons.utils import make_logger
+from ..misc import make_logger, suppress_stdout
+
 
 def affine_transform(pt, t):
     new_pt = np.array([pt[0], pt[1], 1.], dtype=np.float32).T
@@ -40,9 +41,9 @@ class DefaultDataset(Dataset):
         self.ann_file = os.path.join(self.dataset_dir,f"annotations_{split}.json")
         if not os.path.isfile(self.ann_file):
             raise FileNotFoundError(self.ann_file)
-        
-        
-        self.coco = COCO(self.ann_file)
+
+        with suppress_stdout():
+            self.coco = COCO(self.ann_file)
         images_id = self.coco.getImgIds()
         self.tile_ids = images_id.copy()
         self.num_samples = len(self.tile_ids)
@@ -75,6 +76,9 @@ class DefaultDataset(Dataset):
             points[:, -1] = scaler.fit_transform(points[:, -1].reshape(-1, 1)).squeeze()
             
             points = points.astype(np.float32)
+            
+            if not len(points) > 3:
+                self.logger.warning(f"Lidar file {lidar_file_name} only has {len(points)} points.")
 
         else:
             raise FileExistsError(f"Lidar file {lidar_file_name} missing.")
@@ -109,6 +113,61 @@ class DefaultDataset(Dataset):
             return self.__getitem__pix2poly(idx)
         else:
             raise NotImplementedError(f"Model type {self.model_type} not implemented.")
+    
+    
+    
+    def apply_augmentations_to_lidar(self, augmentation_replay, lidar, id=0):
+        
+
+        if self.split == 'val':
+            return torch.from_numpy(lidar)
+    
+        d4_transform = augmentation_replay["transforms"][0]
+        
+        assert d4_transform["__class_fullname__"] == "D4"
+        
+
+        if not d4_transform['applied']:
+            return torch.from_numpy(lidar)
+        
+        # translate to center so all the transformations are easily applied around the center
+        center = [self.cfg.model.encoder.input_width // 2, self.cfg.model.encoder.input_height // 2]
+        lidar[:, :2] -= center
+        
+        group_element = d4_transform['params']['group_element']
+        if group_element == 'e':
+            # Identity, no change
+            pass
+        elif group_element == 'r90':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'r180':
+            lidar[:, 0] = -lidar[:, 0]
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'r270':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+            lidar[:, 0] = -lidar[:, 0]
+        elif group_element == 'v':
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'hvt':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+            lidar[:, 0] = -lidar[:, 0]
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'h':
+            lidar[:, 0] = -lidar[:, 0]
+        elif group_element == 't':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+        else:
+            raise ValueError(f"Unknown group element {group_element}")
+        
+        lidar[:, :2] += center
+
+        # self.logger.debug(f"Applied '{group_element}' transformation to lidar tile {id}.")
+        
+        return torch.from_numpy(lidar)
+        
+        
+        
 
     def __getitem__pix2poly(self, index):
 
@@ -122,7 +181,9 @@ class DefaultDataset(Dataset):
             filename = self.get_image_file(img_info)
             image = np.array(Image.open(filename).convert("RGB"))
         else:
-            image = None
+            # make dummy image for albumentations to work
+            image = np.zeros((img_info['width'], 
+                            img_info['height'], 1), dtype=np.uint8)
 
         # load lidar
         if self.use_lidar:
@@ -189,15 +250,19 @@ class DefaultDataset(Dataset):
         if len(corner_coords) > self.cfg.model.tokenizer.n_vertices:
             corner_coords = corner_coords[:self.cfg.model.tokenizer.n_vertices]
 
-        if self.transform is not None:
+        if self.transform is not None: 
+            
             augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
+            
+            if self.use_lidar:
+                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar, img_info['id'])
+            
             image = augmentations['image']
             mask = augmentations['masks'][0]
             corner_mask = augmentations['masks'][1]
             corner_coords = np.array(augmentations['keypoints'])
 
-            if self.cfg.use_lidar:
-                lidar = torch.from_numpy(lidar)
+            # lidar = torch.from_numpy(lidar)
             
             # if len(corner_coords) > 0:
             #     # self.debug_vis(corner_coords, point_ids, augmented_image)
