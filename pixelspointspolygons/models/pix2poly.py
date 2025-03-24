@@ -1,14 +1,13 @@
 import timm
 import torch
+
 from torch import nn
 from torch.nn import functional as F
 from timm.models.layers import trunc_normal_
+from timm.models.vision_transformer import VisionTransformer
+import open3d.ml.torch as ml3d
 
-import os
-import sys
-sys.path.insert(1, os.getcwd())
-
-from ..utils import create_mask
+from ..misc import create_mask
 
 
 # Borrowed from https://github.com/magicleap/SuperGluePretrainedNetwork/blob/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/superglue.py#L143
@@ -86,12 +85,123 @@ class ScoreNet(nn.Module):
 
         return x[:, 0]
 
+
+class PointPillarsWithoutHead(ml3d.models.PointPillars):
+    
+    """Object detection model. Based on the PointPillars architecture
+    https://github.com/nutonomy/second.pytorch.
+
+    Args:
+        name (string): Name of model.
+            Default to "PointPillars".
+        voxel_size: voxel edge lengths with format [x, y, z].
+        point_cloud_range: The valid range of point coordinates as
+            [x_min, y_min, z_min, x_max, y_max, z_max].
+        voxelize: Config of PointPillarsVoxelization module.
+        voxelize_encoder: Config of PillarFeatureNet module.
+        scatter: Config of PointPillarsScatter module.
+        backbone: Config of backbone module (SECOND).
+        neck: Config of neck module (SECONDFPN).
+        head: Config of anchor head module.
+    """
+
+    def __init__(self,cfg):
+        
+        # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
+        point_cloud_range = [0, 0, 0, 
+                             cfg.model.encoder.input_width, cfg.model.encoder.input_height, cfg.model.lidar_encoder.z_max]
+        voxel_size = list(cfg.model.lidar_encoder.voxel_size.values())
+        
+        
+        # the following three values are adapted such that the PointPillars layer can be used as a drop in for the 
+        # patch_embed layer of the vision transformer - vit_small_patch8_224_dino (specified in cfg.model.encoder)
+        output_shape = [cfg.model.encoder.input_width // cfg.model.encoder.patch_size, 
+                        cfg.model.encoder.input_height // cfg.model.encoder.patch_size]
+        
+        max_voxels = [(cfg.model.encoder.input_size // cfg.model.encoder.patch_size)**2] * 2
+        
+        
+        voxelize={
+            'max_num_points': cfg.model.lidar_encoder.max_num_points_per_voxel,
+            'voxel_size': voxel_size,
+            'max_voxels': max_voxels,
+        }
+        voxel_encoder={
+            'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
+            'feat_channels': [64,cfg.model.encoder.patch_embed_dim],
+            'voxel_size': voxel_size
+        }
+        scatter={
+            "in_channels" : cfg.model.encoder.patch_embed_dim, 
+            "output_shape" : output_shape
+        }
+        augment={
+            "PointShuffle": True
+        }
+            
+        super(PointPillarsWithoutHead,self).__init__(
+                 device=cfg.device,
+                 num_input_features=3,
+                 point_cloud_range=point_cloud_range,
+                 voxelize=voxelize,
+                 voxel_encoder=voxel_encoder,
+                 scatter=scatter,
+                 augment=augment)
+        
+        # remove unsused modules from PointPillars
+        del self.backbone
+        del self.neck
+        del self.bbox_head
+        del self.loss_cls
+        del self.loss_bbox
+        del self.loss_dir
+        
+        
+
+        
+    def forward(self, x_lidar):
+        """Extract features from points."""
+        
+        # list_of_tensors = list(torch.unbind(x_lidar, dim=0))
+        
+        voxels, num_points, coors = self.voxelize(x_lidar)
+        voxel_features = self.voxel_encoder(voxels, num_points, coors)
+        batch_size = coors[-1, 0].item() + 1
+        x = self.middle_encoder(voxel_features, coors, batch_size)
+
+        # flatten patches, NCHW -> NLC. Needed to pass directly to next layer of VisionTransformer (self.vit)
+        x = x.flatten(2).transpose(1, 2)  # NCHW -> NLC
+        return x
+
+
 class LiDAREncoder(nn.Module):
-    pass
+    
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.cfg = cfg
+        self.point_pillars = PointPillarsWithoutHead(cfg)        
+        self.vision_transformer = timm.create_model(
+            model_name=cfg.model.encoder.type,
+            num_classes=0,
+            global_pool='',
+            pretrained=cfg.model.encoder.pretrained
+        )
+        # replace VisionTransformer patch embedding with LiDAR encoder
+        self.vision_transformer.patch_embed = self.point_pillars
+                        
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
 
 
+    def forward(self, x_images=None, x_lidar=None):
+        
+        # x = self.point_pillars(x_lidar)
+        x = self.vision_transformer(x_lidar)
+        x = self.bottleneck(x[:, 1:,:])
+        
+        return x
+    
 
-class Encoder(nn.Module):
+class ImageEncoder(nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.cfg = cfg
@@ -102,29 +212,124 @@ class Encoder(nn.Module):
             pretrained=cfg.model.encoder.pretrained
         )
         self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
-
-    def forward(self, x_images, x_lidar):
-        if self.cfg.use_images and self.cfg.use_lidar:
-            return self.forward_both(x_images, x_lidar)
-        elif self.cfg.use_images and not self.cfg.use_lidar:
-            return self.forward_images(x_images)
-        elif not self.cfg.use_images and self.cfg.use_lidar:
-            return self.forward_lidar(x_lidar)
-        else:
-            raise ValueError("At least one of images or LiDAR must be used")
     
-    def forward_images(self, x):
-        features = self.model(x)
-        return self.bottleneck(features[:, 1:,:])
-    
-    def forward_lidar(self, x):
-        raise NotImplementedError("LiDAR encoder not implemented yet")
-    
-    def forward_both(self, x_images, x_lidar):
+    def forward(self, x_images=None, x_lidar=None):
         
-        return self.forward_images(x_images)
-        a=5
+        features = self.model(x_images)
+        return self.bottleneck(features[:, 1:,:])
 
+
+class FeatureFusionLayer(nn.Module):
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.cfg = cfg
+        self.point_pillars = PointPillarsWithoutHead(cfg)        
+        self.vit_patch_embed = timm.create_model(
+            model_name=cfg.model.encoder.type,
+            num_classes=0,
+            global_pool='',
+            pretrained=cfg.model.encoder.pretrained
+        ).patch_embed                
+                
+        self.fusion = nn.Linear(cfg.model.encoder.patch_embed_dim*2, cfg.model.encoder.patch_embed_dim)
+
+        
+    def forward(self, x_images, x_lidar):
+        
+        x_lidar = self.point_pillars(x_lidar)
+        x_images = self.vit_patch_embed(x_images)
+        
+        x = torch.cat([x_images, x_lidar], dim=-1)
+        x = self.fusion(x)
+        
+        return x
+
+class PatchFusionLayer(nn.Module):
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.cfg = cfg
+        self.point_pillars = PointPillarsWithoutHead(cfg)        
+        self.vit_patch_embed = timm.create_model(
+            model_name=cfg.model.encoder.type,
+            num_classes=0,
+            global_pool='',
+            pretrained=cfg.model.encoder.pretrained
+        ).patch_embed
+
+        
+    def forward(self, x_images, x_lidar):
+        
+        x_lidar = self.point_pillars(x_lidar)
+        x_images = self.vit_patch_embed(x_images)
+        
+        x = torch.cat([x_images, x_lidar], dim=1)
+        
+        return x
+
+
+class MultiEncoder(nn.Module):
+    
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.cfg = cfg
+        self.multi_vision_transformer = timm.create_model(
+            model_name=cfg.model.encoder.type,
+            num_classes=0,
+            global_pool='',
+            pretrained=cfg.model.encoder.pretrained
+        )
+        # identity patch embedding, which is already done in fusion layer
+        self.multi_vision_transformer.patch_embed = nn.Identity()
+
+        num_patches = (cfg.model.encoder.input_size // cfg.model.encoder.patch_size)**2
+
+        if cfg.model.fusion == "patch_concat":
+            self.fusion_layer1 = PatchFusionLayer(cfg)
+            self.fusion_layer2 = nn.Linear(num_patches*2,num_patches)
+            
+            modality_embed = nn.Embedding(2, cfg.model.encoder.patch_embed_dim)
+
+            modality_ids = torch.cat([
+                torch.zeros((1, 1), dtype=torch.long),      # CLS
+                torch.zeros((1, num_patches), dtype=torch.long),      # image patches
+                torch.ones((1, num_patches), dtype=torch.long)        # lidar patches
+            ], dim=1)  # (1, 2L+1)
+
+
+            # fix the pos_embeding to also account for lidar patches and then add the modality embedding
+            self.multi_vision_transformer.pos_embed = \
+                nn.Parameter(torch.cat([self.multi_vision_transformer.pos_embed, self.multi_vision_transformer.pos_embed[:,1:,:] ], dim=1)+ \
+                    + modality_embed(modality_ids))
+            
+            self.forward = self.forward_patch_concat
+
+            
+        elif cfg.model.fusion == "feature_concat":
+            self.fusion_layer1 = FeatureFusionLayer(cfg)
+            self.forward = self.forward_feature_concat
+        else:
+            raise ValueError(f"Invalid fusion layer type {cfg.model.fusion} specified. Choose from 'patch_concat' or 'feature_concat'")
+            
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
+
+
+    def forward_patch_concat(self, x_images, x_lidar):
+        
+        x = self.fusion_layer1(x_images, x_lidar)        
+        x = self.multi_vision_transformer(x)
+        x = x.permute(0, 2, 1)
+        x = self.fusion_layer2(x[:, :,1:]).permute(0, 2, 1)
+        x = self.bottleneck(x)
+        
+        return x
+
+    def forward_feature_concat(self, x_images, x_lidar):
+        
+        x = self.fusion_layer1(x_images, x_lidar)        
+        x = self.multi_vision_transformer(x)
+        x = self.bottleneck(x[:, 1:,:])
+        
+        return x
 
 class Decoder(nn.Module):
     def __init__(
@@ -160,7 +365,7 @@ class Decoder(nn.Module):
     def init_weights(self):
         for name, p in self.named_parameters():
             if 'encoder_pos_embed' in name or 'decoder_pos_embed' in name:
-                print("Skipping initialization of pos embed layers...")
+                # print("Skipping initialization of pos embed layers...")
                 continue
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
@@ -228,27 +433,27 @@ class Decoder(nn.Module):
         preds = preds.transpose(0, 1)
         return self.output(preds)[:, length-1, :], preds
 
-
 class EncoderDecoder(nn.Module):
     def __init__(
         self,
         encoder: nn.Module,
         decoder: nn.Module,
-        n_vertices: int,
-        sinkhorn_iterations: int,
+        cfg,
     ):
         super().__init__()
+        self.cfg = cfg
         self.encoder = encoder
         self.decoder = decoder
-        self.n_vertices = n_vertices
-        self.sinkhorn_iterations = sinkhorn_iterations
+        self.n_vertices = cfg.model.tokenizer.n_vertices
+        self.sinkhorn_iterations = cfg.model.sinkhorn_iterations
         self.scorenet1 = ScoreNet(self.n_vertices)
         self.scorenet2 = ScoreNet(self.n_vertices)
         self.bin_score = torch.nn.Parameter(torch.tensor(1.0))
 
-    def forward(self, image, lidar, tgt):
-        encoder_out = self.encoder(image, lidar)
-        preds, feats = self.decoder(encoder_out, tgt)
+    def forward(self, x_image, x_lidar, y):
+                
+        encoder_out = self.encoder(x_image, x_lidar)
+        preds, feats = self.decoder(encoder_out, y)
         perm_mat1 = self.scorenet1(feats)
         perm_mat2 = self.scorenet2(feats)
         perm_mat = perm_mat1 + torch.transpose(perm_mat2, 1, 2)
@@ -272,7 +477,7 @@ class EncoderDecoder(nn.Module):
     
 
 if __name__ == "__main__":
-    from pixelspointspolygons.tokenizer import Tokenizer
+    from pixelspointspolygons.models.tokenizer import Tokenizer
     from torch.nn.utils.rnn import pad_sequence
     import numpy as np
     import torch
@@ -329,7 +534,7 @@ if __name__ == "__main__":
         gt_seqs_expected = gt_seqs[:, 1:]
 
         # Initialize model components
-        encoder = Encoder(model_name=config.model_name, pretrained=False, out_dim=256)
+        encoder = ImageEncoder(model_name=config.model_name, pretrained=False, out_dim=256)
         decoder = Decoder(
             vocab_size=tokenizer.vocab_size,
             encoder_len=config.num_patches,

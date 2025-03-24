@@ -1,15 +1,19 @@
 import hydra
 from omegaconf import OmegaConf
-from pixelspointspolygons.predict import Predictor
+
+from pixelspointspolygons.eval import Evaluator
+
 
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
     OmegaConf.resolve(cfg)
     print("\nConfiguration:")
     print(OmegaConf.to_yaml(cfg))
-
-    pp = Predictor(cfg)
-    pp.predict()
+    
+    ee = Evaluator(cfg)
+    ee.load_predictions()
+    ee.evaluate()
+    
 
 if __name__ == "__main__":
     main()

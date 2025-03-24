@@ -19,7 +19,6 @@ import shapely.validation
 
 import numpy as np
 import random
-import multiprocessing
 from multiprocessing import Pool
 from tqdm import tqdm
 from collections import defaultdict
@@ -27,8 +26,6 @@ from functools import partial
 from descartes import PolygonPatch
 from matplotlib.collections import PatchCollection
 from pycocotools.coco import COCO
-
-
 
 class ContourEval:
     def __init__(self, coco_gt, coco_dt):
@@ -72,6 +69,7 @@ class ContourEval:
                 measures_list.append(compute_contour_metrics(args))
         else:
             measures_list = list(tqdm(pool.imap(compute_contour_metrics, args_list), desc="Contour metrics", total=len(args_list)))
+        
         measures_list = [measure for measures in measures_list for measure in measures]  # Flatten list
         # half_tangent_cosine_similarities_list, edge_distances_list = zip(*measures_list)
         # half_tangent_cosine_similarities_list = [item for item in half_tangent_cosine_similarities_list if item is not None]
@@ -80,6 +78,44 @@ class ContourEval:
         max_angle_diffs = max_angle_diffs * 180 / np.pi  # Convert to degrees
 
         return max_angle_diffs
+    
+    
+def fix_polygons(polygons, buffer=0.0):
+    
+    temp = []
+    for poly in polygons:
+        if poly.area == 0.0:
+            print("Found zero-area polygon in predictions")
+            continue
+        if poly.is_valid:
+            temp.append(poly)
+        else:    
+            # this can throw an error
+            try:
+                temp.append(poly.buffer(0))
+            except Exception as e:
+                print("Error in fixing polygons. Passing this one...")
+                print(e)
+            
+    polygons = temp
+    del temp
+    polygons_geom = shapely.ops.unary_union(polygons)  # Fix overlapping polygons
+    polygons_geom = polygons_geom.buffer(buffer)  # Fix self-intersecting polygons and other things
+    fixed_polygons = []
+    if polygons_geom.geom_type == "MultiPolygon":
+        for poly in polygons_geom.geoms:
+            if poly.area == 0.0:
+                print("Found zero-area polygon in predictions")
+                continue
+            fixed_polygons.append(poly)
+    elif polygons_geom.geom_type == "Polygon":
+        if polygons_geom.area == 0.0:
+            return []
+        fixed_polygons.append(polygons_geom)
+    else:
+        raise TypeError(f"Geom type {polygons_geom.geom_type} not recognized.")
+    return fixed_polygons
+
 
 def compute_contour_metrics(gts_dts):
     gts, dts = gts_dts
@@ -87,14 +123,17 @@ def compute_contour_metrics(gts_dts):
                    for coords in ann["segmentation"]]
     dt_polygons = [shapely.geometry.Polygon(np.array(coords).reshape(-1, 2)) for ann in dts
                    for coords in ann["segmentation"]]
-    fixed_gt_polygons = fix_polygons(gt_polygons, buffer=0.0001)  # Buffer adds vertices but is needed to repair some geometries
+    # fixed_gt_polygons = fix_polygons(gt_polygons, buffer=0.0001)  # Buffer adds vertices but is needed to repair some geometries
+    
     fixed_dt_polygons = fix_polygons(dt_polygons)
     # cosine_similarities, edge_distances = \
     #     polygon_utils.compute_polygon_contour_measures(dt_polygons, gt_polygons, sampling_spacing=2.0, min_precision=0.5,
     #                                                    max_stretch=2)
-    max_angle_diffs = compute_polygon_contour_measures(fixed_dt_polygons, fixed_gt_polygons, sampling_spacing=2.0, min_precision=0.5, max_stretch=2)
+    max_angle_diffs = compute_polygon_contour_measures(fixed_dt_polygons, gt_polygons, sampling_spacing=2.0, min_precision=0.5, max_stretch=2)
 
     return max_angle_diffs
+
+
 
 def compute_polygon_contour_measures(pred_polygons: list, gt_polygons: list, sampling_spacing: float, min_precision: float, max_stretch: float, metric_name: str="cosine", progressbar=False):
     """
@@ -111,7 +150,7 @@ def compute_polygon_contour_measures(pred_polygons: list, gt_polygons: list, sam
     assert isinstance(pred_polygons, list), "pred_polygons should be a list"
     assert isinstance(gt_polygons, list), "gt_polygons should be a list"
     if len(pred_polygons) == 0 or len(gt_polygons) == 0:
-        return np.array([]), [], []
+        return []
     assert isinstance(pred_polygons[0], shapely.geometry.Polygon), \
         f"Items of pred_polygons should be of type shapely.geometry.Polygon, not {type(pred_polygons[0])}"
     assert isinstance(gt_polygons[0], shapely.geometry.Polygon), \
@@ -119,9 +158,9 @@ def compute_polygon_contour_measures(pred_polygons: list, gt_polygons: list, sam
     gt_polygons = shapely.geometry.collection.GeometryCollection(gt_polygons)
     pred_polygons = shapely.geometry.collection.GeometryCollection(pred_polygons)
     # Filter pred_polygons to have at least a precision with gt_polygons of min_precision
-    filtered_pred_polygons = [pred_polygon for pred_polygon in pred_polygons if min_precision < pred_polygon.intersection(gt_polygons).area / pred_polygon.area]
+    filtered_pred_polygons = [pred_polygon for pred_polygon in pred_polygons.geoms if min_precision < pred_polygon.intersection(gt_polygons).area / pred_polygon.area]
     # Extract contours of gt polygons
-    gt_contours = shapely.geometry.collection.GeometryCollection([contour for polygon in gt_polygons for contour in [polygon.exterior, *polygon.interiors]])
+    gt_contours = shapely.geometry.collection.GeometryCollection([contour for polygon in gt_polygons.geoms for contour in [polygon.exterior, *polygon.interiors]])
     # Measure metric for each pred polygon
     if progressbar:
         process_id = int(multiprocess.current_process().name[-1])
@@ -130,23 +169,10 @@ def compute_polygon_contour_measures(pred_polygons: list, gt_polygons: list, sam
         iterator = filtered_pred_polygons
     half_tangent_max_angles = [compute_contour_measure(pred_polygon, gt_contours, sampling_spacing=sampling_spacing, max_stretch=max_stretch, metric_name=metric_name)
                                for pred_polygon in iterator]
+    
     return half_tangent_max_angles
 
-def fix_polygons(polygons, buffer=0.0):
-    polygons = [
-        geom if geom.is_valid else geom.buffer(0) for geom in polygons
-    ]
-    polygons_geom = shapely.ops.unary_union(polygons)  # Fix overlapping polygons
-    polygons_geom = polygons_geom.buffer(buffer)  # Fix self-intersecting polygons and other things
-    fixed_polygons = []
-    if polygons_geom.geom_type == "MultiPolygon":
-        for poly in polygons_geom:
-            fixed_polygons.append(poly)
-    elif polygons_geom.geom_type == "Polygon":
-        fixed_polygons.append(polygons_geom)
-    else:
-        raise TypeError(f"Geom type {polygons_geom.geom_type} not recognized.")
-    return fixed_polygons
+
 
 def compute_contour_measure(pred_polygon, gt_contours, sampling_spacing, max_stretch, metric_name="cosine"):
     pred_contours = shapely.geometry.GeometryCollection([pred_polygon.exterior, *pred_polygon.interiors])
@@ -154,7 +180,7 @@ def compute_contour_measure(pred_polygon, gt_contours, sampling_spacing, max_str
     # Project sampled contour points to ground truth contours
     projected_pred_contours = project_onto_geometry(sampled_pred_contours, gt_contours)
     contour_measures = []
-    for contour, proj_contour in zip(sampled_pred_contours, projected_pred_contours):
+    for contour, proj_contour in zip(sampled_pred_contours.geoms, projected_pred_contours.geoms):
         coords = np.array(contour.coords[:])
         proj_coords = np.array(proj_contour.coords[:])
         edges = coords[1:] - coords[:-1]
@@ -206,7 +232,7 @@ def sample_geometry(geom, density):
     if isinstance(geom, shapely.geometry.GeometryCollection):
         # tic = time.time()
 
-        sampled_geom = shapely.geometry.GeometryCollection([sample_geometry(g, density) for g in geom])
+        sampled_geom = shapely.geometry.GeometryCollection([sample_geometry(g, density) for g in geom.geoms])
 
         # toc = time.time()
         # print(f"sample_geometry: {toc - tic}s")
@@ -251,7 +277,7 @@ def project_onto_geometry(geom, target, pool: Pool=None):
         # tic = time.time()
 
         if pool is None:
-            projected_geom = [project_onto_geometry(g, target, pool=pool) for g in geom]
+            projected_geom = [project_onto_geometry(g, target, pool=pool) for g in geom.geoms]
         else:
             partial_project_onto_geometry = partial(project_onto_geometry, target=target)
             projected_geom = pool.map(partial_project_onto_geometry, geom)
@@ -324,10 +350,18 @@ def plot_geometries(axis, geometries, linewidths=1, markersize=3):
         axis.add_collection(p)
 
 
-def compute_max_angle_error(annFile, resFile):
+def compute_max_angle_error(annFile, resFile, num_workers=8):
     gt_coco = COCO(annFile)
     dt_coco = gt_coco.loadRes(resFile)
     contour_eval = ContourEval(gt_coco, dt_coco)
-    pool = Pool(processes=20)
-    max_angle_diffs = contour_eval.evaluate(pool=pool)
-    print('Mean max tangent angle error(MTA): ', max_angle_diffs.mean())
+    
+    num_workers = max(1, num_workers)
+    if num_workers == 1:
+        pool = None
+    else:
+        pool = Pool(processes=num_workers)
+    max_angle_diffs = contour_eval.evaluate(pool=pool).mean()
+    
+    print('Mean max tangent angle error(MTA): ', max_angle_diffs)
+    
+    return {"MTA":max_angle_diffs}
