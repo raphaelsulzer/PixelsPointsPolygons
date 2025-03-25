@@ -20,7 +20,12 @@
                 "experiment_name=debug",
                 "model.fusion=patch_concat"
             ],
-            "justMyCode": false
+            "justMyCode": false,
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1",
+                "TORCH_USE_CUDA_DSA": "1",
+                "CUDA_VISIBLE_DEVICES": "0"
+            }
         },
         {
             "name": "predict",

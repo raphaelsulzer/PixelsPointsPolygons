@@ -2,13 +2,17 @@ import torch
 
 import torch.nn.functional as F
 
+from huggingface_hub import hf_hub_download
 from math import log
 from torch import nn
 from torch.utils.data.dataloader import default_collate
 
+from ...misc import suppress_stdout
+
 from .hrnet48v2 import MultitaskHead
 from .hrnet48v2 import HighResolutionNet as HRNet48v2
 from .afm_module.afm_op import afm
+
 
 def cross_entropy_loss_for_junction(logits, positive):
     nlogp = -F.log_softmax(logits, dim=1)
@@ -90,6 +94,10 @@ class AnnotationEncoder:
         xint, yint = junctions[:,0].long(), junctions[:,1].long()
         off_x = junctions[:,0] - xint.float()-0.5
         off_y = junctions[:,1] - yint.float()-0.5
+        
+        if xint.min() < 0 or xint.max() >= width or yint.min() < 0 or yint.max() >= height:
+            raise ValueError('Junctions out of bound')
+        
         jmap[yint, xint] = junc_tag
         joff[0, yint, xint] = off_x
         joff[1, yint, xint] = off_y
@@ -183,6 +191,15 @@ class ImageEncoderDecoder(EncoderDecoder):
         self.image_backbone = HRNet48v2(cfg,
                         head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                         num_class = num_class)
+        
+        model_path = hf_hub_download(
+            repo_id="rsi/PixelsPointsPolygons",
+            filename="hrnetv2_w48_imagenet_pretrained.pth",
+            use_auth_token=True  # This is needed for private repos
+        )
+
+        with suppress_stdout():
+            self.image_backbone.init_weights(pretrained=model_path)
         
         self.backbone_name = cfg.model.encoder.type
 
