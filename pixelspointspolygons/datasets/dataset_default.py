@@ -313,6 +313,29 @@ class DefaultDataset(Dataset):
 
         return image, lidar, annotations, torch.tensor([img_info['id']])
     
+    
+    def plot_hisup_poly(self, polygon, convex_index):
+        import matplotlib.pyplot as plt
+        
+        fig, ax = plt.subplots()
+        ax.plot(*zip(*np.vstack([polygon, polygon[0]])), linewidth=2.0)
+        
+        convex_concave_color = []
+        for j in range(len(polygon)):
+            if convex_index[j] == 0:
+                convex_concave_color.append('green')
+            elif convex_index[j] == 1:
+                convex_concave_color.append('red')
+            else:
+                convex_concave_color.append('blue')
+        
+        # Draw polygon vertices
+        ax.scatter(polygon[:, 0], polygon[:, 1], color=convex_concave_color, zorder=3, s=3)
+        
+        ax.set_aspect('equal')
+        plt.show(block=True)
+
+
     def make_hisup_annotations(self, corner_coords, corner_poly_ids, height, width):
 
         ann = {
@@ -339,7 +362,11 @@ class DefaultDataset(Dataset):
             poly = Polygon(points)
             if poly.area > 0:
                 convex_point = np.array(poly.convex_hull.exterior.coords)
+                convex_point = convex_point[:-1]
                 convex_index = [(p == convex_point).all(1).any() for p in points]
+                
+                # self.plot_hisup_poly(points, convex_index)
+                
                 juncs.extend(points.tolist())
                 junc_tags[convex_index] = 2  # convex point label
                 tags.extend(junc_tags.tolist())

@@ -124,6 +124,7 @@ class HiSupTrainer(Trainer):
         return loss_dict
 
 
+
     def train_one_epoch(self, epoch, iter_idx):
         
         self.logger.info(f"Train epoch {epoch}...")
