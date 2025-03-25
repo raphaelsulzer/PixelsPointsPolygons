@@ -8,6 +8,7 @@ from torch.utils.data.dataloader import default_collate
 
 from .hrnet48v2 import MultitaskHead
 from .hrnet48v2 import HighResolutionNet as HRNet48v2
+from .afm_module.afm_op import afm
 
 def cross_entropy_loss_for_junction(logits, positive):
     nlogp = -F.log_softmax(logits, dim=1)

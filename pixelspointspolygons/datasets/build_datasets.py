@@ -63,8 +63,6 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
     
     sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.multi_gpu else None
 
-    
-    
     train_loader = DataLoader(
         train_ds,
         batch_size=cfg.model.batch_size,
@@ -196,8 +194,10 @@ def get_val_loader_inria(cfg,tokenizer):
         indices = list(range(cfg.dataset.subset))
         val_ds = Subset(val_ds, indices)
     
-    ## Do not use a DistributedSampler for validation, otherwise it is a pain to gather the coco annotations to one outfile
-    # sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.multi_gpu else None
+    ## be aware that the DistributedSampler here will even out the batch sizes on the different devices
+    ## and thereby lead to some images being included twice in the coco annotations
+    ## there is not really anything to avoid this, beside setting drop_last=True. Then, however, some images might be dropped entirely
+    sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.multi_gpu else None
 
     val_loader = DataLoader(
         val_ds,
@@ -206,7 +206,7 @@ def get_val_loader_inria(cfg,tokenizer):
         num_workers=cfg.num_workers,
         pin_memory=cfg.run_type.name!='debug',
         drop_last=False,
-        # sampler=sampler,
+        sampler=sampler,
         shuffle=False
     )
     
