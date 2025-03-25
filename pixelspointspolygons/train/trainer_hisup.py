@@ -22,7 +22,7 @@ from torch import nn
 from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
-from ..misc import make_logger, AverageMeter, get_lr, get_tile_names_from_dataloader, plot_pix2poly, seed_everything
+from ..misc import make_logger, AverageMeter, get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything
 from ..datasets import get_train_loader, get_val_loader
 from ..models.hisup import *
 from ..predict import Predictor
@@ -137,59 +137,58 @@ class HiSupTrainer(Trainer):
         
         loader = self.progress_bar(self.train_loader)
 
-        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids in loader:
+        for x_image, x_lidar, y, tile_ids in loader:
                         
             batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
             
             # ### debug vis
             if self.cfg.debug_vis:
                 file_names = get_tile_names_from_dataloader(self.train_loader.dataset.coco.imgs, tile_ids)
-                # plot_pix2poly(image_batch=x_image,lidar_batch=x_lidar,mask_batch=y_mask,corner_image_batch=y_corner_mask,tile_names=file_names)        
-                plot_pix2poly(image_batch=x_image,lidar_batch=x_lidar,corner_image_batch=y_corner_mask,tile_names=file_names)        
+                plot_hisup(image_batch=x_image,lidar_batch=x_lidar,annotations_batch=y,tile_names=file_names)
             
-            if self.cfg.use_images:
-                x_image = x_image.to(self.cfg.device, non_blocking=True)
-            if self.cfg.use_lidar:
-                x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+            # if self.cfg.use_images:
+            #     x_image = x_image.to(self.cfg.device, non_blocking=True)
+            # if self.cfg.use_lidar:
+            #     x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
             
-            y_sequence = y_sequence.to(self.cfg.device, non_blocking=True)
-            y_perm = y_perm.to(self.cfg.device, non_blocking=True)
+            # y_sequence = y_sequence.to(self.cfg.device, non_blocking=True)
+            # y_perm = y_perm.to(self.cfg.device, non_blocking=True)
 
-            y_input = y_sequence[:, :-1]
-            y_expected = y_sequence[:, 1:]
+            # y_input = y_sequence[:, :-1]
+            # y_expected = y_sequence[:, 1:]
 
-            preds, perm_mat = self.model(x_image, x_lidar, y_input)
+            # preds, perm_mat = self.model(x_image, x_lidar, y_input)
 
-            if epoch < self.cfg.model.milestone:
-                vertex_loss_weight = self.cfg.model.vertex_loss_weight
-                perm_loss_weight = 0.0
-            else:
-                vertex_loss_weight = self.cfg.model.vertex_loss_weight
-                perm_loss_weight = self.cfg.model.perm_loss_weight
+            # if epoch < self.cfg.model.milestone:
+            #     vertex_loss_weight = self.cfg.model.vertex_loss_weight
+            #     perm_loss_weight = 0.0
+            # else:
+            #     vertex_loss_weight = self.cfg.model.vertex_loss_weight
+            #     perm_loss_weight = self.cfg.model.perm_loss_weight
 
-            vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
-            perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
+            # vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
+            # perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
 
-            loss = vertex_loss + perm_loss
+            # loss = vertex_loss + perm_loss
 
-            self.optimizer.zero_grad(set_to_none=True)
-            loss.backward()
-            self.optimizer.step()
+            # self.optimizer.zero_grad(set_to_none=True)
+            # loss.backward()
+            # self.optimizer.step()
 
-            self.lr_scheduler.step()
+            # self.lr_scheduler.step()
 
-            loss_meter.update(loss.item(), batch_size)
-            vertex_loss_meter.update(vertex_loss.item(), batch_size)
-            perm_loss_meter.update(perm_loss.item(), batch_size)
+            # loss_meter.update(loss.item(), batch_size)
+            # vertex_loss_meter.update(vertex_loss.item(), batch_size)
+            # perm_loss_meter.update(perm_loss.item(), batch_size)
 
-            lr = get_lr(self.optimizer)
+            # lr = get_lr(self.optimizer)
 
-            loader.set_postfix(train_loss=loss_meter.avg, lr=f"{lr:.5f}")
+            # loader.set_postfix(train_loss=loss_meter.avg, lr=f"{lr:.5f}")
 
-            iter_idx += 1
+            # iter_idx += 1
 
-            # if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
-            #     break
+            # # if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
+            # #     break
             
         
         self.logger.debug(f"Train loss: {loss_meter.avg:.3f}")

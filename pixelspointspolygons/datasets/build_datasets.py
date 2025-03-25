@@ -8,8 +8,16 @@ from torch.utils.data.distributed import DistributedSampler
 
 from .dataset_train import TrainDataset
 from .dataset_val import ValDataset
-from .collate_funcs import collate_fn_pix2poly
+from .collate_funcs import collate_fn_pix2poly, collate_fn_hisup
 
+def get_collate_fn(model):
+    
+    if model == "pix2poly":
+        return collate_fn_pix2poly
+    elif model == "hisup":
+        return collate_fn_hisup
+    else:
+        raise NotImplementedError(f"Collate function for {model} not implemented yet.")
 
 def get_val_loader(cfg,tokenizer=None):
     if cfg.dataset.name == 'inria':
@@ -30,7 +38,7 @@ def get_train_loader(cfg,tokenizer=None):
 def get_train_loader_lidarpoly(cfg,tokenizer):
     
     train_transforms = A.ReplayCompose([
-        A.D4(p=1.0),
+        # A.D4(p=1.0),
         A.Resize(height=cfg.model.encoder.input_height, width=cfg.model.encoder.input_width),
         A.ColorJitter(),
         A.GaussNoise(),
@@ -55,10 +63,12 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
     
     sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.multi_gpu else None
 
+    
+    
     train_loader = DataLoader(
         train_ds,
         batch_size=cfg.model.batch_size,
-        collate_fn=partial(collate_fn_pix2poly, cfg=cfg),
+        collate_fn=partial(get_collate_fn(cfg.model.name), cfg=cfg),
         num_workers=cfg.num_workers,
         pin_memory=cfg.run_type.name!='debug',
         drop_last=False,
@@ -95,10 +105,11 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
 
     sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.multi_gpu else None
     
+    
     val_loader = DataLoader(
         val_ds,
         batch_size=cfg.model.batch_size,
-        collate_fn=partial(collate_fn_pix2poly, cfg=cfg),
+        collate_fn=partial(get_collate_fn(cfg.model.name), cfg=cfg),
         num_workers=cfg.num_workers,
         pin_memory=cfg.run_type.name!='debug',
         drop_last=False,
@@ -111,7 +122,7 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
 
 
 def get_train_loader_inria(cfg,tokenizer):
-    from datasets.dataset_inria_coco import InriaCocoDatasetTrain, collate_fn
+    from ..datasets.dataset_inria_coco import InriaCocoDatasetTrain, collate_fn
 
     ### ORIGINAL
     train_transforms = A.Compose(
@@ -159,7 +170,7 @@ def get_train_loader_inria(cfg,tokenizer):
 
 def get_val_loader_inria(cfg,tokenizer):
     
-    from datasets.dataset_inria_coco import InriaCocoDatasetVal, collate_fn
+    from ..datasets.dataset_inria_coco import InriaCocoDatasetVal, collate_fn
     
     val_transforms = A.Compose(
         [
