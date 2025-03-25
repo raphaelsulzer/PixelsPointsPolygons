@@ -26,6 +26,13 @@ milestone: 0
 learning_rate: 4e-4
 weight_decay: 1e-4
 
+loss_weights:
+    loss_joff: 0.25    # joff  regression
+    loss_jloc: 8.0     # jloc  classification
+    loss_mask: 1.0
+    loss_afm : 0.1
+    loss_remask : 1.0
+
 
 defaults:
     - lidar_encoder: pointpillars
