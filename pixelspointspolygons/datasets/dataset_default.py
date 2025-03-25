@@ -1,9 +1,6 @@
-import cv2
-import random
 import numpy as np
 import os
 import laspy
-import logging
 from PIL import Image
 import torch
 
@@ -12,7 +9,6 @@ from sklearn.preprocessing import MinMaxScaler
 from pycocotools.coco import COCO
 from shapely.geometry import Polygon
 from torch.utils.data import Dataset
-from torch.utils.data.dataloader import default_collate
 
 from ..misc import make_logger, suppress_stdout
 
@@ -96,6 +92,56 @@ class DefaultDataset(Dataset):
         if not os.path.isfile(filename):
             raise FileNotFoundError(filename)
         return filename
+    
+    def apply_augmentations_to_lidar(self, augmentation_replay, lidar, id=0):
+        
+        if self.split == 'val':
+            return torch.from_numpy(lidar)
+    
+        d4_transform = augmentation_replay["transforms"][0]
+        
+        assert d4_transform["__class_fullname__"] == "D4"
+        
+
+        if not d4_transform['applied']:
+            return torch.from_numpy(lidar)
+        
+        # translate to center so all the transformations are easily applied around the center
+        center = [self.cfg.model.encoder.input_width // 2, self.cfg.model.encoder.input_height // 2]
+        lidar[:, :2] -= center
+        
+        group_element = d4_transform['params']['group_element']
+        if group_element == 'e':
+            # Identity, no change
+            pass
+        elif group_element == 'r90':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'r180':
+            lidar[:, 0] = -lidar[:, 0]
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'r270':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+            lidar[:, 0] = -lidar[:, 0]
+        elif group_element == 'v':
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'hvt':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+            lidar[:, 0] = -lidar[:, 0]
+            lidar[:, 1] = -lidar[:, 1]
+        elif group_element == 'h':
+            lidar[:, 0] = -lidar[:, 0]
+        elif group_element == 't':
+            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+        else:
+            raise ValueError(f"Unknown group element {group_element}")
+        
+        lidar[:, :2] += center
+
+        # self.logger.debug(f"Applied '{group_element}' transformation to lidar tile {id}.")
+        
+        return torch.from_numpy(lidar)
+    
 
     def __getitem__(self, idx):
 
@@ -105,50 +151,6 @@ class DefaultDataset(Dataset):
             return self.__getitem__pix2poly(idx)
         else:
             raise NotImplementedError(f"Model type {self.model_type} not implemented.")
-        
-        
-    def __getitem__hisup(self, index):
-
-        img_id = self.tile_ids[index]
-        img_info = self.coco.loadImgs(img_id)[0]
-        ann_ids = self.coco.getAnnIds(imgIds=img_info['id'])
-        annotations = self.coco.loadAnns(ann_ids)  # annotations of all instances in an image.
-
-        # load image
-        if self.use_images:
-            filename = self.get_image_file(img_info)
-            image = np.array(Image.open(filename).convert("RGB"))
-        else:
-            # make dummy image for albumentations to work
-            image = np.zeros((img_info['width'], 
-                            img_info['height'], 1), dtype=np.uint8)
-
-        # load lidar
-        if self.use_lidar:
-            filename = self.get_lidar_file(img_info)
-            lidar = self.load_lidar_points(filename, img_info)
-        else:
-            lidar = None
-        
-        annotations = self.make_hisup_annotations(annotations, img_info['height'], img_info['width'])
-        
-        if self.transform is not None: 
-            masks = None
-            augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
-            
-            # TODO: make the hisup annotations compatible with albumentations
-            
-            if self.use_lidar:
-                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar, img_info['id'])
-            
-            image = augmentations['image']
-            mask = augmentations['masks'][0]
-            corner_mask = augmentations['masks'][1]
-            corner_coords = np.array(augmentations['keypoints'])
-
-        return image, lidar, annotations
-        
-        
         
     def __getitem__pix2poly(self, index):
 
@@ -255,57 +257,63 @@ class DefaultDataset(Dataset):
 
 
 
-    def apply_augmentations_to_lidar(self, augmentation_replay, lidar, id=0):
-        
-        if self.split == 'val':
-            return torch.from_numpy(lidar)
-    
-        d4_transform = augmentation_replay["transforms"][0]
-        
-        assert d4_transform["__class_fullname__"] == "D4"
-        
+    def __getitem__hisup(self, index):
 
-        if not d4_transform['applied']:
-            return torch.from_numpy(lidar)
-        
-        # translate to center so all the transformations are easily applied around the center
-        center = [self.cfg.model.encoder.input_width // 2, self.cfg.model.encoder.input_height // 2]
-        lidar[:, :2] -= center
-        
-        group_element = d4_transform['params']['group_element']
-        if group_element == 'e':
-            # Identity, no change
-            pass
-        elif group_element == 'r90':
-            lidar[:, [0, 1]] = lidar[:, [1, 0]]
-            lidar[:, 1] = -lidar[:, 1]
-        elif group_element == 'r180':
-            lidar[:, 0] = -lidar[:, 0]
-            lidar[:, 1] = -lidar[:, 1]
-        elif group_element == 'r270':
-            lidar[:, [0, 1]] = lidar[:, [1, 0]]
-            lidar[:, 0] = -lidar[:, 0]
-        elif group_element == 'v':
-            lidar[:, 1] = -lidar[:, 1]
-        elif group_element == 'hvt':
-            lidar[:, [0, 1]] = lidar[:, [1, 0]]
-            lidar[:, 0] = -lidar[:, 0]
-            lidar[:, 1] = -lidar[:, 1]
-        elif group_element == 'h':
-            lidar[:, 0] = -lidar[:, 0]
-        elif group_element == 't':
-            lidar[:, [0, 1]] = lidar[:, [1, 0]]
+        img_id = self.tile_ids[index]
+        img_info = self.coco.loadImgs(img_id)[0]
+        ann_ids = self.coco.getAnnIds(imgIds=img_info['id'])
+        annotations = self.coco.loadAnns(ann_ids)  # annotations of all instances in an image.
+
+        # load image
+        if self.use_images:
+            filename = self.get_image_file(img_info)
+            image = np.array(Image.open(filename).convert("RGB"))
         else:
-            raise ValueError(f"Unknown group element {group_element}")
+            # make dummy image for albumentations to work
+            image = np.zeros((img_info['width'], 
+                            img_info['height'], 1), dtype=np.uint8)
+
+        # load lidar
+        if self.use_lidar:
+            filename = self.get_lidar_file(img_info)
+            lidar = self.load_lidar_points(filename, img_info)
+        else:
+            lidar = None
         
-        lidar[:, :2] += center
 
-        # self.logger.debug(f"Applied '{group_element}' transformation to lidar tile {id}.")
+        corner_coords = []
+        corner_poly_ids = [0]
+        mask = np.zeros([img_info['width'], img_info['height']])
+        for i,annotation_per_image in enumerate(annotations):
+            mask += self.coco.annToMask(annotation_per_image)
+            segmentations = annotation_per_image['segmentation']
+            if len(segmentations) > 1:
+                raise ValueError("Only one segmentation per instance is supported. This is a multipolygon.")
+            points = segmentations[0]
+            points = np.array(points).reshape(-1, 2)
+            points[:, 0] = np.clip(points[:, 0], 0, img_info['width'] - 1)
+            points[:, 1] = np.clip(points[:, 1], 0, img_info['height'] - 1)
+            points = points[:-1]
+            corner_poly_ids.append(len(points)+len(corner_coords))
+            corner_coords.extend(points.tolist())
+            
         
-        return torch.from_numpy(lidar)
+        if self.transform is not None: 
 
+            augmentations = self.transform(image=image, masks=[mask], keypoints=corner_coords)
+                        
+            if self.use_lidar:
+                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar, img_info['id'])
+            
+            image = augmentations['image']
+            corner_coords = np.array(augmentations['keypoints'])
 
-    def make_hisup_annotations(self, ann_coco, height, width):
+        annotations = self.make_hisup_annotations(corner_coords, corner_poly_ids, img_info['height'], img_info['width'])
+        annotations["mask"] = augmentations['masks'][0]
+
+        return image, lidar, annotations, torch.tensor([img_info['id']])
+    
+    def make_hisup_annotations(self, corner_coords, corner_poly_ids, height, width):
 
         ann = {
             'junctions': [],
@@ -320,30 +328,23 @@ class DefaultDataset(Dataset):
         pid = 0
         instance_id = 0
         seg_mask = np.zeros([width, height])
-        for ann_per_ins in ann_coco:
+        for i,_ in enumerate(corner_poly_ids[:-1]):
+            
             juncs, tags = [], []
-            segmentations = ann_per_ins['segmentation']
-            for i, segm in enumerate(segmentations):
-                segm = np.array(segm).reshape(-1, 2)  # the shape of the segm is (N,2)
-                segm[:, 0] = np.clip(segm[:, 0], 0, width - 1e-4)
-                segm[:, 1] = np.clip(segm[:, 1], 0, height - 1e-4)
-                points = segm[:-1]
-                junc_tags = np.ones(points.shape[0])
-                if i == 0:  # outline
-                    poly = Polygon(points)
-                    if poly.area > 0:
-                        convex_point = np.array(poly.convex_hull.exterior.coords)
-                        convex_index = [(p == convex_point).all(1).any() for p in points]
-                        juncs.extend(points.tolist())
-                        junc_tags[convex_index] = 2  # convex point label
-                        tags.extend(junc_tags.tolist())
-                        ann['bbox'].append(list(poly.bounds))
-                        seg_mask += self.coco.annToMask(ann_per_ins)
-                else:
-                    juncs.extend(points.tolist())
-                    tags.extend(junc_tags.tolist())
-                    interior_contour = segm.reshape(-1, 1, 2)
-                    cv2.drawContours(seg_mask, [np.int0(interior_contour)], -1, color=0, thickness=-1)
+
+            points = corner_coords[corner_poly_ids[i] : corner_poly_ids[i+1]]
+            
+            junc_tags = np.ones(points.shape[0])
+            
+            poly = Polygon(points)
+            if poly.area > 0:
+                convex_point = np.array(poly.convex_hull.exterior.coords)
+                convex_index = [(p == convex_point).all(1).any() for p in points]
+                juncs.extend(points.tolist())
+                junc_tags[convex_index] = 2  # convex point label
+                tags.extend(junc_tags.tolist())
+                ann['bbox'].append(list(poly.bounds))
+
 
             idxs = np.arange(len(juncs))
             edges = np.stack((idxs, np.roll(idxs, 1))).transpose(1, 0) + pid
@@ -357,7 +358,6 @@ class DefaultDataset(Dataset):
                 pid += len(juncs)
 
         seg_mask = np.clip(seg_mask, 0, 1)
-        ann['mask'] = seg_mask
 
         for key, _type in (['junctions', np.float32],
                            ['edges_positive', np.longlong],
@@ -368,7 +368,6 @@ class DefaultDataset(Dataset):
             ann[key] = np.array(ann[key], dtype=_type)
 
         if len(ann['junctions']) == 0:
-            ann['mask'] = np.zeros((height, width), dtype=np.float64)
             ann['junctions'] = np.asarray([[0, 0]])
             ann['bbox'] = np.asarray([[0, 0, 0, 0]])
             ann['juncs_tag'] = np.asarray([0])
