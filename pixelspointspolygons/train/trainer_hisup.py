@@ -108,8 +108,6 @@ class HiSupTrainer(Trainer):
 
         self.logger.info("Validate...")
         self.model.eval()
-        self.loss_fn_dict["vertex"].eval()
-        self.loss_fn_dict["perm"].eval()
 
         loss_meter = AverageMeter()
         vertex_loss_meter = AverageMeter()
@@ -118,7 +116,7 @@ class HiSupTrainer(Trainer):
         loader = self.progress_bar(self.val_loader)
 
         with torch.no_grad():
-            for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
+            for x_image, x_lidar, y, tile_ids in loader:
                 
                 batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
                 
@@ -127,26 +125,10 @@ class HiSupTrainer(Trainer):
                 if self.cfg.use_lidar:
                     x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)    
                 
-                y_sequence = y_sequence.to(self.cfg.device, non_blocking=True)
-                y_perm = y_perm.to(self.cfg.device, non_blocking=True)
-
-                y_input = y_sequence[:, :-1]
-                y_expected = y_sequence[:, 1:]
-
-                preds, perm_mat = self.model(x_image, x_lidar, y_input)
-
-
-                vertex_loss_weight = self.cfg.model.vertex_loss_weight
-                perm_loss_weight = self.cfg.model.perm_loss_weight
-                
-                vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
-                perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
-
-                loss = vertex_loss + perm_loss
+                loss_dict = self.model(x_image, x_lidar, y)
 
                 loss_meter.update(loss.item(), batch_size)
-                vertex_loss_meter.update(vertex_loss.item(), batch_size)
-                perm_loss_meter.update(perm_loss.item(), batch_size)
+
 
 
         self.logger.debug(f"Validation loss: {loss_meter.avg:.3f}")
@@ -177,7 +159,7 @@ class HiSupTrainer(Trainer):
         for x_image, x_lidar, y, tile_ids in loader:
                         
             batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
-            
+
             # ### debug vis
             if self.cfg.debug_vis:
                 file_names = get_tile_names_from_dataloader(self.train_loader.dataset.coco.imgs, tile_ids)
