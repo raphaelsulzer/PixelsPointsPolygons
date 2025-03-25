@@ -69,7 +69,6 @@ def plot_polygons_hisup(annotations, ax=None, pointsize=3, linewidth=2, show=Fal
     
     n_polys = np.unique(annotations["juncs_index"]).shape[0]
     
-    
     # Plot polygons
     for i in range(n_polys):
         if polygon_format == "xy":
@@ -80,7 +79,9 @@ def plot_polygons_hisup(annotations, ax=None, pointsize=3, linewidth=2, show=Fal
             raise ValueError("polygon_format must be 'xy' or 'yx'")
         
         poly = annotations['junctions'][annotations['juncs_index']==i]
-
+        tags = annotations['juncs_tag'][annotations['juncs_index']==i]
+        
+        
         # Draw polygon edges
         color = colors[i % len(colors)]  # Cycle through colors
 
@@ -88,9 +89,9 @@ def plot_polygons_hisup(annotations, ax=None, pointsize=3, linewidth=2, show=Fal
 
         convex_concave_color = []
         for j in range(len(poly)):
-            if annotations['juncs_tag'][j] == 1:
+            if tags[j] == 1:
                 convex_concave_color.append('green')
-            elif annotations['juncs_tag'][j] == 2:
+            elif tags[j] == 2:
                 convex_concave_color.append('red')
             else:
                 convex_concave_color.append('blue')
