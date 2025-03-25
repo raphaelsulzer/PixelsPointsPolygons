@@ -198,9 +198,7 @@ class ImageEncoderDecoder(EncoderDecoder):
             use_auth_token=True  # This is needed for private repos
         )
 
-        with suppress_stdout():
-            self.image_backbone.init_weights(pretrained=model_path)
-        
+        self.image_backbone.init_weights(pretrained=model_path)
         self.backbone_name = cfg.model.encoder.type
 
     
@@ -296,6 +294,9 @@ class ImageEncoderDecoder(EncoderDecoder):
     def forward_train(self, images, annotations = None):
 
         targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images,annotations)
+        
+        # TODO: I need to add an image and annotation resize to the hisup dataloader
+        # check again in the hisup code what is resized when
         
         loss_dict = self.init_loss_dict()
         if targets is not None:

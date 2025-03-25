@@ -25,6 +25,7 @@ BN_MOMENTUM = 0.1
 ALIGN_CORNERS = None
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.ERROR)
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
