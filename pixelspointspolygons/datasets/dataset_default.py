@@ -310,6 +310,10 @@ class DefaultDataset(Dataset):
 
         annotations = self.make_hisup_annotations(corner_coords, corner_poly_ids, img_info['height'], img_info['width'])
         annotations["mask"] = augmentations['masks'][0]
+        
+        for k, v in annotations.items():
+            if isinstance(v, np.ndarray):
+                annotations[k] = torch.from_numpy(v)
 
         return image, lidar, annotations, torch.tensor([img_info['id']])
     
