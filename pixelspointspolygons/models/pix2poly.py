@@ -107,6 +107,8 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
 
     def __init__(self,cfg):
         
+        # TODO: might be cleaner to simply replace the head with nn.Identity() instead of removing all the unused modules
+        
         # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
         point_cloud_range = [0, 0, 0, 
                              cfg.model.encoder.input_width, cfg.model.encoder.input_height, cfg.model.lidar_encoder.z_max]
@@ -157,8 +159,6 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         del self.loss_dir
         
         
-
-        
     def forward(self, x_lidar):
         """Extract features from points."""
         
@@ -202,6 +202,7 @@ class LiDAREncoder(nn.Module):
     
 
 class ImageEncoder(nn.Module):
+    
     def __init__(self, cfg) -> None:
         super().__init__()
         self.cfg = cfg
