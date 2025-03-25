@@ -11,7 +11,7 @@ encoder:
     output_height: ${.output_size}
     output_width: ${.output_size}
     
-    out_feature_channels: 384
+    out_feature_channels: 256
 
 
 fusion: patch_concat # or feature_concat
