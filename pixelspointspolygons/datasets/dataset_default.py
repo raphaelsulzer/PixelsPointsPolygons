@@ -256,7 +256,6 @@ class DefaultDataset(Dataset):
         return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
 
 
-
     def __getitem__hisup(self, index):
 
         img_id = self.tile_ids[index]
@@ -299,14 +298,15 @@ class DefaultDataset(Dataset):
             
         
         if self.transform is not None: 
-
+            
+            corner_coords = np.flip(corner_coords,axis=-1)
             augmentations = self.transform(image=image, masks=[mask], keypoints=corner_coords)
                         
             if self.use_lidar:
                 lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar, img_info['id'])
             
             image = augmentations['image']
-            corner_coords = np.array(augmentations['keypoints'])
+            corner_coords = np.flip(augmentations['keypoints'],axis=-1)
 
         annotations = self.make_hisup_annotations(corner_coords, corner_poly_ids, img_info['height'], img_info['width'])
         annotations["mask"] = augmentations['masks'][0]

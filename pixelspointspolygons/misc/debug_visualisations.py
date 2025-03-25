@@ -102,12 +102,13 @@ def plot_polygons_hisup(annotations, ax=None, pointsize=3, linewidth=2, show=Fal
         plt.show(block=False)    
         
 
-def plot_mask(image, alpha=1.0, ax=None, show_axis='off', show=False):
+def plot_mask(image, alpha=0.3, ax=None, show_axis='off', show=False):
     
-    if image.ndim == 2:
-        image = image[None, :, :]
+
     
     if isinstance(image, torch.Tensor):
+        if image.ndim == 2:
+            image = image[None, :, :]
         image = image.permute(1, 2, 0).cpu().numpy()
 
     if ax is None:
@@ -115,7 +116,7 @@ def plot_mask(image, alpha=1.0, ax=None, show_axis='off', show=False):
     ax.axis(show_axis)
 
     # Plot the image
-    ax.imshow((1 - image) * 255, cmap='gray', alpha=alpha)
+    ax.imshow((image) * 255, cmap='gray', alpha=alpha)
 
     if show:
         plt.show(block=False)
@@ -229,7 +230,7 @@ def plot_pix2poly(image_batch=None,lidar_batch=None,tile_names=None,mask_batch=N
         if lidar_batch is not None:
             plot_point_cloud(lidar_batch[i], show=False, ax=ax[i])    
         if mask_batch is not None:
-            plot_mask(mask_batch[i], alpha=0.7 , show=False, ax=ax[i])
+            plot_mask(mask_batch[i], alpha=0.03 , show=False, ax=ax[i])
         if corner_image_batch is not None:
             plot_point_activations(corner_image_batch[i], show=False, ax=ax[i])
         if polygon_batch is not None:              

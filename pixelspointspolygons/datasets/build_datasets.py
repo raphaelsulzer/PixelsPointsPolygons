@@ -38,7 +38,7 @@ def get_train_loader(cfg,tokenizer=None):
 def get_train_loader_lidarpoly(cfg,tokenizer):
     
     train_transforms = A.ReplayCompose([
-        # A.D4(p=1.0),
+        A.D4(p=1.0),
         A.Resize(height=cfg.model.encoder.input_height, width=cfg.model.encoder.input_width),
         A.ColorJitter(),
         A.GaussNoise(),
