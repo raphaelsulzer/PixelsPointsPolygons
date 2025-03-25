@@ -76,34 +76,11 @@ conda activate ${ENV_NAME}
 echo "________________ Install Required Packages _______________"
 echo
 
-# pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# install a cudatoolkit 12.1 to match the version specified in requirements-torch-cuda.txt
+conda install nvidia/label/cuda-12.1.1::cuda-toolkit -y
 
 pip install -r requirements-torch-cuda.txt
-
-# pip install transformers==4.32
-# pip install pycocotools
-# pip install torchmetrics
-# pip install wandb
-# pip install timm
-# pip install matplotlib
-# pip install albumentations
-# pip install shapely
-# pip install hydra-core
-# pip install pandas
-
-# # # problem with torch:tms? do this:
-# # # https://github.com/huggingface/diffusers/issues/8958#issuecomment-2253055261
-
-# # ## for inria_to_coco.py
-# # conda install conda-forge::imagecodecs -y
-
-# # ## for lidar_poly_dataloader
-# # conda install conda-forge::gcc_linux-64=10 conda-forge::gxx_linux-64=10 -y # otherwise copclib install bugs
-# pip install laspy[laszip]
-# pip install colorlog
-# pip install descartes==1.1.0
-# pip install scikit-image
-# pip3 install -U scikit-learn
 
 pip install -e .
 
