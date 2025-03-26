@@ -292,13 +292,17 @@ class ImageEncoderDecoder(EncoderDecoder):
                         head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                         num_class = num_class)
         
-        model_path = hf_hub_download(
-            repo_id="rsi/PixelsPointsPolygons",
-            filename="hrnetv2_w48_imagenet_pretrained.pth",
-            use_auth_token=True  # This is needed for private repos
-        )
-
-        self.backbone.init_weights(pretrained=model_path)
+        if not cfg.host.name == "jz":
+            checkpoint_file = hf_hub_download(
+                repo_id="rsi/PixelsPointsPolygons",
+                filename="hrnetv2_w48_imagenet_pretrained.pth",
+                use_auth_token=True  # This is needed for private repos
+            )
+        else:
+            checkpoint_file = "./hrnetv2_w48_imagenet_pretrained.pth"
+        if not os.path.isfile(checkpoint_file):
+            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
+        self.backbone.init_weights(pretrained=checkpoint_file)
         self.backbone_name = cfg.model.encoder.type
 
     
@@ -322,13 +326,17 @@ class LiDAREncoderDecoder(EncoderDecoder):
                         head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                         num_class = num_class)
         
-        model_path = hf_hub_download(
-            repo_id="rsi/PixelsPointsPolygons",
-            filename="hrnetv2_w48_imagenet_pretrained.pth",
-            use_auth_token=True  # This is needed for private repos
-        )
-
-        self.backbone.init_weights(pretrained=model_path)
+        if not cfg.host.name == "jz":
+            checkpoint_file = hf_hub_download(
+                repo_id="rsi/PixelsPointsPolygons",
+                filename="hrnetv2_w48_imagenet_pretrained.pth",
+                use_auth_token=True  # This is needed for private repos
+            )
+        else:
+            checkpoint_file = "./hrnetv2_w48_imagenet_pretrained.pth"
+        if not os.path.isfile(checkpoint_file):
+            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
+        self.backbone.init_weights(pretrained=checkpoint_file)
         self.backbone_name = cfg.model.encoder.type
         
         # make a point pillars that get's to this shape: torch.Size([16, 64, 256, 256])
@@ -358,11 +366,14 @@ class MultiEncoderDecoder(EncoderDecoder):
                         head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                         num_class = num_class)
         
-        checkpoint_file = hf_hub_download(
-            repo_id="rsi/PixelsPointsPolygons",
-            filename="hrnetv2_w48_imagenet_pretrained.pth",
-            use_auth_token=True  # This is needed for private repos
-        )
+        if not cfg.host.name == "jz":
+            checkpoint_file = hf_hub_download(
+                repo_id="rsi/PixelsPointsPolygons",
+                filename="hrnetv2_w48_imagenet_pretrained.pth",
+                use_auth_token=True  # This is needed for private repos
+            )
+        else:
+            checkpoint_file = "./hrnetv2_w48_imagenet_pretrained.pth"
         if not os.path.isfile(checkpoint_file):
             raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
         self.backbone.init_weights(pretrained=checkpoint_file)
