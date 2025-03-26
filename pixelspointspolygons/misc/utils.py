@@ -5,13 +5,15 @@ import random
 import wandb
 import torch
 import torchvision
+import contextlib
+
 import numpy as np
 
 from omegaconf import OmegaConf
+from collections import deque
 from scipy.optimize import linear_sum_assignment
 from transformers.generation.utils import top_k_top_p_filtering
 from torchmetrics.functional.classification import binary_jaccard_index, binary_accuracy
-import contextlib
 
 @contextlib.contextmanager
 def suppress_stdout():
@@ -123,6 +125,36 @@ class AverageMeter:
         text = f"{self.name}: {self.avg:.4f}"
         return text
 
+class SmoothedValue:
+    """Track a series of values and provide access to smoothed values over a
+    window or the global series average.
+    """
+
+    def __init__(self, window_size=20):
+        self.deque = deque(maxlen=window_size)
+        self.series = []
+        self.total = 0.0
+        self.count = 0
+
+    def update(self, value):
+        self.deque.append(value)
+        self.series.append(value)
+        self.count += 1
+        self.total += value
+
+    @property
+    def median(self):
+        d = torch.tensor(list(self.deque))
+        return d.median().item()
+
+    @property
+    def avg(self):
+        d = torch.tensor(list(self.deque))
+        return d.mean().item()
+
+    @property
+    def global_avg(self):
+        return self.total / self.count
 
 def get_lr(optimizer):
     for param_group in optimizer.param_groups:
