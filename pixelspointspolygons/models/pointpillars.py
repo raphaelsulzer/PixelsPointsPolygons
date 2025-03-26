@@ -34,7 +34,6 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         
         # max_voxels = [(cfg.model.encoder.input_size // cfg.model.encoder.patch_size)**2] * 2
         
-        
         voxelize={
             'max_num_points': cfg.model.lidar_encoder.max_num_points_per_voxel,
             'voxel_size': voxel_size,
