@@ -77,7 +77,6 @@ echo "________________ Install Required Packages _______________"
 echo
 
 # install a cudatoolkit 12.1 to match the version specified in requirements-torch-cuda.txt
-conda install nvidia/label/cuda-12.1.1::cuda-toolkit -y
 
 pip install -r requirements-torch-cuda.txt
 
@@ -85,6 +84,8 @@ pip install -e .
 
 # make the afm module for hisup
 echo "________________ Install AFM module for HiSup _______________"
+conda install nvidia/label/cuda-12.1.1::cuda-toolkit -y
+# export TORCH_CUDA_ARCH_LIST="6.1;7.5;8.0;8.6"
 cd ./pixelspointspolygons/models/hisup/afm_module
 make
 

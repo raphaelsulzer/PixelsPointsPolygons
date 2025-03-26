@@ -25,10 +25,13 @@ dependencies = [
     "scikit-image",
     "scikit-learn",
     "shapely",
+    "tensorboard",
     "timm",
     "torchmetrics",
     "transformers==4.32",
-    "wandb"
+    "wandb",
+    # only for hisup
+    "Cython"
 ]
 
 
