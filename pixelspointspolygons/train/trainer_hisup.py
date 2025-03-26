@@ -131,14 +131,22 @@ class HiSupTrainer(Trainer):
         
         self.loss_reducer = LossReducer(self.cfg)
         
+    def average_across_gpus(self, meter):
+        
+        if not self.is_ddp:
+            return meter.global_avg
+        
+        tensor = torch.tensor([meter.global_avg], device=self.device)
+        dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
+        tensor /= self.world_size
+        return tensor.item()
+        
     def valid_one_epoch(self):
 
         self.logger.info("Validate...")
         self.model.eval()
 
-        loss_meter = AverageMeter()
-        vertex_loss_meter = AverageMeter()
-        perm_loss_meter = AverageMeter()
+        loss_meter = MetricLogger(" val_")
 
         loader = self.progress_bar(self.val_loader)
 
@@ -150,21 +158,25 @@ class HiSupTrainer(Trainer):
                 if self.cfg.use_images:
                     x_image = x_image.to(self.cfg.device, non_blocking=True)
                 if self.cfg.use_lidar:
-                    x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)    
+                    x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+                    
+                    
+                y=self.to_single_device(y,self.cfg.device)
+
+                polygon_output, loss_dict = self.model(x_image, x_lidar, y)
+                loss = self.loss_reducer(loss_dict)
+                loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
+                loss_reduced = loss.item()
+                loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
                 
-                loss_dict = self.model(x_image, x_lidar, y)
-
-                loss_meter.update(loss.item(), batch_size)
+                loader.set_postfix(val_loss=loss_meter.meters["total_loss"].global_avg)
 
 
-
-        self.logger.debug(f"Validation loss: {loss_meter.avg:.3f}")
+        self.logger.debug(f"Validation loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
         
-        loss_dict = {
-            'total_loss': self.average_across_gpus(loss_meter),
-            'vertex_loss': self.average_across_gpus(vertex_loss_meter),
-            'perm_loss': self.average_across_gpus(perm_loss_meter),
-        }
+        for k,v in loss_meter.meters.items():
+            loss_dict[k] = self.average_across_gpus(v)
+        
         self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict
@@ -203,7 +215,7 @@ class HiSupTrainer(Trainer):
             with torch.no_grad():
                 loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
                 loss_reduced = loss.item()
-                loss_meter.update(loss=loss_reduced, **loss_dict_reduced)
+                loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
             
 
             self.optimizer.zero_grad(set_to_none=True)
@@ -214,7 +226,7 @@ class HiSupTrainer(Trainer):
 
             lr = get_lr(self.optimizer)
 
-            loader.set_postfix(train_loss=loss_meter.meters["loss"].global_avg, lr=f"{lr:.5f}")
+            loader.set_postfix(train_loss=loss_meter.meters["total_loss"].global_avg, lr=f"{lr:.5f}")
 
             iter_idx += 1
 
@@ -222,12 +234,10 @@ class HiSupTrainer(Trainer):
             #     break
             
         
-        self.logger.debug(f"Train loss: {loss_meter.meters['loss'].global_avg:.3f}")
-        loss_dict = {
-            'total_loss': self.average_across_gpus(loss_meter),
-            'vertex_loss': self.average_across_gpus(vertex_loss_meter),
-            'perm_loss': self.average_across_gpus(perm_loss_meter),
-        }
+        self.logger.debug(f"Train loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
+        
+        for k,v in loss_meter.meters.items():
+            loss_dict[k] = self.average_across_gpus(v)
         
         self.logger.info(f"Train loss: {loss_dict['total_loss']:.3f}")
 

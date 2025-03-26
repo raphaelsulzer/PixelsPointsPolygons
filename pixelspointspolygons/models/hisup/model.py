@@ -1,18 +1,17 @@
 import torch
-
+import cv2
 import torch.nn.functional as F
 
 from huggingface_hub import hf_hub_download
 from math import log
 from torch import nn
 from torch.utils.data.dataloader import default_collate
-
-from ...misc import suppress_stdout
+from skimage.measure import label, regionprops
 
 from .hrnet48v2 import MultitaskHead
 from .hrnet48v2 import HighResolutionNet as HRNet48v2
 from .afm_module.afm_op import afm
-
+from .polygon import get_pred_junctions, generate_polygon
 
 def cross_entropy_loss_for_junction(logits, positive):
     nlogp = -F.log_softmax(logits, dim=1)
