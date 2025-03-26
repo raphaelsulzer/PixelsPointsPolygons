@@ -77,7 +77,7 @@ echo "________________ Install Required Packages _______________"
 echo
 
 # install a cudatoolkit 12.1 to match the version specified in requirements-torch-cuda.txt
-conda install nvidia/label/cuda-12.1.1::cuda-toolkit -y
+conda install -c nvidia/label/cuda-12.1.1 cuda-toolkit=12.1.1 -y
 
 pip install -r requirements-torch-cuda.txt
 
