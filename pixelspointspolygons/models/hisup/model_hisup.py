@@ -8,6 +8,8 @@ from torch import nn
 from torch.utils.data.dataloader import default_collate
 from skimage.measure import label, regionprops
 
+from ..pointpillars import PointPillarsWithoutHead
+
 from .hrnet48v2 import MultitaskHead
 from .hrnet48v2 import HighResolutionNet as HRNet48v2
 from .afm_module.afm_op import afm
@@ -293,6 +295,142 @@ class ImageEncoderDecoder(EncoderDecoder):
     def forward_train(self, images, annotations = None):
 
         targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images,annotations)
+        
+        # TODO: I need to add an image and annotation resize to the hisup dataloader
+        # check again in the hisup code what is resized when
+        
+        loss_dict = self.init_loss_dict()
+        if targets is not None:
+            loss_dict['loss_jloc'] += F.cross_entropy(jloc_pred, targets['jloc'].squeeze(dim=1))
+            loss_dict['loss_joff'] += sigmoid_l1_loss(outputs[:, :], targets['joff'], -0.5, targets['jloc'])
+            loss_dict['loss_mask'] += F.cross_entropy(mask_pred, targets['mask'].squeeze(dim=1).long())
+            loss_dict['loss_afm'] += F.l1_loss(afm_pred, targets['afmap'])
+            loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())
+
+        return loss_dict
+
+
+
+
+class LiDAREncoderDecoder(EncoderDecoder):
+    def __init__(self, cfg):
+        super().__init__(cfg)
+
+        head_size = [[2]]
+        num_class = sum(sum(head_size, []))
+
+        self.image_backbone = HRNet48v2(cfg,
+                        head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
+                        num_class = num_class)
+        
+        model_path = hf_hub_download(
+            repo_id="rsi/PixelsPointsPolygons",
+            filename="hrnetv2_w48_imagenet_pretrained.pth",
+            use_auth_token=True  # This is needed for private repos
+        )
+
+        self.image_backbone.init_weights(pretrained=model_path)
+        self.backbone_name = cfg.model.encoder.type
+        
+        # make a point pillars that get's to this shape: torch.Size([16, 64, 256, 256])
+        # now just replace the first conv of HRNet
+        
+        self.image_backbone.conv1 = PointPillarsWithoutHead(cfg)        
+
+
+    
+    def forward(self, images, points, annotations = None):
+        if self.training:
+            return self.forward_train(points, annotations=annotations)
+        else:
+            # return self.forward_test(images, annotations=annotations)
+            return self.forward_val(points, annotations=annotations)
+
+
+    def forward_common(self,points,annotations=None):
+        targets, _ = self.annotation_encoder(annotations)
+        features = self.image_backbone(points)
+        outputs = self.image_backbone.head(features)
+
+        mask_feature = self.mask_head(features)
+        jloc_feature = self.jloc_head(features)
+        afm_feature = self.afm_head(features)
+
+        mask_att_feature = self.a2m_att(afm_feature, mask_feature)
+        jloc_att_feature = self.a2j_att(afm_feature, jloc_feature)
+
+        mask_pred = self.mask_predictor(mask_feature + mask_att_feature)
+        jloc_pred = self.jloc_predictor(jloc_feature + jloc_att_feature)
+        afm_pred = self.afm_predictor(afm_feature)
+
+        afm_conv = self.refuse_conv(afm_pred)
+        remask_pred = self.final_conv(torch.cat((features, afm_conv), dim=1))
+        
+        return targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred
+
+    
+    def forward_val(self, points, annotations):
+        
+        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(points,annotations)
+
+        ### loss:
+        loss_dict = self.init_loss_dict()
+        if targets is not None:
+            loss_dict['loss_jloc'] += F.cross_entropy(jloc_pred, targets['jloc'].squeeze(dim=1))
+            loss_dict['loss_joff'] += sigmoid_l1_loss(outputs[:, :], targets['joff'], -0.5, targets['jloc'])
+            loss_dict['loss_mask'] += F.cross_entropy(mask_pred, targets['mask'].squeeze(dim=1).long())
+            loss_dict['loss_afm'] += F.l1_loss(afm_pred, targets['afmap'])
+            loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())
+        
+        ### polygonization:    
+        joff_pred = outputs[:, :].sigmoid() - 0.5
+        jloc_convex_pred = jloc_pred.softmax(1)[:, 2:3]
+        jloc_concave_pred = jloc_pred.softmax(1)[:, 1:2]
+        remask_pred = remask_pred.softmax(1)[:, 1:]
+        
+        scale_y = self.origin_height / self.pred_height
+        scale_x = self.origin_width / self.pred_width
+
+        batch_polygons = []
+        batch_masks = []
+        batch_scores = []
+        batch_juncs = []
+
+        for b in range(remask_pred.size(0)):
+            mask_pred_per_im = cv2.resize(remask_pred[b][0].cpu().numpy(), (self.origin_width, self.origin_height))
+            juncs_pred = get_pred_junctions(jloc_concave_pred[b], jloc_convex_pred[b], joff_pred[b])
+            juncs_pred[:,0] *= scale_x
+            juncs_pred[:,1] *= scale_y
+
+            polys, scores = [], []
+            props = regionprops(label(mask_pred_per_im > 0.5))
+            for prop in props:
+                poly, juncs_sa, edges_sa, score, juncs_index = generate_polygon(prop, mask_pred_per_im, \
+                                                                        juncs_pred, 0, False)
+                if juncs_sa.shape[0] == 0:
+                    continue
+
+                polys.append(poly)
+                scores.append(score)
+            batch_scores.append(scores)
+            batch_polygons.append(polys)
+
+            batch_masks.append(mask_pred_per_im)
+            batch_juncs.append(juncs_pred)
+
+        output = {
+            'polys_pred': batch_polygons,
+            'mask_pred': batch_masks,
+            'scores': batch_scores,
+            'juncs_pred': batch_juncs
+        }
+        
+        return output, loss_dict
+
+
+    def forward_train(self, points, annotations = None):
+
+        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(points,annotations)
         
         # TODO: I need to add an image and annotation resize to the hisup dataloader
         # check again in the hisup code what is resized when

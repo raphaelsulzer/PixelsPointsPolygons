@@ -103,7 +103,7 @@ class HiSupTrainer(Trainer):
         elif self.cfg.use_images:
             model = ImageEncoderDecoder(self.cfg)
         elif self.cfg.use_lidar: 
-            raise NotImplementedError
+            model = LiDAREncoderDecoder(self.cfg)
         else:
             raise ValueError("At least one of use_image or use_lidar must be True")
         

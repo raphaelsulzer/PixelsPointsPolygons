@@ -1,7 +1,14 @@
 name: pointpillars
-max_num_points_per_voxel: 128 # this should be something around points_per_tile / num_voxels_per_tile
+max_num_points_per_voxel: null # this should be something around points_per_tile / num_voxels_per_tile
 z_max: 100 # all pointclouds will be scaled to [0, lidar_height]
-voxel_size:
+in_voxel_size:
   x: 8
   y: 8
   z: ${..z_max}
+
+# specify this in the detector model
+lidar_encoder.max_num_voxels:
+    train: null 
+    test: null
+out_voxel_width: null
+out_voxel_hight: null
