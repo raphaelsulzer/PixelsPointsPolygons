@@ -20,7 +20,7 @@ fusion: patch_concat # or feature_concat
 # optimization
 
 # training
-batch_size: 32
+batch_size: 16
 start_epoch: 0
 num_epochs: 100
 milestone: 0

@@ -3,7 +3,7 @@ import torch
 import torch.multiprocessing as mp
 import hydra
 from omegaconf import OmegaConf
-from pixelspointspolygons.train import HiSupTrainer, Pix2PolyTrainer
+from pixelspointspolygons.train import FFLTrainer, HiSupTrainer, Pix2PolyTrainer
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -20,7 +20,7 @@ def main(cfg):
         local_rank = 0
     
     if cfg.model.name == "ffl":
-        raise NotImplementedError("FFL model is not implemented yet")
+        trainer = FFLTrainer(cfg, local_rank, world_size)
     elif cfg.model.name == "hisup":
         trainer = HiSupTrainer(cfg, local_rank, world_size)
     elif cfg.model.name == "pix2poly":
