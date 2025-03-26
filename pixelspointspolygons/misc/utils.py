@@ -26,30 +26,7 @@ def suppress_stdout():
         finally:
             sys.stdout = old_stdout
 
-def init_wandb(cfg):
-    
-    if cfg.host.name == "jeanzay":
-        os.environ["WANDB_MODE"] = "offline"
-    
-    cfg_container = OmegaConf.to_container(
-        cfg, resolve=True, throw_on_missing=True
-    )
 
-    # start a new wandb run to track this script
-    wandb.init(
-        # set the wandb project where this run will be logged
-        project="HiSup",
-        name=cfg.experiment_name,
-        group="v1_pix2poly",
-        # track hyperparameters and run metadata
-        config=cfg_container,
-        dir=cfg.output_dir,
-    )
-    
-    log_outfile = os.path.join(cfg.output_dir, 'wandb.log')
-    wandb.run.log_code(log_outfile)
-    
-    
     
 def compute_dynamic_cfg_vars(cfg,tokenizer):
     
@@ -59,7 +36,6 @@ def compute_dynamic_cfg_vars(cfg,tokenizer):
     cfg.model.encoder.num_patches = int((cfg.model.encoder.input_size // cfg.model.encoder.patch_size) ** 2)
     
 
-
 def seed_everything(seed=1234):
     random.seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -67,22 +43,6 @@ def seed_everything(seed=1234):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
-
-
-# def save_checkpoint(state, folder="logs/checkpoint/run1", filename="my_checkpoint.pth.tar"):
-#     print("=> Saving checkpoint")
-#     if not os.path.exists(folder):
-#         os.makedirs(folder)
-#     torch.save(state, os.path.join(folder, filename))
-
-
-def load_checkpoint(checkpoint, model, optimizer, scheduler):
-    print("=> Loading checkpoint")
-    model.load_state_dict(checkpoint["state_dict"])
-    optimizer.load_state_dict(checkpoint["optimizer"])
-    scheduler.load_state_dict(checkpoint["scheduler"])
-
-    return checkpoint["epochs_run"]
 
 
 def generate_square_subsequent_mask(sz,device):
@@ -314,129 +274,12 @@ def postprocess(batch_preds, batch_confs, tokenizer):
 
     return all_coords, all_confs
 
+
 def get_tile_names_from_dataloader(img_dict, ids):
     file_names = []
     for id in ids:
         file_names.append(img_dict[id.item()]['file_name'])
     return file_names
-
-def save_single_predictions_as_images(loader, model, tokenizer, epoch, folder, cfg):
-    
-    os.makedirs(folder, exist_ok=True)
-    print(f"=> Saving val predictions to {folder}...")
-
-    model.eval()
-
-    all_coords = []
-    all_confs = []
-
-    with torch.no_grad():
-        loader_iterator = iter(loader)
-        idx, (x_images, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids) = 0, next(loader_iterator)
-        x_images = x_images.to(cfg.device, non_blocking=True)
-        batch_preds, batch_confs, perm_preds = test_generate(model, x_images, x_lidar, tokenizer, max_len=cfg.model.tokenizer.generation_steps, top_k=0, top_p=1)
-        vertex_coords, confs = postprocess(batch_preds, batch_confs, tokenizer)
-
-        all_coords.extend(vertex_coords)
-        all_confs.extend(confs)
-
-        coords = []
-        for i in range(len(all_coords)):
-            if all_coords[i] is not None:
-                coord = torch.from_numpy(all_coords[i])
-            else:
-                coord = torch.tensor([])
-            padd = torch.ones((cfg.model.tokenizer.n_vertices - len(coord), 2)).fill_(tokenizer.PAD_code)
-            coord = torch.cat((coord, padd), dim=0)
-            coords.append(coord)
-        batch_polygons = permutations_to_polygons(perm_preds, coords, out='torch')  # list of polygon coordinate tensors
-
-    B, C, H, W = x_images.shape
-    # Write predicted vertices as mask to disk.
-    vertex_mask = np.zeros((B, 1, H, W))
-    for b in range(len(all_coords)):
-        if all_coords[b] is not None:
-            # print(f"Vertices found!")
-            for i in range(len(all_coords[b])):
-                coord = all_coords[b][i]
-                cx, cy = coord
-                cv2.circle(vertex_mask[b, 0], (int(cy), int(cx)), 0, 255, -1)
-    vertex_mask = torch.from_numpy(vertex_mask)
-    if not os.path.exists(os.path.join(folder, 'corners_mask')):
-        os.makedirs(os.path.join(folder, 'corners_mask'))
-    vertex_pred_vis = torch.zeros_like(x_images)
-    for b in range(B):
-        vertex_pred_vis[b] = torchvision.utils.draw_segmentation_masks(
-            (x_images[b]*255).to(dtype=torch.uint8),
-            torch.zeros_like(x_images[b, 0]).bool()
-        )
-    vertex_pred_vis = vertex_pred_vis.cpu().numpy().astype(np.uint8)
-    for b in range(len(all_coords)):
-        if all_coords[b] is not None:
-            for i in range(len(all_coords[b])):
-                coord = all_coords[b][i]
-                cx, cy = coord
-                cv2.circle(vertex_pred_vis[b, 0], (int(cy), int(cx)), 3, 255, -1)
-    vertex_pred_vis = torch.from_numpy(vertex_pred_vis)
-    torchvision.utils.save_image(
-        vertex_pred_vis.float()/255, f"{folder}/corners_mask/corners_mask_{b}_{epoch}.png"
-    )
-
-    # Write predicted polygons as mask to disk.
-    polygons = np.zeros((B, 1, H, W))
-    for b in range(B):
-        for c in range(len(batch_polygons[b])):
-            poly = batch_polygons[b][c]
-            poly = poly[poly[:, 0] != tokenizer.PAD_code]
-            cnt = np.flip(np.int32(poly.cpu()), 1)
-            if len(cnt) > 0:
-                cv2.fillPoly(polygons[b, 0], pts=[cnt], color=1.)
-    polygons = torch.from_numpy(polygons)
-    if not os.path.exists(os.path.join(folder, 'pred_polygons')):
-        os.makedirs(os.path.join(folder, 'pred_polygons'))
-    poly_out = torch.zeros_like(x_images)
-    for b in range(B):
-        poly_out[b] = torchvision.utils.draw_segmentation_masks(
-            (x_images[b]*255).to(dtype=torch.uint8),
-            polygons[b, 0].bool()
-        )
-    poly_out = poly_out.cpu().numpy().astype(np.uint8)
-    for b in range(len(all_coords)):
-        if all_coords[b] is not None:
-            for i in range(len(all_coords[b])):
-                coord = all_coords[b][i]
-                cx, cy = coord
-                cv2.circle(poly_out[b, 0], (int(cy), int(cx)), 2, 255, -1)
-    poly_out = torch.from_numpy(poly_out)
-    torchvision.utils.save_image(
-        poly_out.float()/255, f"{folder}/pred_polygons/polygons_{idx}_{epoch}.png"
-    )
-
-    val_dict={}
-    val_dict['miou'] = binary_jaccard_index(polygons, y_mask)
-    val_dict['biou'] = binary_jaccard_index(polygons, y_mask, ignore_index=0)
-    val_dict['macc'] = binary_accuracy(polygons, y_mask)
-    val_dict['bacc'] = binary_accuracy(polygons, y_mask, ignore_index=0)
-
-    torchvision.utils.save_image(x_images, f"{folder}/image_{idx}.png")
-    ymask_out = torch.zeros_like(x_images)
-    for b in range(B):
-        ymask_out[b] = torchvision.utils.draw_segmentation_masks(
-            (x_images[b]*255).to(dtype=torch.uint8),
-            y_mask[b, 0].bool()
-        )
-    ymask_out = ymask_out.cpu().numpy().astype(np.uint8)
-    gt_corner_coords, _ = postprocess(y_sequence, batch_confs, tokenizer)
-    for b in range(B):
-        for corner in gt_corner_coords[b]:
-            cx, cy = corner
-            cv2.circle(ymask_out[b, 0], (int(cy), int(cx)), 3, 255, -1)
-    ymask_out = torch.from_numpy(ymask_out)
-    torchvision.utils.save_image(ymask_out/255., f"{folder}/gt_mask_{idx}.png")
-    torchvision.utils.save_image(y_corner_mask*255, f"{folder}/gt_corners_{idx}.png")
-    torchvision.utils.save_image(y_perm[:, None, :, :]*255, f"{folder}/gt_perm_matrix_{idx}.png")
-    
-    return val_dict
 
 
 def plot_model_architecture(model, input_shape=(16,3,224,224), outfile="/data/rsulzer/model_architecture.svg"):

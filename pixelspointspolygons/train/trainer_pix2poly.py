@@ -23,7 +23,7 @@ from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
 from ..models.tokenizer import Tokenizer
-from ..misc import make_logger, is_main_process, AverageMeter, get_lr, get_tile_names_from_dataloader, plot_pix2poly, seed_everything
+from ..misc import AverageMeter, make_logger, get_lr, get_tile_names_from_dataloader, plot_pix2poly, seed_everything
 from ..datasets import get_train_loader, get_val_loader
 from ..models.pix2poly import EncoderDecoder, ImageEncoder, LiDAREncoder, MultiEncoder, Decoder
 from ..predict import Predictor

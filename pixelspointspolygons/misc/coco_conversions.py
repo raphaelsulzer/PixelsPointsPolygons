@@ -13,7 +13,6 @@ def get_bbox_from_coco_seg(poly):
     h = np.max(poly[:,1]) - lt_y
     return [float(lt_x), float(lt_y), float(w), float(h)]
 
-
 def generate_coco_ann(polygon_list, img_id):
     sample_ann = []
     for polygon in polygon_list:

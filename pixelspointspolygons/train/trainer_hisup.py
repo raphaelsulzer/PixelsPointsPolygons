@@ -23,6 +23,8 @@ from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, seed_ever
 from ..models.hisup import *
 from ..predict import Predictor
 from ..eval import Evaluator
+from ..misc.coco_conversions import generate_coco_ann
+
 from .trainer import Trainer
 
 
@@ -140,7 +142,8 @@ class HiSupTrainer(Trainer):
         dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
         tensor /= self.world_size
         return tensor.item()
-        
+
+    
     def valid_one_epoch(self):
 
         self.logger.info("Validate...")
@@ -150,6 +153,8 @@ class HiSupTrainer(Trainer):
 
         loader = self.progress_bar(self.val_loader)
 
+        coco_predictions = []
+        
         with torch.no_grad():
             for x_image, x_lidar, y, tile_ids in loader:
                 
@@ -164,13 +169,26 @@ class HiSupTrainer(Trainer):
                 y=self.to_single_device(y,self.cfg.device)
 
                 polygon_output, loss_dict = self.model(x_image, x_lidar, y)
+                
+                ## loss stuff
                 loss = self.loss_reducer(loss_dict)
                 loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
                 loss_reduced = loss.item()
                 loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
-                
                 loader.set_postfix(val_loss=loss_meter.meters["total_loss"].global_avg)
+                ## polygon stuff
+                output = self.to_single_device(output, 'cpu')
+                batch_scores = output['scores']
+                batch_polygons = output['polys_pred']
 
+        for b in range(batch_size):
+
+            scores = batch_scores[b]
+            polys = batch_polygons[b]
+
+            image_result = generate_coco_ann(polys, scores, tile_ids[b])
+            if len(image_result) != 0:
+                coco_predictions.extend(image_result)
 
         self.logger.debug(f"Validation loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
         
@@ -179,7 +197,7 @@ class HiSupTrainer(Trainer):
         
         self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
 
-        return loss_dict
+        return loss_dict, coco_predictions
 
 
 
@@ -290,7 +308,7 @@ class HiSupTrainer(Trainer):
             ############################################
             ################ Validation ################
             ############################################
-            val_loss_dict = self.valid_one_epoch()
+            val_loss_dict, coco_predictions = self.valid_one_epoch()
             if self.local_rank == 0:
                 for k, v in val_loss_dict.items():
                     wandb_dict[f"val_{k}"] = v
@@ -318,11 +336,8 @@ class HiSupTrainer(Trainer):
             #############################################
             if (epoch + 1) % self.cfg.val_every == 0:
 
-                self.logger.info("Predict validation set with latest model...")
-                coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)
-                
-                
-                print(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
+                self.logger.info("Evaluate validation set with latest model...")
+
                 
                 if self.is_ddp:
                     
