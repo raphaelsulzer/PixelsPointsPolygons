@@ -25,6 +25,9 @@ salloc
 ## Obtain a job allocation and execute an application
 srun execfile 
 
+## Indicate the CPU and/or GPU hours allocations
+idracct 
+
 ## activate conda evn
 module load miniforge/24.9.0 && conda activate ppp
 
