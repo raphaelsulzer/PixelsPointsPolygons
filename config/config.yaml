@@ -1,5 +1,6 @@
 defaults:
-  - model: hisup   # Default model
+  # - model: hisup   # Default model
+  - model: pix2poly   # Default model
   - dataset: lidarpoly   # Default dataset
   - run_type: release   # Default run_type
   - host: gin
