@@ -292,7 +292,7 @@ class ImageEncoderDecoder(EncoderDecoder):
                         head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                         num_class = num_class)
         
-        if not cfg.host.name == "jz":
+        if not cfg.host.name == "jeanzay":
             checkpoint_file = hf_hub_download(
                 repo_id="rsi/PixelsPointsPolygons",
                 filename="hrnetv2_w48_imagenet_pretrained.pth",
@@ -326,7 +326,7 @@ class LiDAREncoderDecoder(EncoderDecoder):
                         head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                         num_class = num_class)
         
-        if not cfg.host.name == "jz":
+        if not cfg.host.name == "jeanzay":
             checkpoint_file = hf_hub_download(
                 repo_id="rsi/PixelsPointsPolygons",
                 filename="hrnetv2_w48_imagenet_pretrained.pth",
@@ -366,7 +366,7 @@ class MultiEncoderDecoder(EncoderDecoder):
                         head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                         num_class = num_class)
         
-        if not cfg.host.name == "jz":
+        if not cfg.host.name == "jeanzay":
             checkpoint_file = hf_hub_download(
                 repo_id="rsi/PixelsPointsPolygons",
                 filename="hrnetv2_w48_imagenet_pretrained.pth",
