@@ -10,4 +10,3 @@ module load miniforge/24.9.0
 
 # Activate virtual environment (if needed)
 conda activate ppp
-

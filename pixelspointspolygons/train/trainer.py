@@ -102,7 +102,7 @@ class Trainer:
             # set the wandb project where this run will be logged
             project="HiSup",
             name=self.cfg.experiment_name,
-            group="v1_pix2poly",
+            group=self.cfg.group_name,
             # track hyperparameters and run metadata
             config=cfg_container,
             dir=self.cfg.output_dir,
