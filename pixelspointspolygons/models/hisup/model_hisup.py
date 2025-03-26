@@ -299,7 +299,7 @@ class ImageEncoderDecoder(EncoderDecoder):
                 use_auth_token=True  # This is needed for private repos
             )
         else:
-            checkpoint_file = "./hrnetv2_w48_imagenet_pretrained.pth"
+            checkpoint_file = cfg.model.encoder.checkpoint_file
         if not os.path.isfile(checkpoint_file):
             raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
         self.backbone.init_weights(pretrained=checkpoint_file)
@@ -333,7 +333,7 @@ class LiDAREncoderDecoder(EncoderDecoder):
                 use_auth_token=True  # This is needed for private repos
             )
         else:
-            checkpoint_file = "./hrnetv2_w48_imagenet_pretrained.pth"
+            checkpoint_file = cfg.model.encoder.checkpoint_file
         if not os.path.isfile(checkpoint_file):
             raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
         self.backbone.init_weights(pretrained=checkpoint_file)
@@ -373,7 +373,7 @@ class MultiEncoderDecoder(EncoderDecoder):
                 use_auth_token=True  # This is needed for private repos
             )
         else:
-            checkpoint_file = "./hrnetv2_w48_imagenet_pretrained.pth"
+            checkpoint_file = cfg.model.encoder.checkpoint_file
         if not os.path.isfile(checkpoint_file):
             raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
         self.backbone.init_weights(pretrained=checkpoint_file)

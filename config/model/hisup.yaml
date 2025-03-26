@@ -2,6 +2,7 @@ name: hisup
 encoder:
     type: HRNet48v2
     pretrained: True
+    checkpoint_file: ${...host.data_root}/hrnetv2_w48_imagenet_pretrained.pth
 
     input_size: 512
     input_height: ${.input_size}
