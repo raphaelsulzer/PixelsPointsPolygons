@@ -37,3 +37,26 @@ weight_decay: 1e-4
 
 defaults:
     - lidar_encoder: pointpillars
+
+# the following values are adapted such that the PointPillars layer can be used as a drop in for the 
+# patch_embed layer of the vision transformer - vit_small_patch8_224_dino (specified in cfg.model.encoder)
+
+lidar_encoder:
+    in_voxel_size:
+        x: 8
+        y: 8
+
+    max_num_points_per_voxel: 128 # this should be something around points_per_tile / num_voxels_per_tile
+
+    max_num_voxels:
+        train: (${.encoder.input_size} // ${.encoder.patch_size})**2 # 256**2
+        test: (${.encoder.input_size} // ${.encoder.patch_size})**2 # 256**2
+
+    out_voxel_width: ${model.encoder.input_width} // ${model.encoder.patch_size}
+    out_voxel_height: ${model.encoder.input_height} // ${model.encoder.patch_size}
+
+    out_dim: ${..encoder.patch_embed_dim}
+
+lidar_encoder.in_voxel_size:
+  x: 8
+  y: 8

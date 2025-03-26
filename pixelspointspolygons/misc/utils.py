@@ -1,19 +1,14 @@
 import sys
 import os
-import cv2
 import random
-import wandb
 import torch
-import torchvision
 import contextlib
 
 import numpy as np
 
-from omegaconf import OmegaConf
 from collections import deque
 from scipy.optimize import linear_sum_assignment
 from transformers.generation.utils import top_k_top_p_filtering
-from torchmetrics.functional.classification import binary_jaccard_index, binary_accuracy
 
 @contextlib.contextmanager
 def suppress_stdout():

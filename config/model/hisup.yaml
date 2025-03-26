@@ -36,3 +36,22 @@ loss_weights:
 
 defaults:
     - lidar_encoder: pointpillars
+
+
+# the following values are adapted such that the PointPillars layer can be used as a drop in for the 
+# patch_embed layer of the vision transformer - vit_small_patch8_224_dino (specified in cfg.model.encoder)
+lidar_encoder:
+    in_voxel_size:
+        x: 2
+        y: 2
+
+    max_num_points_per_voxel: 4 # this should be something around points_per_tile / num_voxels_per_tile
+
+    max_num_voxels:
+        train: 65536 # 256**2
+        test: 65536 # 256**2
+
+    out_voxel_width: 256
+    out_voxel_height: 256
+
+    out_dim: 64
