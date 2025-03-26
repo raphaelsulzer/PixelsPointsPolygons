@@ -20,7 +20,7 @@ from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
 from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything, SmoothedValue
-from ..models.hisup import *
+from ..models.ffl import *
 from ..predict import Predictor
 from ..eval import Evaluator
 from ..misc.coco_conversions import generate_coco_ann
@@ -71,7 +71,7 @@ class MetricLogger:
             )
         return self.delimiter.join(loss_str)
 
-class HiSupTrainer(Trainer):
+class FFLTrainer(Trainer):
     
     def to_device(self,data,device):
         if isinstance(data,torch.Tensor):
