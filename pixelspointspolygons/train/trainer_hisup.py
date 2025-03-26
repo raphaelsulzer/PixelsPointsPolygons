@@ -177,18 +177,18 @@ class HiSupTrainer(Trainer):
                 loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
                 loader.set_postfix(val_loss=loss_meter.meters["total_loss"].global_avg)
                 ## polygon stuff
-                output = self.to_single_device(output, 'cpu')
-                batch_scores = output['scores']
-                batch_polygons = output['polys_pred']
+                polygon_output = self.to_single_device(polygon_output, 'cpu')
+                batch_scores = polygon_output['scores']
+                batch_polygons = polygon_output['polys_pred']
 
-        for b in range(batch_size):
+                for b in range(batch_size):
 
-            scores = batch_scores[b]
-            polys = batch_polygons[b]
+                    scores = batch_scores[b]
+                    polys = batch_polygons[b]
 
-            image_result = generate_coco_ann(polys, scores, tile_ids[b])
-            if len(image_result) != 0:
-                coco_predictions.extend(image_result)
+                    image_result = generate_coco_ann(polys, tile_ids[b], scores=scores)
+                    if len(image_result) != 0:
+                        coco_predictions.extend(image_result)
 
         self.logger.debug(f"Validation loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
         
