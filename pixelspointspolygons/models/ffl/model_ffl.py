@@ -16,7 +16,7 @@ def get_out_channels(module):
     return out_channels
 
 
-class FrameFieldModel(torch.nn.Module):
+class ImageFrameFieldModel(torch.nn.Module):
     def __init__(self, config: dict, backbone, train_transform=None, eval_transform=None):
         """
 
