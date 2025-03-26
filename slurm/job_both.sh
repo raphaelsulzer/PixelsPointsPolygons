@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --account=cso@v100
-#SBATCH --job-name=image_only_bs4x8  # Job name
-#SBATCH --output=./slurm/runs/image_only.log       # Standard output and error log
-#SBATCH --error=./slurm/runs/image_only.log         # Error log
+#SBATCH --job-name=both_bs4x8  # Job name
+#SBATCH --output=./slurm/runs/both.log       # Standard output and error log
+#SBATCH --error=./slurm/runs/both.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
 #SBATCH --ntasks=4 # reserve 4 tasks (or processes)
 #SBATCH --gres=gpu:4              # Request 2 GPUs
@@ -35,7 +35,7 @@ set -x
 # Run your Python script
 
 torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true \
-experiment_name=image_only_bs4x8 checkpoint=null model.batch_size=8 use_lidar=false use_images=true run_type.logging=INFO
+experiment_name=both_bs4x8 checkpoint=null model.batch_size=8 use_lidar=true use_images=true run_type.logging=INFO
 
 #module load miniforge/24.9.0 && conda activate ppp
 #torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true dataset=lidarpoly \
