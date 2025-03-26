@@ -34,7 +34,7 @@ class DefaultDataset(Dataset):
 
         self.dataset_dir = self.cfg.dataset.path
         if not os.path.isdir(self.dataset_dir):
-            raise NotADirectoryError(self.dataset_dir)
+            raise NotADirectoryError(f"Dataset directory {self.dataset_dir} does not exist")
         
         self.ann_file = os.path.join(self.dataset_dir,f"annotations_{split}.json")
         if not os.path.isfile(self.ann_file):
