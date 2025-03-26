@@ -4,26 +4,22 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
-import sys
 import os
 import torch
 import wandb
 import json
 import shutil
-import logging
 import torch
 
 import torch.distributed as dist
 
+from collections import defaultdict
 from torch.nn.parallel import DistributedDataParallel as DDP
-from tqdm import tqdm
-from omegaconf import OmegaConf
 from torch import nn
 from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
-from ..misc import make_logger, AverageMeter, get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything
-from ..datasets import get_train_loader, get_val_loader
+from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything, SmoothedValue
 from ..models.hisup import *
 from ..predict import Predictor
 from ..eval import Evaluator
@@ -41,6 +37,37 @@ class LossReducer:
 
         return total_loss
     
+
+class MetricLogger:
+    def __init__(self, delimiter="\t"):
+        self.meters = defaultdict(SmoothedValue)
+        self.delimiter = delimiter
+
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            if isinstance(v, torch.Tensor):
+                v = v.item()
+            assert isinstance(v, (float, int))
+            self.meters[k].update(v)
+
+    def __getattr__(self, attr):
+        if attr in self.meters:
+            return self.meters[attr]
+        if attr in self.__dict__:
+            return self.__dict__[attr]
+        raise AttributeError("'{}' object has no attribute '{}'".format(
+                    type(self).__name__, attr))
+
+    def __str__(self):
+        loss_str = []
+        keys = sorted(self.meters)
+        # for name, meter in self.meters.items():
+        for name in keys:
+            meter = self.meters[name]
+            loss_str.append(
+                "{}: {:.4f} ({:.4f})".format(name, meter.median, meter.global_avg)
+            )
+        return self.delimiter.join(loss_str)
 
 class HiSupTrainer(Trainer):
     
@@ -132,6 +159,7 @@ class HiSupTrainer(Trainer):
 
 
         self.logger.debug(f"Validation loss: {loss_meter.avg:.3f}")
+        
         loss_dict = {
             'total_loss': self.average_across_gpus(loss_meter),
             'vertex_loss': self.average_across_gpus(vertex_loss_meter),
@@ -149,11 +177,8 @@ class HiSupTrainer(Trainer):
         
         self.model.train()
 
-        loss_meter = AverageMeter()
-        vertex_loss_meter = AverageMeter()
-        perm_loss_meter = AverageMeter()
+        loss_meter = MetricLogger(" train_")
 
-        
         loader = self.progress_bar(self.train_loader)
 
         for x_image, x_lidar, y, tile_ids in loader:
@@ -175,6 +200,12 @@ class HiSupTrainer(Trainer):
             loss_dict = self.model(x_image, x_lidar, y)
             loss = self.loss_reducer(loss_dict)
 
+            with torch.no_grad():
+                loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
+                loss_reduced = loss.item()
+                loss_meter.update(loss=loss_reduced, **loss_dict_reduced)
+            
+
             self.optimizer.zero_grad(set_to_none=True)
             loss.backward()
             self.optimizer.step()
@@ -183,7 +214,7 @@ class HiSupTrainer(Trainer):
 
             lr = get_lr(self.optimizer)
 
-            loader.set_postfix(train_loss=loss_meter.avg, lr=f"{lr:.5f}")
+            loader.set_postfix(train_loss=loss_meter.meters["loss"].global_avg, lr=f"{lr:.5f}")
 
             iter_idx += 1
 
@@ -191,7 +222,7 @@ class HiSupTrainer(Trainer):
             #     break
             
         
-        self.logger.debug(f"Train loss: {loss_meter.avg:.3f}")
+        self.logger.debug(f"Train loss: {loss_meter.meters['loss'].global_avg:.3f}")
         loss_dict = {
             'total_loss': self.average_across_gpus(loss_meter),
             'vertex_loss': self.average_across_gpus(vertex_loss_meter),

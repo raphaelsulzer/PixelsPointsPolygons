@@ -76,13 +76,17 @@ conda activate ${ENV_NAME}
 echo "________________ Install Required Packages _______________"
 echo
 
-
 # install a cudatoolkit 12.1 to match the version specified in requirements-torch-cuda.txt
 conda install nvidia/label/cuda-12.1.1::cuda-toolkit -y
 
 pip install -r requirements-torch-cuda.txt
 
 pip install -e .
+
+# make the afm module for hisup
+echo "________________ Install AFM module for HiSup _______________"
+cd ./pixelspointspolygons/models/hisup/afm_module
+make
 
 echo "________________ Installation Completed Successfully _______________"
 echo "Run 'conda activate ${ENV_NAME}' to activate the environment."
