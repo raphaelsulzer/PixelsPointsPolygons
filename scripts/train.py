@@ -5,6 +5,7 @@ import hydra
 from omegaconf import OmegaConf
 from pixelspointspolygons.train import HiSupTrainer, Pix2PolyTrainer
 
+torch.autograd.set_detect_anomaly(True)
 
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
