@@ -1,6 +1,6 @@
 defaults:
-  # - model: hisup   # Default model
-  - model: pix2poly   # Default model
+  - model: hisup   # Default model
+  # - model: pix2poly   # Default model
   - dataset: lidarpoly   # Default dataset
   - run_type: release   # Default run_type
   - host: gin
@@ -24,7 +24,7 @@ dataset:
 num_workers: ${.run_type.num_workers}
 
 use_lidar: true
-use_images: false
+use_images: true
 
 debug_vis: false
 
