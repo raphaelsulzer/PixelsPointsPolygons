@@ -270,9 +270,6 @@ class EncoderDecoder(nn.Module):
 
         targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images_or_points,annotations)
         
-        # TODO: I need to add an image and annotation resize to the hisup dataloader
-        # check again in the hisup code what is resized when
-        
         loss_dict = self.init_loss_dict()
         if targets is not None:
             loss_dict['loss_jloc'] += F.cross_entropy(jloc_pred, targets['jloc'].squeeze(dim=1))

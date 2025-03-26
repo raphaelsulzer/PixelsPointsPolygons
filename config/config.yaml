@@ -25,7 +25,7 @@ dataset:
 num_workers: ${.run_type.num_workers}
 
 use_lidar: false
-use_images: false
+use_images: true
 
 debug_vis: false
 

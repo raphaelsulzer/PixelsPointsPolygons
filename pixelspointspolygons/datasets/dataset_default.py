@@ -181,8 +181,6 @@ class DefaultDataset(Dataset):
         corner_coords = []
         corner_mask = np.zeros((img_info['width'], img_info['height']), dtype=np.float32)
         perm_matrix = np.zeros((self.cfg.model.tokenizer.n_vertices, self.cfg.model.tokenizer.n_vertices), dtype=np.float32)
-        point_ids = []
-        point_id = 0
         for ins in annotations:
             segmentations = ins['segmentation']
             for i, segm in enumerate(segmentations):
@@ -192,8 +190,6 @@ class DefaultDataset(Dataset):
                 points = segm[:-1]
                 corner_coords.extend(points.tolist())
                 mask += self.coco.annToMask(ins)
-                point_ids.extend([point_id] * len(points))
-                point_id += 1
         mask = mask / 255. if mask.max() == 255 else mask
         mask = np.clip(mask, 0, 1)
 
@@ -297,7 +293,8 @@ class DefaultDataset(Dataset):
             points = points[:-1]
             corner_poly_ids.append(len(points)+len(corner_coords))
             corner_coords.extend(points.tolist())
-            
+        mask = mask / 255. if mask.max() == 255 else mask
+        mask = np.clip(mask, 0, 1)
         
         if self.transform is not None: 
             
