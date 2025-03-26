@@ -30,7 +30,7 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         voxel_size = list(cfg.model.lidar_encoder.in_voxel_size.values())
         
         
-        output_shape = [cfg.model.lidar_encoder.out_voxel_width, cfg.model.lidar_encoder.out_voxel_height]
+        output_shape = [cfg.model.lidar_encoder.out_width, cfg.model.lidar_encoder.out_height]
         
         # max_voxels = [(cfg.model.encoder.input_size // cfg.model.encoder.patch_size)**2] * 2
         
@@ -41,11 +41,11 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         }
         voxel_encoder={
             'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
-            'feat_channels': [64,cfg.model.lidar_encoder.out_dim],
+            'feat_channels': [64,cfg.model.lidar_encoder.out_embed_dim],
             'voxel_size': voxel_size
         }
         scatter={
-            "in_channels" : cfg.model.lidar_encoder.out_dim, 
+            "in_channels" : cfg.model.lidar_encoder.out_embed_dim, 
             "output_shape" : output_shape
         }
         augment={

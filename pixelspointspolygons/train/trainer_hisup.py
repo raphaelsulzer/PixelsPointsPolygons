@@ -99,7 +99,7 @@ class HiSupTrainer(Trainer):
     def setup_model(self):
         
         if self.cfg.use_images and self.cfg.use_lidar:
-            raise NotImplementedError
+            model = MultiEncoderDecoder(self.cfg)
         elif self.cfg.use_images:
             model = ImageEncoderDecoder(self.cfg)
         elif self.cfg.use_lidar: 

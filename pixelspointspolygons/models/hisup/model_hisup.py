@@ -1,7 +1,9 @@
 import torch
 import cv2
-import torch.nn.functional as F
+import os
 
+import torch.nn.functional as F
+from copy import deepcopy
 from huggingface_hub import hf_hub_download
 from math import log
 from torch import nn
@@ -12,8 +14,10 @@ from ..pointpillars import PointPillarsWithoutHead
 
 from .hrnet48v2 import MultitaskHead
 from .hrnet48v2 import HighResolutionNet as HRNet48v2
+from .hrnet48v2 import BN_MOMENTUM, blocks_dict, conv3x3
 from .afm_module.afm_op import afm
 from .polygon import get_pred_junctions, generate_polygon
+from .bn_helper import BatchNorm2d
 
 def cross_entropy_loss_for_junction(logits, positive):
     nlogp = -F.log_softmax(logits, dim=1)
@@ -181,40 +185,10 @@ class EncoderDecoder(nn.Module):
         return loss_dict
     
 
-
-class ImageEncoderDecoder(EncoderDecoder):
-    def __init__(self, cfg):
-        super().__init__(cfg)
-
-        head_size = [[2]]
-        num_class = sum(sum(head_size, []))
-
-        self.image_backbone = HRNet48v2(cfg,
-                        head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
-                        num_class = num_class)
-        
-        model_path = hf_hub_download(
-            repo_id="rsi/PixelsPointsPolygons",
-            filename="hrnetv2_w48_imagenet_pretrained.pth",
-            use_auth_token=True  # This is needed for private repos
-        )
-
-        self.image_backbone.init_weights(pretrained=model_path)
-        self.backbone_name = cfg.model.encoder.type
-
-    
-    def forward(self, images, points, annotations = None):
-        if self.training:
-            return self.forward_train(images, annotations=annotations)
-        else:
-            # return self.forward_test(images, annotations=annotations)
-            return self.forward_val(images, annotations=annotations)
-
-
-    def forward_common(self,images,annotations=None):
+    def forward_common(self,images_or_points,annotations=None):
         targets, _ = self.annotation_encoder(annotations)
-        features = self.image_backbone(images)
-        outputs = self.image_backbone.head(features)
+        features = self.backbone(images_or_points)
+        outputs = self.backbone.head(features)
 
         mask_feature = self.mask_head(features)
         jloc_feature = self.jloc_head(features)
@@ -233,9 +207,9 @@ class ImageEncoderDecoder(EncoderDecoder):
         return targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred
 
     
-    def forward_val(self, images, annotations):
+    def forward_val(self, images_or_points, annotations):
         
-        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images,annotations)
+        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images_or_points,annotations)
 
         ### loss:
         loss_dict = self.init_loss_dict()
@@ -292,9 +266,9 @@ class ImageEncoderDecoder(EncoderDecoder):
         return output, loss_dict
 
 
-    def forward_train(self, images, annotations = None):
+    def forward_train(self, images_or_points, annotations = None):
 
-        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images,annotations)
+        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images_or_points,annotations)
         
         # TODO: I need to add an image and annotation resize to the hisup dataloader
         # check again in the hisup code what is resized when
@@ -310,16 +284,14 @@ class ImageEncoderDecoder(EncoderDecoder):
         return loss_dict
 
 
-
-
-class LiDAREncoderDecoder(EncoderDecoder):
+class ImageEncoderDecoder(EncoderDecoder):
     def __init__(self, cfg):
         super().__init__(cfg)
 
         head_size = [[2]]
         num_class = sum(sum(head_size, []))
 
-        self.image_backbone = HRNet48v2(cfg,
+        self.backbone = HRNet48v2(cfg,
                         head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                         num_class = num_class)
         
@@ -329,28 +301,118 @@ class LiDAREncoderDecoder(EncoderDecoder):
             use_auth_token=True  # This is needed for private repos
         )
 
-        self.image_backbone.init_weights(pretrained=model_path)
+        self.backbone.init_weights(pretrained=model_path)
+        self.backbone_name = cfg.model.encoder.type
+
+    
+    def forward(self, images, points, annotations = None):
+        if self.training:
+            return self.forward_train(images, annotations=annotations)
+        else:
+            # return self.forward_test(images, annotations=annotations)
+            return self.forward_val(images, annotations=annotations)
+
+
+
+class LiDAREncoderDecoder(EncoderDecoder):
+    def __init__(self, cfg):
+        super().__init__(cfg)
+
+        head_size = [[2]]
+        num_class = sum(sum(head_size, []))
+
+        self.backbone = HRNet48v2(cfg,
+                        head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
+                        num_class = num_class)
+        
+        model_path = hf_hub_download(
+            repo_id="rsi/PixelsPointsPolygons",
+            filename="hrnetv2_w48_imagenet_pretrained.pth",
+            use_auth_token=True  # This is needed for private repos
+        )
+
+        self.backbone.init_weights(pretrained=model_path)
         self.backbone_name = cfg.model.encoder.type
         
         # make a point pillars that get's to this shape: torch.Size([16, 64, 256, 256])
         # now just replace the first conv of HRNet
         
-        self.image_backbone.conv1 = PointPillarsWithoutHead(cfg)        
+        self.backbone.conv1 = PointPillarsWithoutHead(cfg)        
 
 
-    
     def forward(self, images, points, annotations = None):
         if self.training:
             return self.forward_train(points, annotations=annotations)
         else:
             # return self.forward_test(images, annotations=annotations)
             return self.forward_val(points, annotations=annotations)
+        
+        
 
 
-    def forward_common(self,points,annotations=None):
+class MultiEncoderDecoder(EncoderDecoder):
+    def __init__(self, cfg):
+        super().__init__(cfg)
+
+        head_size = [[2]]
+        num_class = sum(sum(head_size, []))
+
+        self.backbone = HRNet48v2(cfg,
+                        head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
+                        num_class = num_class)
+        
+        checkpoint_file = hf_hub_download(
+            repo_id="rsi/PixelsPointsPolygons",
+            filename="hrnetv2_w48_imagenet_pretrained.pth",
+            use_auth_token=True  # This is needed for private repos
+        )
+        if not os.path.isfile(checkpoint_file):
+            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
+        self.backbone.init_weights(pretrained=checkpoint_file)
+        self.backbone_name = cfg.model.encoder.type
+        
+        
+        # ### This version increases the encoder hidden dim to 128 to allow for [64,64] image + lidar features
+        # ### turns out it doesn't even fit into 50GB VRAM
+        # # replace the first conv layer
+        self.pixel_embed = deepcopy(self.backbone.conv1)
+        self.point_embed = PointPillarsWithoutHead(cfg)
+        self.backbone.conv1 = nn.Identity()
+        # self.backbone.bn1 = BatchNorm2d(128, momentum=BN_MOMENTUM)
+
+        # # replace the second conv layer
+        # self.backbone.conv2 = conv3x3(128, 128)
+        # self.backbone.bn2 = BatchNorm2d(128, momentum=BN_MOMENTUM)
+
+        # # replace the first layer
+        # num_channels = self.backbone.stage1_cfg['NUM_CHANNELS'][0]
+        # block = blocks_dict[self.backbone.stage1_cfg['BLOCK']]
+        # num_blocks = self.backbone.stage1_cfg['NUM_BLOCKS'][0]
+        # self.backbone.layer1 = self.backbone._make_layer(block, 128, num_channels, num_blocks)
+
+                
+        self.fusion = nn.Conv2d(in_channels=128, out_channels=64, kernel_size=1, stride=1, padding=0)
+        
+        
+
+
+    def forward(self, images, points, annotations = None):
+        if self.training:
+            return self.forward_train(images, points, annotations=annotations)
+        else:
+            # return self.forward_test(images, annotations=annotations)
+            return self.forward_val(images, points, annotations=annotations)
+
+
+    def forward_common(self, images, points,annotations=None):
+        
         targets, _ = self.annotation_encoder(annotations)
-        features = self.image_backbone(points)
-        outputs = self.image_backbone.head(features)
+        
+        features = torch.cat((self.pixel_embed(images), self.point_embed(points)), dim=1)
+        features = self.fusion(features)
+        
+        features = self.backbone(features)
+        outputs = self.backbone.head(features)
 
         mask_feature = self.mask_head(features)
         jloc_feature = self.jloc_head(features)
@@ -369,9 +431,9 @@ class LiDAREncoderDecoder(EncoderDecoder):
         return targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred
 
     
-    def forward_val(self, points, annotations):
+    def forward_val(self, images, points, annotations):
         
-        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(points,annotations)
+        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images, points, annotations)
 
         ### loss:
         loss_dict = self.init_loss_dict()
@@ -428,9 +490,9 @@ class LiDAREncoderDecoder(EncoderDecoder):
         return output, loss_dict
 
 
-    def forward_train(self, points, annotations = None):
+    def forward_train(self, images, points, annotations = None):
 
-        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(points,annotations)
+        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images, points,annotations)
         
         # TODO: I need to add an image and annotation resize to the hisup dataloader
         # check again in the hisup code what is resized when
