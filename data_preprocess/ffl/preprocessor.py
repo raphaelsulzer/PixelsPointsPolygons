@@ -30,7 +30,7 @@ from torch_lydorn.torchvision.datasets import utils
 
 import data_transforms
 
-class DatasetPreprocessor(torch.utils.data.Dataset):
+class DatasetWithPreprocessing(torch.utils.data.Dataset):
     def __init__(self, root, pre_transform, fold="train", pool_size=1):
         super().__init__()
         assert fold in ["train", "val", "test_images"], "Input fold={} should be in [\"train\", \"val\", \"test_images\"]".format(fold)
@@ -265,11 +265,17 @@ def main(cfg):
         }
     }
 
-    dataset = DatasetPreprocessor(cfg.dataset.path,
+    dataset = DatasetWithPreprocessing(cfg.dataset.path,
                                pre_transform=data_transforms.get_offline_transform_patch(),
                                fold="val",
                                pool_size=config["num_workers"])
 
+    # TODO: need to decide how to integrate this into PPP.
+    # the preprocessing could be done here, but now I need to load this data into PPP, i.e. the stored .pt files
+    # but if I want to do that with my own dataset structure I need to implement a new Dataset class that loads the .pt files
+    # and more importantly, also applies the augmentations
+    # all of this is already done inside DatasetWithPreprocessing, so I could also use this class in PPP
+    # Note: here in this file, I deleted all the augmentation stuff (online transforms), but should be easy to bring it back
 
     for i in range(len(dataset)):
         print("Images:")
