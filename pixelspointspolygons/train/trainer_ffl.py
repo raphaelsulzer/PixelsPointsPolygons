@@ -18,6 +18,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torch import nn
 from torch import optim
 from transformers import get_linear_schedule_with_warmup
+from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 
 from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything, SmoothedValue
 from ..models.ffl import *
@@ -101,12 +102,18 @@ class FFLTrainer(Trainer):
         if self.cfg.use_images and self.cfg.use_lidar:
             model = MultiEncoderDecoder(self.cfg)
         elif self.cfg.use_images:
-            model = ImageEncoderDecoder(self.cfg)
+            encoder = UNetResNetBackbone(self.cfg)
+            encoder = _SimpleSegmentationModel(encoder, classifier=torch.nn.Identity())
         elif self.cfg.use_lidar: 
             model = LiDAREncoderDecoder(self.cfg)
         else:
             raise ValueError("At least one of use_image or use_lidar must be True")
         
+        model = EncoderDecoder(
+            encoder=encoder,
+            cfg=self.cfg
+        )
+                
         model.to(self.cfg.device)
         
         if self.is_ddp:
