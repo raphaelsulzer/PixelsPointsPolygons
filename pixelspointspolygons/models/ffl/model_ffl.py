@@ -1,6 +1,6 @@
 import torch
 from torchvision.models.segmentation._utils import _SimpleSegmentationModel
-
+from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 
 def get_out_channels(module):
     if hasattr(module, "out_channels"):
@@ -16,8 +16,11 @@ def get_out_channels(module):
     return out_channels
 
 
-class ImageFrameFieldModel(torch.nn.Module):
-    def __init__(self, config: dict, backbone, train_transform=None, eval_transform=None):
+    
+
+
+class EncoderDecoder(torch.nn.Module):
+    def __init__(self, cfg, encoder):
         """
 
         :param config:
@@ -25,26 +28,26 @@ class ImageFrameFieldModel(torch.nn.Module):
         :param train_transform: transform applied to the inputs when self.training is True
         :param eval_transform: transform applied to the inputs when self.training is False
         """
-        super(FrameFieldModel, self).__init__()
-        assert config["compute_seg"] or config["compute_crossfield"], \
+        super().__init__()
+        assert cfg.model.compute_seg or cfg.model.compute_crossfield, \
             "Model has to compute at least one of those:\n" \
             "\t- segmentation\n" \
             "\t- cross-field"
-        assert isinstance(backbone, _SimpleSegmentationModel), \
+        assert isinstance(encoder, _SimpleSegmentationModel), \
             "backbone should be an instance of _SimpleSegmentationModel"
-        self.config = config
-        self.backbone = backbone
-        self.train_transform = train_transform
-        self.eval_transform = eval_transform
+        self.cfg = cfg
+        self.backbone = encoder
+        # self.train_transform = train_transform
+        # self.eval_transform = eval_transform
 
         backbone_out_features = get_out_channels(self.backbone)
 
         # --- Add other modules if activated in config:
         seg_channels = 0
-        if self.config["compute_seg"]:
-            seg_channels = self.config["seg_params"]["compute_vertex"]\
-                           + self.config["seg_params"]["compute_edge"]\
-                           + self.config["seg_params"]["compute_interior"]
+        if self.cfg.model.compute_seg:
+            seg_channels = self.cfg.model.seg_params.compute_vertex\
+                           + self.cfg.model.seg_params.compute_edge\
+                           + self.cfg.model.seg_params.compute_interior
             self.seg_module = torch.nn.Sequential(
                 torch.nn.Conv2d(backbone_out_features, backbone_out_features, 3, padding=1),
                 torch.nn.BatchNorm2d(backbone_out_features),
@@ -52,7 +55,7 @@ class ImageFrameFieldModel(torch.nn.Module):
                 torch.nn.Conv2d(backbone_out_features, seg_channels, 1),
                 torch.nn.Sigmoid(),)
 
-        if self.config["compute_crossfield"]:
+        if self.cfg.model.compute_crossfield:
             crossfield_channels = 4
             self.crossfield_module = torch.nn.Sequential(
                 torch.nn.Conv2d(backbone_out_features + seg_channels, backbone_out_features, 3, padding=1),
@@ -69,14 +72,14 @@ class ImageFrameFieldModel(torch.nn.Module):
         # --- Extract features for every pixel of the image with a U-Net --- #
         backbone_features = self.backbone(image)["out"]
 
-        if self.config["compute_seg"]:
+        if self.cfg.compute_seg:
             # --- Output a segmentation of the image --- #
             seg = self.seg_module(backbone_features)
             seg_to_cat = seg.clone().detach()
             backbone_features = torch.cat([backbone_features, seg_to_cat], dim=1)  # Add seg to image features
             outputs["seg"] = seg
 
-        if self.config["compute_crossfield"]:
+        if self.cfg.compute_crossfield:
             # --- Output a cross-field of the image --- #
             crossfield = 2 * self.crossfield_module(backbone_features)  # Outputs c_0, c_2 values in [-2, 2]
             outputs["crossfield"] = crossfield
@@ -86,12 +89,13 @@ class ImageFrameFieldModel(torch.nn.Module):
     # @profile
     def forward(self, xb):
         # print("\n### --- PolyRefine.forward(xb) --- ####")
-        if self.training:
-            if self.train_transform is not None:
-                xb = self.train_transform(xb)
-        else:
-            if self.eval_transform is not None:
-                xb = self.eval_transform(xb)
+        ### put the transforms in the dataloader
+        # if self.training:
+        #     if self.train_transform is not None:
+        #         xb = self.train_transform(xb)
+        # else:
+        #     if self.eval_transform is not None:
+        #         xb = self.eval_transform(xb)
 
         final_outputs = self.inference(xb["image"])
 

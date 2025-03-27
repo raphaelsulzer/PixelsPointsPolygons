@@ -1,12 +1,31 @@
 name: ffl
 encoder:
+    type: UNetResNet101
+    pretrained: True
+    checkpoint_file: ${...host.data_root}/hrnetv2_w48_imagenet_pretrained.pth
+
     input_size: 512
     input_height: ${.input_size}
     input_width: ${.input_size}
-    type: HRNet48v2
-    out_dim: 128
-    pretrained: True
 
+    depth: 101
+    num_filters: 32
+    dropout_2d: 0.2
+    is_deconv: False
+    
+    output_size: 512
+    output_height: ${.output_size}
+    output_width: ${.output_size}
+    out_feature_channels: 32
+
+
+compute_seg: True
+compute_crossfield: True
+
+seg_params:
+    compute_interior: True
+    compute_edge: False
+    compute_vertex: False
 
 fusion: patch_concat # or feature_concat
 
@@ -23,3 +42,8 @@ weight_decay: 1e-4
 
 defaults:
     - lidar_encoder: pointpillars
+
+
+augmentations:
+    - D4
+    - Resize
