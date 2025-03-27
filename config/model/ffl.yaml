@@ -1,0 +1,25 @@
+name: ffl
+encoder:
+    input_size: 512
+    input_height: ${.input_size}
+    input_width: ${.input_size}
+    type: HRNet48v2
+    out_dim: 128
+    pretrained: True
+
+
+fusion: patch_concat # or feature_concat
+
+# optimization
+
+# training
+batch_size: 32
+start_epoch: 0
+num_epochs: 100
+milestone: 0
+learning_rate: 1e-4
+weight_decay: 1e-4
+
+
+defaults:
+    - lidar_encoder: pointpillars

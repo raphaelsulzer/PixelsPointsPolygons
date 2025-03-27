@@ -27,6 +27,11 @@ module load miniforge/24.9.0
 # Activate virtual environment (if needed)
 conda activate ppp
 
+# recompile the afm module
+cd ./pixelspointspolygons/models/hisup/afm_module
+make
+cd ../../../../
+
 set -x
 
 # Run your Python script

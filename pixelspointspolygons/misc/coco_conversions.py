@@ -13,10 +13,9 @@ def get_bbox_from_coco_seg(poly):
     h = np.max(poly[:,1]) - lt_y
     return [float(lt_x), float(lt_y), float(w), float(h)]
 
-
-def generate_coco_ann(polygon_list, img_id):
+def generate_coco_ann(polygon_list, img_id, scores=None):
     sample_ann = []
-    for polygon in polygon_list:
+    for i,polygon in enumerate(polygon_list):
         if polygon.shape[0] < 3:
             continue
         if isinstance(polygon, torch.Tensor):
@@ -26,7 +25,8 @@ def generate_coco_ann(polygon_list, img_id):
                 'category_id': 100,
                 'segmentation': [polygon.ravel().tolist()],
                 'bbox': get_bbox_from_coco_seg(polygon),
-                'score': 1.0 # this is just for the CocoEval to work
+                # 'score': 1.0 if scores is None else scores[i] # this is just for the CocoEval to work
+                'score': 1.0 # this is just for the CocoEval to work, probably fairer to put it to 1.0 for all methods, since e.g. pix2poly doesn't output this
             }
         sample_ann.append(ann_per_building)
 

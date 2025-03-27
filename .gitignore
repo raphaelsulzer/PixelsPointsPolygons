@@ -27,6 +27,7 @@ wandb/*
 *.png
 *.tar.xz
 *.gif
+*.pth
 
 # Files ignore
 !media/teaser.jpg

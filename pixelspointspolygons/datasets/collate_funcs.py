@@ -1,5 +1,37 @@
 import torch
 from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data.dataloader import default_collate
+
+
+
+def collate_fn_hisup(batch, cfg):
+    
+    image_batch, lidar_batch, annotations_batch, tile_id_batch = [], [], [], []
+    for image, lidar, ann, tile_id in batch:
+        if cfg.use_images:
+            image_batch.append(image)
+        if cfg.use_lidar:
+            # lidar_pcd_id = torch.full((len(lidar),), i, dtype=torch.long)
+            # lidar_pcd_id_batch.append(lidar_pcd_id)
+            lidar_batch.append(lidar)
+        
+        annotations_batch.append(ann)
+        tile_id_batch.append(tile_id)
+
+    if cfg.use_images:
+        image_batch = torch.stack(image_batch)
+    else:
+        image_batch = None
+        
+    if cfg.use_lidar:
+        lidar_batch = torch.nested.nested_tensor(lidar_batch, layout=torch.jagged)
+    else:
+        lidar_batch = None
+        
+    # annotations_batch = torch.stack(annotations_batch)
+    tile_id_batch = torch.stack(tile_id_batch)
+    
+    return image_batch, lidar_batch, annotations_batch, tile_id_batch
 
 
 def collate_fn_pix2poly(batch, cfg):

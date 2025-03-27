@@ -1,13 +1,13 @@
 #!/bin/bash
 
 #SBATCH --account=cso@v100
-#SBATCH --job-name=image_only_bs4x16  # Job name
-#SBATCH --output=./slurm/runs/v100.log       # Standard output and error log
-#SBATCH --error=./slurm/runs/v100.log         # Error log
+#SBATCH --job-name=image_only_bs4x8  # Job name
+#SBATCH --output=./slurm/runs/image_only.log       # Standard output and error log
+#SBATCH --error=./slurm/runs/image_only.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
 #SBATCH --ntasks=4 # reserve 4 tasks (or processes)
 #SBATCH --gres=gpu:4              # Request 2 GPUs
-##SBATCH --constraint v100-32g
+#SBATCH --constraint v100-32g
 #SBATCH --cpus-per-task=16         # Request 8 CPU cores
 #SBATCH --qos=qos_gpu-t3 # QoS
 #SBATCH --time=20:00:00           # Time limit (hh:mm:ss)
@@ -25,12 +25,17 @@ module load miniforge/24.9.0
 # Activate virtual environment (if needed)
 conda activate ppp
 
+# recompile the afm module
+cd ./pixelspointspolygons/models/hisup/afm_module
+make
+cd ../../../../
+
 set -x
 
 # Run your Python script
 
-torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true dataset=lidarpoly \
-experiment_name=image_only_bs4x16 checkpoint=validation_best model.batch_size=16 use_lidar=false use_images=true run_type.logging=INFO
+torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true \
+experiment_name=image_only_bs4x8 checkpoint=null model.batch_size=8 use_lidar=false use_images=true run_type.logging=INFO
 
 #module load miniforge/24.9.0 && conda activate ppp
 #torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true dataset=lidarpoly \
