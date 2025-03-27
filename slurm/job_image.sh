@@ -35,7 +35,7 @@ set -x
 # Run your Python script
 
 torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true \
-experiment_name=image_only_bs4x8 checkpoint=null model.batch_size=8 use_lidar=false use_images=true run_type.logging=INFO
+experiment_name=image_only_nogn_nocj_bs4x8 checkpoint=null model=hisup model.batch_size=8 use_lidar=false use_images=true run_type.logging=INFO
 
 #module load miniforge/24.9.0 && conda activate ppp
 #torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true dataset=lidarpoly \
