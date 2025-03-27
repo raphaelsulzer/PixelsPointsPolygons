@@ -32,6 +32,10 @@ dependencies = [
     "wandb",
     # only for hisup
     "Cython"
+    # only for FFL preprocessing
+    "kornia",
+    "skan",
+    "jsmin"
 ]
 
 

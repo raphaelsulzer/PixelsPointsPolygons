@@ -57,6 +57,17 @@
                 "multi_gpu=false",
             ],
             "justMyCode": false
+        },
+        {
+            "name": "current_file",
+            "type": "debugpy",
+            "request": "launch",
+            // "program": "${file}",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+            ],
+            "justMyCode": false
         }
     ]
 }

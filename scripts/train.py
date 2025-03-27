@@ -1,6 +1,5 @@
 import os
 import torch
-import torch.multiprocessing as mp
 import hydra
 from omegaconf import OmegaConf
 from pixelspointspolygons.train import FFLTrainer, HiSupTrainer, Pix2PolyTrainer
