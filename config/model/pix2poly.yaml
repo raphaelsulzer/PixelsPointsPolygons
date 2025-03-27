@@ -60,3 +60,9 @@ lidar_encoder:
     out_height: 28 # ${model.encoder.input_height} // ${model.encoder.patch_size}
 
     out_embed_dim: ${..encoder.patch_embed_dim}
+
+augmentations:
+    - D4
+    - Resize
+    - ColorJitter
+    - GaussNoise

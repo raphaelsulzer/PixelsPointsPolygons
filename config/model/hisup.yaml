@@ -73,3 +73,9 @@ lidar_encoder:
     out_height: 256
 
     out_embed_dim: 64
+
+augmentations:
+    - D4
+    - Resize
+    # - ColorJitter
+    # - GaussNoise

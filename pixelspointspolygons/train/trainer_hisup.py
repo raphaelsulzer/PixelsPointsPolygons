@@ -132,8 +132,6 @@ class HiSupTrainer(Trainer):
             num_warmup_steps=num_warmup_steps
         )
         
-        
-    
     def setup_loss_fn_dict(self):
         
         self.loss_reducer = LossReducer(self.cfg)

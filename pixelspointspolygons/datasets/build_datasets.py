@@ -20,11 +20,11 @@ def get_collate_fn(model):
     else:
         raise NotImplementedError(f"Collate function for {model} not implemented yet.")
 
-def get_val_loader(cfg,tokenizer=None):
+def get_val_loader(cfg,tokenizer=None,logger=None):
     if cfg.dataset.name == 'inria':
-        return get_val_loader_inria(cfg,tokenizer)
+        return get_val_loader_inria(cfg,tokenizer,logger)
     elif cfg.dataset.name == 'lidarpoly':
-        return get_val_loader_lidarpoly(cfg,tokenizer)
+        return get_val_loader_lidarpoly(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
 
@@ -38,14 +38,24 @@ def get_train_loader(cfg,tokenizer=None,logger=None):
 
 def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
     
-    train_transforms = A.ReplayCompose([
-        A.D4(p=1.0),
-        A.Resize(height=cfg.model.encoder.input_height, width=cfg.model.encoder.input_width),
-        A.ColorJitter(),
-        A.GaussNoise(),
-        A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0),
-        ToTensorV2(),
-    ],
+    transforms = []
+    if "D4" in cfg.model.augmentations:
+        transforms.append(A.D4(p=1.0))
+    if "Resize" in cfg.model.augmentations:
+        transforms.append(A.Resize(height=cfg.model.encoder.input_height, width=cfg.model.encoder.input_width))
+    if "ColorJitter" in cfg.model.augmentations:
+        transforms.append(A.ColorJitter())
+    if "GaussNoise" in cfg.model.augmentations:
+        transforms.append(A.GaussNoise())
+    
+    if logger is not None:
+        for t in transforms:
+            logger.debug(f"Added transform {t} to training pipeline.")
+    
+    transforms.append(A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0)) 
+    transforms.append(ToTensorV2())
+    
+    train_transforms = A.ReplayCompose(transforms=transforms,
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
     )
     
@@ -63,7 +73,7 @@ def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
         train_ds.coco = coco    
     
     if logger is not None:
-        logger.debug(f"Val dataset created with {len(train_ds)} samples.")
+        logger.debug(f"Train dataset created with {len(train_ds)} image/lidar samples.")
         
     sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.multi_gpu else None
 
@@ -84,12 +94,14 @@ def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
 
 def get_val_loader_lidarpoly(cfg,tokenizer,logger=None):
     
-    val_transforms = A.ReplayCompose(
-        [
-            A.Resize(height=cfg.model.encoder.input_height, width=cfg.model.encoder.input_width),
-            A.Normalize(mean=[0.0, 0.0, 0.0],std=[1.0, 1.0, 1.0],max_pixel_value=255.0),
-            ToTensorV2(),
-        ],
+    transforms = []
+    if "Resize" in cfg.model.augmentations:
+        transforms.append(A.Resize(height=cfg.model.encoder.input_height, width=cfg.model.encoder.input_width))
+        
+    transforms.append(A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0)) 
+    transforms.append(ToTensorV2())
+    
+    val_transforms = A.ReplayCompose(transforms=transforms,
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
     )
     
@@ -132,7 +144,8 @@ def get_val_loader_lidarpoly(cfg,tokenizer,logger=None):
 def get_train_loader_inria(cfg,tokenizer,logger=None):
     from ..datasets.dataset_inria_coco import InriaCocoDatasetTrain, collate_fn
 
-    ### ORIGINAL
+    ### ORIGINAL Pix2Poly Augmentations
+    ## in my experiment this does not perform any better than D4+ColorJitter+GaussNoise
     train_transforms = A.Compose(
         [
             A.Affine(rotate=[-360, 360], fit_output=True, p=0.8),  # scaled rotations are performed before resizing to ensure rotated and scaled images are correctly resized.
@@ -177,7 +190,7 @@ def get_train_loader_inria(cfg,tokenizer,logger=None):
     
     return train_loader
 
-def get_val_loader_inria(cfg,tokenizer):
+def get_val_loader_inria(cfg,tokenizer,logger=None):
     
     from ..datasets.dataset_inria_coco import InriaCocoDatasetVal, collate_fn
     

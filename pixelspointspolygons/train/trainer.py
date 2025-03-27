@@ -116,8 +116,8 @@ class Trainer:
     
     
     def setup_dataloader(self):
-        self.train_loader = get_train_loader(self.cfg,self.logger)
-        self.val_loader = get_val_loader(self.cfg,self.logger)
+        self.train_loader = get_train_loader(self.cfg,logger=self.logger)
+        self.val_loader = get_val_loader(self.cfg,logger=self.logger)
 
     def setup_optimizer(self):
         # Get optimizer
