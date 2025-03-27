@@ -15,17 +15,14 @@ import torch
 
 import torch.distributed as dist
 
-from torch.nn.parallel import DistributedDataParallel as DDP
 from tqdm import tqdm
 from omegaconf import OmegaConf
 from torch import nn
 from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
-from ..models.tokenizer import Tokenizer
-from ..misc import make_logger, is_main_process, AverageMeter, get_lr, get_tile_names_from_dataloader, plot_pix2poly, seed_everything
+from ..misc import make_logger, get_lr, seed_everything
 from ..datasets import get_train_loader, get_val_loader
-from ..models.pix2poly import EncoderDecoder, ImageEncoder, LiDAREncoder, MultiEncoder, Decoder
 from ..predict import Predictor
 from ..eval import Evaluator
 
@@ -105,7 +102,7 @@ class Trainer:
             # set the wandb project where this run will be logged
             project="HiSup",
             name=self.cfg.experiment_name,
-            group="v1_pix2poly",
+            group=self.cfg.group_name,
             # track hyperparameters and run metadata
             config=cfg_container,
             dir=self.cfg.output_dir,
@@ -116,65 +113,22 @@ class Trainer:
 
     def cleanup(self):
         dist.destroy_process_group()
-
-    def setup_tokenizer(self):
-        self.tokenizer = Tokenizer(num_classes=1,
-            num_bins=self.cfg.model.tokenizer.num_bins,
-            width=self.cfg.model.encoder.input_width,
-            height=self.cfg.model.encoder.input_height,
-            max_len=self.cfg.model.tokenizer.max_len
-        )
     
-    def setup_dynamic_cfg_vars(self):
     
-        self.cfg.model.tokenizer.pad_idx = self.tokenizer.PAD_code
-        self.cfg.model.tokenizer.max_len = self.cfg.model.tokenizer.n_vertices*2+2
-        self.cfg.model.tokenizer.generation_steps = self.cfg.model.tokenizer.n_vertices*2+1
-        self.cfg.model.encoder.num_patches = int((self.cfg.model.encoder.input_size // self.cfg.model.encoder.patch_size) ** 2)
-    
-    def setup_model(self):
-        
-        if self.cfg.use_images and self.cfg.use_lidar:
-            encoder = MultiEncoder(self.cfg)
-        elif self.cfg.use_images:
-            encoder = ImageEncoder(self.cfg)
-        elif self.cfg.use_lidar: 
-            encoder = LiDAREncoder(self.cfg)
-        else:
-            raise ValueError("At least one of use_image or use_lidar must be True")
-        
-        decoder = Decoder(
-            vocab_size=self.tokenizer.vocab_size,
-            encoder_len=self.cfg.model.encoder.num_patches,
-            dim=self.cfg.model.encoder.out_dim,
-            num_heads=8,
-            num_layers=6,
-            max_len=self.cfg.model.tokenizer.max_len,
-            pad_idx=self.cfg.model.tokenizer.pad_idx,
-        )
-        model = EncoderDecoder(
-            encoder=encoder,
-            decoder=decoder,
-            cfg=self.cfg
-        )
-        model.to(self.cfg.device)
-        
-        if self.is_ddp:
-            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model = DDP(model, device_ids=[self.local_rank])
-        
-        self.model = model
-
     def setup_dataloader(self):
-        self.train_loader = get_train_loader(self.cfg,tokenizer=self.tokenizer)
-        self.val_loader = get_val_loader(self.cfg,tokenizer=self.tokenizer)
+        self.train_loader = get_train_loader(self.cfg,logger=self.logger)
+        self.val_loader = get_val_loader(self.cfg,logger=self.logger)
 
     def setup_optimizer(self):
         # Get optimizer
         self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
 
         # Get scheduler
-        num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
+        # num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)                
+        num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
+        self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
+        self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
+        
         num_warmup_steps = int(0.05 * num_training_steps)
         self.lr_scheduler = get_linear_schedule_with_warmup(
             self.optimizer,
@@ -215,163 +169,6 @@ class Trainer:
         start_epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))
         self.cfg.model.start_epoch = start_epoch + 1
 
-    def average_across_gpus(self, meter):
-        
-        if not self.is_ddp:
-            return meter.avg
-        
-        tensor = torch.tensor([meter.avg], device=self.device)
-        dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
-        tensor /= self.world_size
-        return tensor.item()
-    
-    def setup_loss_fn_dict(self):
-        
-        # Get loss functions
-        weight = torch.ones(self.cfg.model.tokenizer.pad_idx + 1, device=self.cfg.device)
-        weight[self.tokenizer.num_bins:self.tokenizer.BOS_code] = 0.0
-        self.loss_fn_dict["vertex"] = nn.CrossEntropyLoss(ignore_index=self.cfg.model.tokenizer.pad_idx, label_smoothing=self.cfg.model.label_smoothing, weight=weight)
-        self.loss_fn_dict["perm"] = nn.BCELoss()
-        
-        
-    def valid_one_epoch(self):
-
-        self.logger.info("Validate...")
-        self.model.eval()
-        self.loss_fn_dict["vertex"].eval()
-        self.loss_fn_dict["perm"].eval()
-
-        loss_meter = AverageMeter()
-        vertex_loss_meter = AverageMeter()
-        perm_loss_meter = AverageMeter()
-
-        loader = self.progress_bar(self.val_loader)
-
-        with torch.no_grad():
-            for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
-                
-                batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
-                
-                if self.cfg.use_images:
-                    x_image = x_image.to(self.cfg.device, non_blocking=True)
-                if self.cfg.use_lidar:
-                    x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)    
-                
-                y_sequence = y_sequence.to(self.cfg.device, non_blocking=True)
-                y_perm = y_perm.to(self.cfg.device, non_blocking=True)
-
-                y_input = y_sequence[:, :-1]
-                y_expected = y_sequence[:, 1:]
-
-                preds, perm_mat = self.model(x_image, x_lidar, y_input)
-
-
-                vertex_loss_weight = self.cfg.model.vertex_loss_weight
-                perm_loss_weight = self.cfg.model.perm_loss_weight
-                
-                vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
-                perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
-
-                loss = vertex_loss + perm_loss
-
-                loss_meter.update(loss.item(), batch_size)
-                vertex_loss_meter.update(vertex_loss.item(), batch_size)
-                perm_loss_meter.update(perm_loss.item(), batch_size)
-
-
-        self.logger.debug(f"Validation loss: {loss_meter.avg:.3f}")
-        loss_dict = {
-            'total_loss': self.average_across_gpus(loss_meter),
-            'vertex_loss': self.average_across_gpus(vertex_loss_meter),
-            'perm_loss': self.average_across_gpus(perm_loss_meter),
-        }
-        self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
-
-        return loss_dict
-
-
-    def train_one_epoch(self, epoch, iter_idx):
-        
-        self.logger.info(f"Train epoch {epoch}...")
-        
-        self.model.train()
-        self.loss_fn_dict["vertex"].train()
-        self.loss_fn_dict["perm"].train()
-
-        loss_meter = AverageMeter()
-        vertex_loss_meter = AverageMeter()
-        perm_loss_meter = AverageMeter()
-
-        
-        loader = self.progress_bar(self.train_loader)
-
-        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids in loader:
-                        
-            batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
-            
-            # ### debug vis
-            if self.cfg.debug_vis:
-                file_names = get_tile_names_from_dataloader(self.train_loader.dataset.coco.imgs, tile_ids)
-                # plot_pix2poly(image_batch=x_image,lidar_batch=x_lidar,mask_batch=y_mask,corner_image_batch=y_corner_mask,tile_names=file_names)        
-                plot_pix2poly(image_batch=x_image,lidar_batch=x_lidar,corner_image_batch=y_corner_mask,tile_names=file_names)        
-            
-            if self.cfg.use_images:
-                x_image = x_image.to(self.cfg.device, non_blocking=True)
-            if self.cfg.use_lidar:
-                x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
-            
-            y_sequence = y_sequence.to(self.cfg.device, non_blocking=True)
-            y_perm = y_perm.to(self.cfg.device, non_blocking=True)
-
-            y_input = y_sequence[:, :-1]
-            y_expected = y_sequence[:, 1:]
-
-            preds, perm_mat = self.model(x_image, x_lidar, y_input)
-
-            if epoch < self.cfg.model.milestone:
-                vertex_loss_weight = self.cfg.model.vertex_loss_weight
-                perm_loss_weight = 0.0
-            else:
-                vertex_loss_weight = self.cfg.model.vertex_loss_weight
-                perm_loss_weight = self.cfg.model.perm_loss_weight
-
-            vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
-            perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
-
-            loss = vertex_loss + perm_loss
-
-            self.optimizer.zero_grad(set_to_none=True)
-            loss.backward()
-            self.optimizer.step()
-
-            self.lr_scheduler.step()
-
-            loss_meter.update(loss.item(), batch_size)
-            vertex_loss_meter.update(vertex_loss.item(), batch_size)
-            perm_loss_meter.update(perm_loss.item(), batch_size)
-
-            lr = get_lr(self.optimizer)
-
-            loader.set_postfix(train_loss=loss_meter.avg, lr=f"{lr:.5f}")
-
-            iter_idx += 1
-
-            # if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
-            #     break
-            
-        
-        self.logger.debug(f"Train loss: {loss_meter.avg:.3f}")
-        loss_dict = {
-            'total_loss': self.average_across_gpus(loss_meter),
-            'vertex_loss': self.average_across_gpus(vertex_loss_meter),
-            'perm_loss': self.average_across_gpus(perm_loss_meter),
-        }
-        
-        self.logger.info(f"Train loss: {loss_dict['total_loss']:.3f}")
-
-        return loss_dict, iter_idx
-
-
 
     def train_val_loop(self):
 
@@ -398,7 +195,6 @@ class Trainer:
             ############################################
             ################# Training #################
             ############################################
-            
             # important to shuffle the data differently for each epoch
             # see: https://pytorch.org/docs/stable/data.html#torch.utils.data.distributed.DistributedSampler
             if self.is_ddp:
@@ -505,16 +301,13 @@ class Trainer:
 
     
 
-
     def train(self):
         seed_everything(42)
         if self.is_ddp:
             self.setup_ddp()
-        self.setup_tokenizer()
-        self.setup_dynamic_cfg_vars()
-        self.setup_model()
+        # self.setup_model()
         self.setup_dataloader()
         self.setup_optimizer()
-        self.setup_loss_fn_dict()
+        # self.setup_loss_fn_dict()
         self.train_val_loop()
         self.cleanup()

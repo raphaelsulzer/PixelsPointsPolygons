@@ -1,1 +1,81 @@
 name: hisup
+encoder:
+    type: HRNet48v2
+    pretrained: True
+    checkpoint_file: ${...host.data_root}/hrnetv2_w48_imagenet_pretrained.pth
+
+    input_size: 512
+    input_height: ${.input_size}
+    input_width: ${.input_size}
+    
+    output_size: 128
+    output_height: ${.output_size}
+    output_width: ${.output_size}
+    
+    out_feature_channels: 256
+
+
+fusion: patch_concat # or feature_concat
+
+# optimization
+
+# training
+batch_size: 16
+start_epoch: 0
+num_epochs: 100
+milestone: 0
+learning_rate: 1e-4
+weight_decay: 1e-4
+
+loss_weights:
+    loss_joff: 0.25    # joff  regression
+    loss_jloc: 8.0     # jloc  classification
+    loss_mask: 1.0
+    loss_afm : 0.1
+    loss_remask : 1.0
+
+
+defaults:
+    - lidar_encoder: pointpillars
+
+
+
+# lidar_encoder:
+#     # in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56
+#     in_voxel_size:
+#         x: 2
+#         y: 2
+
+#     max_num_points_per_voxel: 4 # this should be something around points_per_tile / num_voxels_per_tile
+
+#     max_num_voxels:
+#         train: 65536 # 256**2
+#         test: 65536 # 256**2
+
+#     out_width: 256
+#     out_height: 256
+
+#     out_embed_dim: 64
+
+lidar_encoder:
+    # in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56
+    in_voxel_size:
+        x: 8
+        y: 8
+
+    max_num_points_per_voxel: 128 # this should be something around points_per_tile / num_voxels_per_tile
+
+    max_num_voxels: # here: (512/8)**2
+        train: 4096 # 256**2
+        test: 4096 # 256**2
+
+    out_width: 256
+    out_height: 256
+
+    out_embed_dim: 64
+
+augmentations:
+    - D4
+    - Resize
+    # - ColorJitter
+    # - GaussNoise

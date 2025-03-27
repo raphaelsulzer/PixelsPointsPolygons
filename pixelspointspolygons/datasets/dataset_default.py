@@ -1,18 +1,16 @@
-import cv2
-import random
-import numpy as np
 import os
 import laspy
-import logging
-from PIL import Image
+import cv2
 import torch
+
+import numpy as np
+from PIL import Image
 
 from skimage import io
 from sklearn.preprocessing import MinMaxScaler
 from pycocotools.coco import COCO
 from shapely.geometry import Polygon
 from torch.utils.data import Dataset
-from torch.utils.data.dataloader import default_collate
 
 from ..misc import make_logger, suppress_stdout
 
@@ -36,7 +34,7 @@ class DefaultDataset(Dataset):
 
         self.dataset_dir = self.cfg.dataset.path
         if not os.path.isdir(self.dataset_dir):
-            raise NotADirectoryError(self.dataset_dir)
+            raise NotADirectoryError(f"Dataset directory {self.dataset_dir} does not exist")
         
         self.ann_file = os.path.join(self.dataset_dir,f"annotations_{split}.json")
         if not os.path.isfile(self.ann_file):
@@ -82,14 +80,6 @@ class DefaultDataset(Dataset):
 
         else:
             raise FileExistsError(f"Lidar file {lidar_file_name} missing.")
-            # self.logger.debug(f'Lidar file {lidar_file_name} missing. Generating random point cloud.')
-
-            # n = 5
-            # # make a random point cloud
-            # x = np.random.uniform(0, img_info['width'], n)
-            # y = np.random.uniform(0, img_info['height'], n)
-            # z = np.random.uniform(z_scale[0], z_scale[1], n)
-            # points = np.vstack((x, y, z)).T
 
         return points
 
@@ -104,21 +94,9 @@ class DefaultDataset(Dataset):
         if not os.path.isfile(filename):
             raise FileNotFoundError(filename)
         return filename
-
-    def __getitem__(self, idx):
-
-        if self.model_type == 'hisup':
-            pass
-        elif self.model_type == 'pix2poly':
-            return self.__getitem__pix2poly(idx)
-        else:
-            raise NotImplementedError(f"Model type {self.model_type} not implemented.")
-    
-    
     
     def apply_augmentations_to_lidar(self, augmentation_replay, lidar, id=0):
         
-
         if self.split == 'val':
             return torch.from_numpy(lidar)
     
@@ -165,10 +143,17 @@ class DefaultDataset(Dataset):
         # self.logger.debug(f"Applied '{group_element}' transformation to lidar tile {id}.")
         
         return torch.from_numpy(lidar)
-        
-        
-        
+    
 
+    def __getitem__(self, idx):
+
+        if self.model_type == 'hisup':
+            return self.__getitem__hisup(idx)
+        elif self.model_type == 'pix2poly':
+            return self.__getitem__pix2poly(idx)
+        else:
+            raise NotImplementedError(f"Model type {self.model_type} not implemented.")
+        
     def __getitem__pix2poly(self, index):
 
         img_id = self.tile_ids[index]
@@ -196,8 +181,6 @@ class DefaultDataset(Dataset):
         corner_coords = []
         corner_mask = np.zeros((img_info['width'], img_info['height']), dtype=np.float32)
         perm_matrix = np.zeros((self.cfg.model.tokenizer.n_vertices, self.cfg.model.tokenizer.n_vertices), dtype=np.float32)
-        point_ids = []
-        point_id = 0
         for ins in annotations:
             segmentations = ins['segmentation']
             for i, segm in enumerate(segmentations):
@@ -207,8 +190,6 @@ class DefaultDataset(Dataset):
                 points = segm[:-1]
                 corner_coords.extend(points.tolist())
                 mask += self.coco.annToMask(ins)
-                point_ids.extend([point_id] * len(points))
-                point_id += 1
         mask = mask / 255. if mask.max() == 255 else mask
         mask = np.clip(mask, 0, 1)
 
@@ -262,16 +243,6 @@ class DefaultDataset(Dataset):
             corner_mask = augmentations['masks'][1]
             corner_coords = np.array(augmentations['keypoints'])
 
-            # lidar = torch.from_numpy(lidar)
-            
-            # if len(corner_coords) > 0:
-            #     # self.debug_vis(corner_coords, point_ids, augmented_image)
-            #     augmented_image = (image.permute(1, 2, 0).numpy() * 255.0).astype(np.uint8)
-            #     self.debug_vis(np.flip(corner_coords,axis=-1), point_ids, augmented_image)
-            #     self.debug_vis_mask(mask)
-            #     self.debug_vis_mask(corner_mask)
-            #     a=5
-
         if self.tokenizer is not None:
             coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.model.tokenizer.shuffle_tokens)
             coords_seqs = torch.LongTensor(coords_seqs)
@@ -283,9 +254,105 @@ class DefaultDataset(Dataset):
         return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
 
 
+    def __getitem__hisup(self, index):
+
+        img_id = self.tile_ids[index]
+        img_info = self.coco.loadImgs(img_id)[0]
+        ann_ids = self.coco.getAnnIds(imgIds=img_info['id'])
+        annotations = self.coco.loadAnns(ann_ids)  # annotations of all instances in an image.
+
+        # load image
+        if self.use_images:
+            filename = self.get_image_file(img_info)
+            image = np.array(Image.open(filename).convert("RGB"))
+        else:
+            # make dummy image for albumentations to work
+            image = np.zeros((img_info['width'], 
+                            img_info['height'], 1), dtype=np.uint8)
+
+        # load lidar
+        if self.use_lidar:
+            filename = self.get_lidar_file(img_info)
+            lidar = self.load_lidar_points(filename, img_info)
+        else:
+            lidar = None
+        
+
+        corner_coords = []
+        corner_poly_ids = [0]
+        mask = np.zeros([img_info['width'], img_info['height']])
+        for i,annotation_per_image in enumerate(annotations):
+            mask += self.coco.annToMask(annotation_per_image)
+            segmentations = annotation_per_image['segmentation']
+            if len(segmentations) > 1:
+                raise ValueError("Only one segmentation per instance is supported. This is a multipolygon.")
+            points = segmentations[0]
+            points = np.array(points).reshape(-1, 2)
+            points[:, 0] = np.clip(points[:, 0], 0, img_info['width'] - 1)
+            points[:, 1] = np.clip(points[:, 1], 0, img_info['height'] - 1)
+            points = points[:-1]
+            corner_poly_ids.append(len(points)+len(corner_coords))
+            corner_coords.extend(points.tolist())
+        mask = mask / 255. if mask.max() == 255 else mask
+        mask = np.clip(mask, 0, 1)
+        
+        if self.transform is not None: 
+            
+            corner_coords = np.flip(corner_coords,axis=-1)
+            augmentations = self.transform(image=image, masks=[mask], keypoints=corner_coords)
+                        
+            if self.use_lidar:
+                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar, img_info['id'])
+            
+            image = augmentations['image']
+            corner_coords = np.flip(augmentations['keypoints'],axis=-1)
+
+        annotations = self.make_hisup_annotations(corner_coords, corner_poly_ids, img_info['height'], img_info['width'])
+        annotations["mask"] = augmentations['masks'][0]
+        self.resize_hisup_annotations(annotations)
+        
+        for k, v in annotations.items():
+            if isinstance(v, np.ndarray):
+                annotations[k] = torch.from_numpy(v)
+
+        return image, lidar, annotations, torch.tensor([img_info['id']])
+    
+    
+    def plot_hisup_poly(self, polygon, convex_index):
+        import matplotlib.pyplot as plt
+        
+        fig, ax = plt.subplots()
+        ax.plot(*zip(*np.vstack([polygon, polygon[0]])), linewidth=2.0)
+        
+        convex_concave_color = []
+        for j in range(len(polygon)):
+            if convex_index[j] == 0:
+                convex_concave_color.append('green')
+            elif convex_index[j] == 1:
+                convex_concave_color.append('red')
+            else:
+                convex_concave_color.append('blue')
+        
+        # Draw polygon vertices
+        ax.scatter(polygon[:, 0], polygon[:, 1], color=convex_concave_color, zorder=3, s=3)
+        
+        ax.set_aspect('equal')
+        plt.show(block=True)
 
 
-    def make_hisup_annotations(self, ann_coco, height, width):
+    def resize_hisup_annotations(self,ann):
+        
+        sx = self.cfg.model.encoder.output_width / ann['width']
+        sy = self.cfg.model.encoder.output_height / ann['height']
+        ann['junc_ori'] = ann['junctions'].copy()
+        ann['junctions'][:, 0] = np.clip(ann['junctions'][:, 0] * sx, 0, self.cfg.model.encoder.output_width - 1e-4)
+        ann['junctions'][:, 1] = np.clip(ann['junctions'][:, 1] * sy, 0, self.cfg.model.encoder.output_height - 1e-4)
+        ann['width'] = self.cfg.model.encoder.output_width
+        ann['height'] = self.cfg.model.encoder.output_height
+        ann['mask_ori'] = ann['mask'].clone()
+        ann['mask'] = cv2.resize(np.array(ann['mask']).astype(np.uint8), (int(self.cfg.model.encoder.output_width), int(self.cfg.model.encoder.output_height)))
+    
+    def make_hisup_annotations(self, corner_coords, corner_poly_ids, height, width):
 
         ann = {
             'junctions': [],
@@ -300,30 +367,27 @@ class DefaultDataset(Dataset):
         pid = 0
         instance_id = 0
         seg_mask = np.zeros([width, height])
-        for ann_per_ins in ann_coco:
+        for i,_ in enumerate(corner_poly_ids[:-1]):
+            
             juncs, tags = [], []
-            segmentations = ann_per_ins['segmentation']
-            for i, segm in enumerate(segmentations):
-                segm = np.array(segm).reshape(-1, 2)  # the shape of the segm is (N,2)
-                segm[:, 0] = np.clip(segm[:, 0], 0, width - 1e-4)
-                segm[:, 1] = np.clip(segm[:, 1], 0, height - 1e-4)
-                points = segm[:-1]
-                junc_tags = np.ones(points.shape[0])
-                if i == 0:  # outline
-                    poly = Polygon(points)
-                    if poly.area > 0:
-                        convex_point = np.array(poly.convex_hull.exterior.coords)
-                        convex_index = [(p == convex_point).all(1).any() for p in points]
-                        juncs.extend(points.tolist())
-                        junc_tags[convex_index] = 2  # convex point label
-                        tags.extend(junc_tags.tolist())
-                        ann['bbox'].append(list(poly.bounds))
-                        seg_mask += self.coco.annToMask(ann_per_ins)
-                else:
-                    juncs.extend(points.tolist())
-                    tags.extend(junc_tags.tolist())
-                    interior_contour = segm.reshape(-1, 1, 2)
-                    cv2.drawContours(seg_mask, [np.int0(interior_contour)], -1, color=0, thickness=-1)
+
+            points = corner_coords[corner_poly_ids[i] : corner_poly_ids[i+1]]
+            
+            junc_tags = np.ones(points.shape[0])
+            
+            poly = Polygon(points)
+            if poly.area > 0:
+                convex_point = np.array(poly.convex_hull.exterior.coords)
+                convex_point = convex_point[:-1]
+                convex_index = [(p == convex_point).all(1).any() for p in points]
+                
+                # self.plot_hisup_poly(points, convex_index)
+                
+                juncs.extend(points.tolist())
+                junc_tags[convex_index] = 2  # convex point label
+                tags.extend(junc_tags.tolist())
+                ann['bbox'].append(list(poly.bounds))
+
 
             idxs = np.arange(len(juncs))
             edges = np.stack((idxs, np.roll(idxs, 1))).transpose(1, 0) + pid
@@ -337,7 +401,6 @@ class DefaultDataset(Dataset):
                 pid += len(juncs)
 
         seg_mask = np.clip(seg_mask, 0, 1)
-        ann['mask'] = seg_mask
 
         for key, _type in (['junctions', np.float32],
                            ['edges_positive', np.longlong],
@@ -348,7 +411,6 @@ class DefaultDataset(Dataset):
             ann[key] = np.array(ann[key], dtype=_type)
 
         if len(ann['junctions']) == 0:
-            ann['mask'] = np.zeros((height, width), dtype=np.float64)
             ann['junctions'] = np.asarray([[0, 0]])
             ann['bbox'] = np.asarray([[0, 0, 0, 0]])
             ann['juncs_tag'] = np.asarray([0])

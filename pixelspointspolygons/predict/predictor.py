@@ -79,12 +79,28 @@ class Predictor:
             raise FileExistsError(f"Checkpoint file {checkpoint_file} not found.")
         self.logger.info(f"Loading model from checkpoint: {checkpoint_file}")
         checkpoint = torch.load(checkpoint_file, map_location=self.cfg.device)
-        single_gpu_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["state_dict"].items()}
+        
+        # check for correct model type
+        cfg = checkpoint.get("cfg")
+        if not cfg.use_lidar == self.cfg.use_lidar:
+            self.logger.error(f"Model checkpoint was trained with use_lidar={cfg.use_lidar}, but current config is use_lidar={self.cfg.use_lidar}.")
+            raise ValueError("Model checkpoint and current config do not match.")
+        if not cfg.use_images == self.cfg.use_images:
+            self.logger.error(f"Model checkpoint was trained with use_images={cfg.use_images}, but current config is use_images={self.cfg.use_images}.")
+            raise ValueError("Model checkpoint and current config do not match.")
+        
+        if hasattr(cfg, "model.fusion") and isattr(self.cfg.model, "fusion"):
+            if not cfg.model.fusion == self.cfg.model.fusion:
+                self.logger.error(f"Model checkpoint was trained with fusion={cfg.model.fusion}, but current config is fusion={self.cfg.model.fusion}.")
+                raise ValueError("Model checkpoint and current config do not match.")   
+        
+        
+        single_gpu_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["model"].items()}
         # single_gpu_state_dict = {k.replace("encoder.image_encoder", "encoder.encoder"): v for k, v in checkpoint["state_dict"].items()}
         
         # single_gpu_state_dict = checkpoint["state_dict"]
         model.load_state_dict(single_gpu_state_dict)
-        epoch = checkpoint['epochs_run']
+        epoch = checkpoint['epoch']
         self.logger.info(f"Model loaded from epoch: {epoch}")
     
     
@@ -162,8 +178,9 @@ class Predictor:
         with torch.no_grad():
             t0 = time.time()
             coco_predictions = self.predict_from_loader(model,tokenizer,val_loader)
-            self.logger.debug("Average model speed: ", (time.time() - t0) / len(val_loader.dataset), " [s / image]")
 
         prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", f"{self.cfg.checkpoint}.json")
         with open(prediction_outfile, "w") as fp:
             fp.write(json.dumps(coco_predictions))
+
+        self.logger.debug(f"Average prediction speed: {(time.time() - t0) / len(val_loader.dataset):.2f} [s / image]")
