@@ -10,6 +10,7 @@ from .dataset_train import TrainDataset
 from .dataset_val import ValDataset
 from .collate_funcs import collate_fn_pix2poly, collate_fn_hisup
 
+
 def get_collate_fn(model):
     
     if model == "pix2poly":
@@ -27,15 +28,15 @@ def get_val_loader(cfg,tokenizer=None):
     else:
         raise NotImplementedError
 
-def get_train_loader(cfg,tokenizer=None):
+def get_train_loader(cfg,tokenizer=None,logger=None):
     if cfg.dataset.name == 'inria':
-        return get_train_loader_inria(cfg,tokenizer)
+        return get_train_loader_inria(cfg,tokenizer,logger)
     elif cfg.dataset.name == 'lidarpoly':
-        return get_train_loader_lidarpoly(cfg,tokenizer)
+        return get_train_loader_lidarpoly(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
 
-def get_train_loader_lidarpoly(cfg,tokenizer):
+def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
     
     train_transforms = A.ReplayCompose([
         A.D4(p=1.0),
@@ -61,6 +62,9 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
         train_ds.ann_file = ann_file
         train_ds.coco = coco    
     
+    if logger is not None:
+        logger.debug(f"Val dataset created with {len(train_ds)} samples.")
+        
     sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.multi_gpu else None
 
     train_loader = DataLoader(
@@ -73,10 +77,12 @@ def get_train_loader_lidarpoly(cfg,tokenizer):
         sampler=sampler,
         shuffle=(sampler is None)
     )
+    if logger is not None:
+        logger.debug(f"Train loader created with {len(train_loader)} batches of size {cfg.model.batch_size}.")
     
     return train_loader
 
-def get_val_loader_lidarpoly(cfg,tokenizer):
+def get_val_loader_lidarpoly(cfg,tokenizer,logger=None):
     
     val_transforms = A.ReplayCompose(
         [
@@ -93,6 +99,9 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
         tokenizer=tokenizer
     )
     
+    if logger is not None:
+        logger.debug(f"Val dataset created with {len(val_ds)} samples.")
+    
     if cfg.dataset.val_subset is not None:
         indices = list(range(cfg.dataset.val_subset))
         ann_file = val_ds.ann_file
@@ -102,7 +111,6 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
         val_ds.coco = coco
 
     sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.multi_gpu else None
-    
     
     val_loader = DataLoader(
         val_ds,
@@ -114,12 +122,14 @@ def get_val_loader_lidarpoly(cfg,tokenizer):
         sampler=sampler,
         shuffle=False
     )
+    if logger is not None:
+        logger.debug(f"Val loader created with {len(val_loader)} batches of size {cfg.model.batch_size}.")
     
     return val_loader
 
 
 
-def get_train_loader_inria(cfg,tokenizer):
+def get_train_loader_inria(cfg,tokenizer,logger=None):
     from ..datasets.dataset_inria_coco import InriaCocoDatasetTrain, collate_fn
 
     ### ORIGINAL
@@ -163,6 +173,7 @@ def get_train_loader_inria(cfg,tokenizer):
         sampler=sampler,
         shuffle=(sampler is None)
     )
+
     
     return train_loader
 

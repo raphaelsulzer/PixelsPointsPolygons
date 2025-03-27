@@ -116,15 +116,19 @@ class Trainer:
     
     
     def setup_dataloader(self):
-        self.train_loader = get_train_loader(self.cfg)
-        self.val_loader = get_val_loader(self.cfg)
+        self.train_loader = get_train_loader(self.cfg,self.logger)
+        self.val_loader = get_val_loader(self.cfg,self.logger)
 
     def setup_optimizer(self):
         # Get optimizer
         self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
 
         # Get scheduler
-        num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
+        # num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)                
+        num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
+        self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
+        self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
+        
         num_warmup_steps = int(0.05 * num_training_steps)
         self.lr_scheduler = get_linear_schedule_with_warmup(
             self.optimizer,

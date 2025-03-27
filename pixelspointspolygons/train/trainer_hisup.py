@@ -17,7 +17,7 @@ from collections import defaultdict
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch import nn
 from torch import optim
-from transformers import get_linear_schedule_with_warmup
+from transformers import get_linear_schedule_with_warmup, get_cosine_schedule_with_warmup
 
 from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything, SmoothedValue
 from ..models.hisup import *
@@ -121,13 +121,18 @@ class HiSupTrainer(Trainer):
         self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
 
         # Get scheduler
-        num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
+        # num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
+        num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
+        self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
+        self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
         num_warmup_steps = int(0.05 * num_training_steps)
-        self.lr_scheduler = get_linear_schedule_with_warmup(
+        self.lr_scheduler = get_cosine_schedule_with_warmup(
             self.optimizer,
             num_training_steps=num_training_steps,
             num_warmup_steps=num_warmup_steps
         )
+        
+        
     
     def setup_loss_fn_dict(self):
         
