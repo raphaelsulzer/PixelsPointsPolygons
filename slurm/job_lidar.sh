@@ -20,10 +20,14 @@ module purge # purge modules inherited by default
 
 # Load modules (if needed)
 # module load arch/a100
+# module load nvidia-compilers
 module load miniforge/24.9.0
 
 # Activate virtual environment (if needed)
 conda activate ppp
+
+# try to force reinstall open3d to get rid of the CUDA error
+pip install --force-reinstall open3d
 
 # recompile the afm module
 cd ./pixelspointspolygons/models/hisup/afm_module
