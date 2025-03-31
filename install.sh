@@ -2,7 +2,7 @@
 set -e
 
 # Local variables
-ENV_NAME=ppp
+ENV_NAME=ppp2
 PYTHON=3.11.11
 
 # Installation script for Miniconda3 environments
@@ -86,10 +86,10 @@ pip install -e .
 ### take this out of the script because it doesn't work on the front end of g5k and probably jz too, because cuda is not properly installed there
 ### instead run this inside the job submission script
 ## make the afm module for hisup
-# echo "________________ Install AFM module for HiSup _______________"
+echo "________________ Install AFM module for HiSup _______________"
 # export TORCH_CUDA_ARCH_LIST="6.1;7.5;8.0;8.6"
-# cd ./pixelspointspolygons/models/hisup/afm_module
-# make
+cd ./pixelspointspolygons/models/hisup/afm_module
+make
 
 echo "________________ Installation Completed Successfully _______________"
 echo "Run 'conda activate ${ENV_NAME}' to activate the environment."
