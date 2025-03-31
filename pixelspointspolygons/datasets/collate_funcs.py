@@ -24,7 +24,7 @@ def collate_fn_hisup(batch, cfg):
         image_batch = None
         
     if cfg.use_lidar:
-        lidar_batch = torch.nested.nested_tensor(lidar_batch, layout=torch.jagged)
+        lidar_batch = torch.nested.nested_tensor(lidar_batch)
     else:
         lidar_batch = None
         

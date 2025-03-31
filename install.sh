@@ -2,7 +2,7 @@
 set -e
 
 # Local variables
-ENV_NAME=ppp_h100
+ENV_NAME=ppp_v100
 PYTHON=3.11.11
 
 # Installation script for Miniconda3 environments
@@ -81,9 +81,12 @@ export TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5;8.0;8.6"
 # export TORCH_CUDA_ARCH_LIST="7.0"
 
 # install a cudatoolkit 12.1 to match the version specified in requirements-torch-cuda.txt
-conda install -c nvidia/label/cuda-12.1.1 cuda-toolkit=12.1.1 -y
+#conda install -c nvidia/label/cuda-12.1.1 cuda-toolkit=12.1.1 -y
+conda install -c nvidia/label/cuda-11.7.1 cuda-toolkit=11.7.1 -y
 
-pip install -r requirements-torch-cuda.txt
+#pip install -r requirements-torch-cuda.txt
+pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2
+
 
 pip install -e .
 
