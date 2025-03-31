@@ -276,6 +276,10 @@ def main(cfg):
     # and more importantly, also applies the augmentations
     # all of this is already done inside DatasetWithPreprocessing, so I could also use this class in PPP
     # Note: here in this file, I deleted all the augmentation stuff (online transforms), but should be easy to bring it back
+    
+    ## Best thing to do would be to add the pt file path to my original coco annotations file so that I could continue to load
+    ## with my own dataloader and load the pt file in the __getitem__ method and apply augmentations there.
+    ## shouldn't be too hard to augment the frame field
 
     for i in range(len(dataset)):
         print("Images:")
