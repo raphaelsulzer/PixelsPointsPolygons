@@ -76,6 +76,10 @@ conda activate ${ENV_NAME}
 echo "________________ Install Required Packages _______________"
 echo
 
+# export TORCH_CUDA_ARCH_LIST="6.1;7.5;8.0;8.6"
+# for V100:
+export TORCH_CUDA_ARCH_LIST="7.0"
+
 # install a cudatoolkit 12.1 to match the version specified in requirements-torch-cuda.txt
 conda install -c nvidia/label/cuda-12.1.1 cuda-toolkit=12.1.1 -y
 
@@ -86,10 +90,9 @@ pip install -e .
 ### take this out of the script because it doesn't work on the front end of g5k and probably jz too, because cuda is not properly installed there
 ### instead run this inside the job submission script
 ## make the afm module for hisup
-# echo "________________ Install AFM module for HiSup _______________"
-# export TORCH_CUDA_ARCH_LIST="6.1;7.5;8.0;8.6"
-# cd ./pixelspointspolygons/models/hisup/afm_module
-# make
+echo "________________ Install AFM module for HiSup _______________"
+cd ./pixelspointspolygons/models/hisup/afm_module
+make
 
 echo "________________ Installation Completed Successfully _______________"
 echo "Run 'conda activate ${ENV_NAME}' to activate the environment."
