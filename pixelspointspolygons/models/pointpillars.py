@@ -79,9 +79,9 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         
         #x_lidar = list(torch.unbind(x_lidar, dim=0))
         print(f"x_lidar shape {x_lidar.shape}")
-	print(f"x_lidar dtype {x_lidar.dtype}")
-	print(f"x_lidar device {x_lidar.device}")
-	voxels, num_points, coors = self.voxelize(x_lidar)
+        print(f"x_lidar dtype {x_lidar.dtype}")
+        print(f"x_lidar device {x_lidar.device}")
+        voxels, num_points, coors = self.voxelize(x_lidar)
         voxel_features = self.voxel_encoder(voxels, num_points, coors)
         # batch_size = coors[-1, 0].item() + 1
         x = self.middle_encoder(voxel_features, coors, self.batch_size)
