@@ -72,14 +72,14 @@ class EncoderDecoder(torch.nn.Module):
         # --- Extract features for every pixel of the image with a U-Net --- #
         backbone_features = self.backbone(image)["out"]
 
-        if self.cfg.compute_seg:
+        if self.cfg.model.compute_seg:
             # --- Output a segmentation of the image --- #
             seg = self.seg_module(backbone_features)
             seg_to_cat = seg.clone().detach()
             backbone_features = torch.cat([backbone_features, seg_to_cat], dim=1)  # Add seg to image features
             outputs["seg"] = seg
 
-        if self.cfg.compute_crossfield:
+        if self.cfg.model.compute_crossfield:
             # --- Output a cross-field of the image --- #
             crossfield = 2 * self.crossfield_module(backbone_features)  # Outputs c_0, c_2 values in [-2, 2]
             outputs["crossfield"] = crossfield

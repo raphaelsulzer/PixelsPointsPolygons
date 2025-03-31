@@ -22,24 +22,13 @@ from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 
 from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything, SmoothedValue
 from ..models.ffl import *
+from ..models.ffl.losses import build_combined_loss
+from ..models.ffl.local_utils import batch_to_cuda, batch_to_cpu
 from ..predict import Predictor
 from ..eval import Evaluator
 from ..misc.coco_conversions import generate_coco_ann
 
 from .trainer import Trainer
-
-
-class LossReducer:
-    
-    def __init__(self, cfg):
-        self.loss_weights = dict(cfg.model.loss_weights)
-
-    def __call__(self, loss_dict):
-        total_loss = sum([self.loss_weights[k] * loss_dict[k]
-                          for k in self.loss_weights.keys()])
-
-        return total_loss
-    
 
 class MetricLogger:
     def __init__(self, delimiter="\t"):
@@ -138,7 +127,7 @@ class FFLTrainer(Trainer):
     
     def setup_loss_fn_dict(self):
         
-        self.loss_reducer = LossReducer(self.cfg)
+        self.loss_func = build_combined_loss(self.cfg).cuda()
         
     def average_across_gpus(self, meter):
         
@@ -218,24 +207,17 @@ class FFLTrainer(Trainer):
 
         loader = self.progress_bar(self.train_loader)
 
-        for x_image, x_lidar, y, tile_ids in loader:
+        for batch_dict in loader:
                         
-            batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
-
             # ### debug vis
             if self.cfg.debug_vis:
                 file_names = get_tile_names_from_dataloader(self.train_loader.dataset.coco.imgs, tile_ids)
                 plot_hisup(image_batch=x_image,lidar_batch=x_lidar,annotations_batch=y,tile_names=file_names)
 
-            y=self.to_single_device(y,self.cfg.device)
+            batch_dict = batch_to_cuda(batch_dict)
             
-            if self.cfg.use_images:
-                x_image = x_image.to(self.cfg.device, non_blocking=True)
-            if self.cfg.use_lidar:
-                x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
-            
-            loss_dict = self.model(x_image, x_lidar, y)
-            loss = self.loss_reducer(loss_dict)
+            pred, batch = self.model(batch_dict)
+            self.loss_func.update_norm(pred, batch, batch["image"].shape[0])
 
             with torch.no_grad():
                 loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}

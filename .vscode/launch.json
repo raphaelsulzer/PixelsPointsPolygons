@@ -18,10 +18,10 @@
                 "checkpoint=null",
                 "run_type.logging=DEBUG",
                 "experiment_name=debug",
-                "model=hisup",
-                "use_lidar=true",
-                "use_images=false",
-                "model.batch_size=4"
+                // "model=ffl",
+                // "use_lidar=true",
+                // "use_images=false",
+                // "model.batch_size=4"
             ],
             "justMyCode": false,
             "env": {
@@ -55,6 +55,22 @@
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",
+                "host=gin",
+                "device=cuda",
+                "log_to_wandb=false",
+                "multi_gpu=false",
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "preprocess_ffl",
+            "type": "debugpy",
+            "request": "launch",
+            // "program": "${file}",
+            "program": "${workspaceFolder}/data_preprocess/ffl/preprocess_ffl.py",
+            "console": "integratedTerminal",
+            "args": [
+                "run_type=release",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
