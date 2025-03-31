@@ -2,7 +2,7 @@
 set -e
 
 # Local variables
-ENV_NAME=ppp2
+ENV_NAME=ppp_h100
 PYTHON=3.11.11
 
 # Installation script for Miniconda3 environments
@@ -76,6 +76,10 @@ conda activate ${ENV_NAME}
 echo "________________ Install Required Packages _______________"
 echo
 
+export TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5;8.0;8.6"
+# for V100:
+# export TORCH_CUDA_ARCH_LIST="7.0"
+
 # install a cudatoolkit 12.1 to match the version specified in requirements-torch-cuda.txt
 conda install -c nvidia/label/cuda-12.1.1 cuda-toolkit=12.1.1 -y
 
@@ -87,7 +91,6 @@ pip install -e .
 ### instead run this inside the job submission script
 ## make the afm module for hisup
 echo "________________ Install AFM module for HiSup _______________"
-# export TORCH_CUDA_ARCH_LIST="6.1;7.5;8.0;8.6"
 cd ./pixelspointspolygons/models/hisup/afm_module
 make
 

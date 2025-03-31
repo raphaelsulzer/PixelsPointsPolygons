@@ -125,7 +125,8 @@ class HiSupTrainer(Trainer):
         num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
         self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
         self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
-        num_warmup_steps = int(0.05 * num_training_steps)
+        # num_warmup_steps = int(0.05 * num_training_steps)
+        num_warmup_steps = 0
         self.lr_scheduler = get_cosine_schedule_with_warmup(
             self.optimizer,
             num_training_steps=num_training_steps,

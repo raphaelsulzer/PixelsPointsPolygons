@@ -1,4 +1,5 @@
 import open3d.ml.torch as ml3d
+import torch
 
 class PointPillarsWithoutHead(ml3d.models.PointPillars):
     
@@ -76,7 +77,7 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
     def forward(self, x_lidar):
         """Extract features from points."""
         
-        # list_of_tensors = list(torch.unbind(x_lidar, dim=0))
+        #x_lidar = list(torch.unbind(x_lidar, dim=0))
         
         voxels, num_points, coors = self.voxelize(x_lidar)
         voxel_features = self.voxel_encoder(voxels, num_points, coors)
