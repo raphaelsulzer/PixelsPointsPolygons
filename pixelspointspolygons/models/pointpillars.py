@@ -62,7 +62,7 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
                  augment=augment)
         
         self.cfg = cfg
-
+        self.batch_size = self.cfg.model.batch_size
 
         # remove unsused modules from PointPillars
         del self.backbone
@@ -80,8 +80,8 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         
         voxels, num_points, coors = self.voxelize(x_lidar)
         voxel_features = self.voxel_encoder(voxels, num_points, coors)
-        batch_size = coors[-1, 0].item() + 1
-        x = self.middle_encoder(voxel_features, coors, batch_size)
+        # batch_size = coors[-1, 0].item() + 1
+        x = self.middle_encoder(voxel_features, coors, self.batch_size)
 
         if self.cfg.model.name == "pix2poly":
             # flatten patches, NCHW -> NLC. Needed to pass directly to next layer of VisionTransformer (self.vit)

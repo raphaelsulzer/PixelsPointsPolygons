@@ -10,14 +10,18 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=release",
+                "run_type=debug",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
                 "checkpoint=null",
                 "run_type.logging=DEBUG",
-                "experiment_name=debug"
+                "experiment_name=debug",
+                "model=hisup",
+                "use_lidar=true",
+                "use_images=false",
+                "model.batch_size=4"
             ],
             "justMyCode": false,
             "env": {
