@@ -8,7 +8,7 @@ from torch.utils.data.distributed import DistributedSampler
 
 from .dataset_train import TrainDataset
 from .dataset_val import ValDataset
-from .collate_funcs import collate_fn_pix2poly, collate_fn_hisup
+from .collate_funcs import collate_fn_pix2poly, collate_fn_hisup, collate_fn_ffl
 
 
 def get_collate_fn(model):
@@ -17,6 +17,8 @@ def get_collate_fn(model):
         return collate_fn_pix2poly
     elif model == "hisup":
         return collate_fn_hisup
+    elif model == "ffl":
+        return collate_fn_ffl
     else:
         raise NotImplementedError(f"Collate function for {model} not implemented yet.")
 

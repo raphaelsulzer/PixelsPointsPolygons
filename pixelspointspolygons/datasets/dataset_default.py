@@ -36,7 +36,15 @@ class DefaultDataset(Dataset):
         if not os.path.isdir(self.dataset_dir):
             raise NotADirectoryError(f"Dataset directory {self.dataset_dir} does not exist")
         
-        self.ann_file = os.path.join(self.dataset_dir,f"annotations_{split}.json")
+        ## FFL currently still has a specific annotations file which includes the path to the .pt file with the frame field stored
+        if self.cfg.model.name == "ffl":
+            self.ann_file = os.path.join(self.dataset_dir,f"annotations_{split}_processed.json")
+            self.stats_filepath = os.path.join(self.dataset_dir, "processed", split, "stats.pt")
+            if not os.path.isfile(self.stats_filepath):
+                raise FileExistsError(self.stats_filepath)
+            self.stats = torch.load(self.stats_filepath)
+        else:
+            self.ann_file = os.path.join(self.dataset_dir,f"annotations_{split}.json")
         if not os.path.isfile(self.ann_file):
             raise FileNotFoundError(self.ann_file)
 
@@ -151,9 +159,77 @@ class DefaultDataset(Dataset):
             return self.__getitem__hisup(idx)
         elif self.model_type == 'pix2poly':
             return self.__getitem__pix2poly(idx)
+        elif self.model_type == 'ffl':
+            return self.__getitem__ffl(idx)
         else:
             raise NotImplementedError(f"Model type {self.model_type} not implemented.")
         
+    
+    def __getitem__ffl(self, index):
+
+        img_id = self.tile_ids[index]
+        img_info = self.coco.loadImgs(img_id)[0]
+        ann_ids = self.coco.getAnnIds(imgIds=img_info['id'])
+        annotations = self.coco.loadAnns(ann_ids)  # annotations of all instances in an image.
+
+        # load image
+        if self.use_images:
+            filename = self.get_image_file(img_info)
+            image = np.array(Image.open(filename).convert("RGB"))
+        else:
+            # make dummy image for albumentations to work
+            image = np.zeros((img_info['width'], 
+                            img_info['height'], 1), dtype=np.uint8)
+
+        # load lidar
+        if self.use_lidar:
+            filename = self.get_lidar_file(img_info)
+            lidar = self.load_lidar_points(filename, img_info)
+        else:
+            lidar = None
+            
+        
+        # get ffl_pt file
+        ffl_pt_file = os.path.join(self.dataset_dir,img_info["ffl_pt_path"])
+        if not os.path.isfile(ffl_pt_file):
+            raise FileExistsError(ffl_pt_file)
+        ffl_data = torch.load(ffl_pt_file,weights_only=False)
+        
+        if self.transform is not None: 
+            
+            
+            masks = []
+            masks.append(ffl_data["gt_polygons_image"][:,:,0])
+            masks.append(ffl_data["gt_polygons_image"][:,:,1])
+            masks.append(ffl_data["gt_polygons_image"][:,:,2])
+            masks.append(ffl_data["distances"])
+            masks.append(ffl_data["sizes"])
+            masks.append(ffl_data["gt_crossfield_angle"])
+            
+            augmentations = self.transform(image=ffl_data["image"],masks=masks)
+            
+            if self.use_lidar:
+                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar, img_info['id'])
+            
+            ffl_data["image"] = augmentations['image']
+            
+            gt_polygon_image = []
+            for i in range(3):
+                gt_polygon_image.append(augmentations['masks'][i])
+            ffl_data["gt_polygons_image"] = torch.stack(gt_polygon_image, axis=-1).permute(2, 1, 0).to(torch.float32)
+            ffl_data["distances"] = augmentations['masks'][3][None, ...]
+            ffl_data["sizes"] = augmentations['masks'][4][None,...]
+            ffl_data["gt_crossfield_angle"] = augmentations['masks'][5][None, ...]
+            
+        # ffl_data["distances"] = torch.from_numpy(ffl_data["distances"])
+        # ffl_data["sizes"] = torch.from_numpy(ffl_data["sizes"])
+        # ffl_data["gt_crossfield_angle"] = torch.from_numpy(ffl_data["gt_crossfield_angle"])
+        ffl_data["class_freq"] = torch.from_numpy(self.stats["class_freq"])
+        
+        
+        return ffl_data
+        
+    
     def __getitem__pix2poly(self, index):
 
         img_id = self.tile_ids[index]

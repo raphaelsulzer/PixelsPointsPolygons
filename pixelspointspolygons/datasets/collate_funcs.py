@@ -1,6 +1,36 @@
 import torch
 from torch.nn.utils.rnn import pad_sequence
-from torch.utils.data.dataloader import default_collate
+from collections import defaultdict
+
+def collate_fn_ffl(batch, cfg):
+    
+
+    batch_dict = defaultdict(list)
+    
+    for sample in batch:
+        
+        for key,val in sample.items():
+            
+            batch_dict[key].append(val)
+
+    
+        
+    if cfg.use_images:
+        batch_dict["image"] = torch.stack(batch_dict["image"])
+    else:
+        batch_dict["image"] = None
+    if cfg.use_lidar:
+        batch_dict["lidar"] = torch.nested.nested_tensor(batch_dict["lidar"], layout=torch.jagged)
+    else:
+        batch_dict["lidar"] = None
+    
+    batch_dict["distances"] = torch.stack(batch_dict["distances"])
+    batch_dict["sizes"] = torch.stack(batch_dict["sizes"])
+    batch_dict["gt_crossfield_angle"] = torch.stack(batch_dict["gt_crossfield_angle"])
+    batch_dict["gt_polygons_image"] = torch.stack(batch_dict["gt_polygons_image"])
+    batch_dict["class_freq"] = torch.stack(batch_dict["class_freq"])
+    
+    return batch_dict
 
 
 
