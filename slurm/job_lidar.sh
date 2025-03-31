@@ -21,13 +21,11 @@ module purge # purge modules inherited by default
 # Load modules (if needed)
 # module load arch/a100
 # module load nvidia-compilers
+module load cuda/12.1.0
 module load miniforge/24.9.0
 
 # Activate virtual environment (if needed)
-conda activate ppp
-
-# try to force reinstall open3d to get rid of the CUDA error
-pip install --force-reinstall open3d
+conda activate ppp2
 
 # recompile the afm module
 cd ./pixelspointspolygons/models/hisup/afm_module
@@ -39,7 +37,7 @@ set -x
 # Run your Python script
 
 torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true \
-experiment_name=lidar_only_bs4x8 checkpoint=null model.batch_size=8 use_lidar=true use_images=false run_type.logging=INFO
+experiment_name=lidar_only_bs4x8 checkpoint=null model.batch_size=8 use_lidar=true use_images=false run_type.logging=DEBUG model=hisup
 
 #module load miniforge/24.9.0 && conda activate ppp
 #torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true dataset=lidarpoly \

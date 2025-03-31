@@ -31,7 +31,7 @@ dependencies = [
     "transformers==4.32",
     "wandb",
     # only for hisup
-    "Cython"
+    "Cython",
     # only for FFL preprocessing
     "kornia",
     "skan",
