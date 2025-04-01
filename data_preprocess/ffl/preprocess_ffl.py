@@ -63,8 +63,17 @@ class DatasetWithPreprocessing(torch.utils.data.Dataset):
 
     def get_coco(self):
         if self.coco is None:
-            annotation_filename = f"annotations_{self.fold}.json"
+            
+            annotation_filename = f"annotations_{self.fold}_processed.json"
             annotations_filepath = os.path.join(self.root, annotation_filename)
+            if os.path.isfile(annotations_filepath):
+                print("There is already a processed annotation file. Using this one.")
+            else:
+                annotation_filename = f"annotations_{self.fold}.json"
+                annotations_filepath = os.path.join(self.root, annotation_filename)
+            if not os.path.isfile(annotations_filepath):
+                raise FileNotFoundError(f"Annotation file {annotations_filepath} not found in {self.root}.")
+            
             self.coco = COCO(annotations_filepath)
         return self.coco
 
@@ -190,7 +199,11 @@ class DatasetWithPreprocessing(torch.utils.data.Dataset):
         
     def get(self, idx):
         image_id = self.image_id_list[idx]
-        data = torch.load(os.path.join(self.processed_dir, "data_{:012d}.pt".format(image_id)))
+        image_info = self.coco.loadImgs(image_id)[0]
+        ffl_pt_path = os.path.join(self.root, image_info["ffl_pt_path"])
+        if not os.path.exists(ffl_pt_path):
+            raise FileNotFoundError(f"File {ffl_pt_path} not found.")
+        data = torch.load(ffl_pt_path, weights_only=False)
         data["image_mean"] = self.stats["image_mean"]
         data["image_std"] = self.stats["image_std"]
         data["class_freq"] = self.stats["class_freq"]
@@ -285,7 +298,7 @@ def main(cfg):
                                pre_transform=data_transforms.get_offline_transform_patch(),
                                fold=fold,
                                pool_size=cfg.num_workers)
-    dataset._process()
+    # dataset._process()
 
 
     # TODO: need to decide how to integrate this into PPP.
@@ -302,39 +315,39 @@ def main(cfg):
     ###########################################
     ########### DEBUG VISUALIZATION ###########
     ###########################################
-    # for i in range(len(dataset)):
-    #     print("Images:")
-    #     # Save output to visualize
-    #     seg = np.array(dataset[i]["gt_polygons_image"])
-    #     # seg = np.moveaxis(seg, 0, -1)
-    #     seg_display = utils.get_seg_display(seg)
-    #     seg_display = (seg_display * 255).astype(np.uint8)
-    #     skimage.io.imsave("gt_seg.png", seg_display)
-    #     skimage.io.imsave("gt_seg_edge.png", seg[:, :, 1])
+    for i in range(len(dataset)):
+        print("Images:")
+        # Save output to visualize
+        seg = np.array(dataset[i]["gt_polygons_image"])
+        # seg = np.moveaxis(seg, 0, -1)
+        seg_display = utils.get_seg_display(seg)
+        seg_display = (seg_display * 255).astype(np.uint8)
+        skimage.io.imsave("gt_seg.png", seg_display)
+        skimage.io.imsave("gt_seg_edge.png", seg[:, :, 1])
 
-    #     im = np.array(dataset[i]["image"])
-    #     # im = np.moveaxis(im, 0, -1)
-    #     skimage.io.imsave('im.png', im)
+        im = np.array(dataset[i]["image"])
+        # im = np.moveaxis(im, 0, -1)
+        skimage.io.imsave('im.png', im)
 
-    #     gt_crossfield_angle = np.array(dataset[i]["gt_crossfield_angle"])
-    #     # gt_crossfield_angle = np.moveaxis(gt_crossfield_angle, 0, -1)
-    #     skimage.io.imsave('gt_crossfield_angle.png', gt_crossfield_angle)
+        gt_crossfield_angle = np.array(dataset[i]["gt_crossfield_angle"])
+        # gt_crossfield_angle = np.moveaxis(gt_crossfield_angle, 0, -1)
+        skimage.io.imsave('gt_crossfield_angle.png', gt_crossfield_angle)
 
-    #     distances = np.array(dataset[i]["distances"])
-    #     # distances = np.moveaxis(distances, 0, -1)
-    #     distances = 255-(distances*255).astype(np.uint8)
-    #     skimage.io.imsave('distances.png', distances)
+        distances = np.array(dataset[i]["distances"])
+        # distances = np.moveaxis(distances, 0, -1)
+        distances = 255-(distances*255).astype(np.uint8)
+        skimage.io.imsave('distances.png', distances)
 
-    #     sizes = np.array(dataset[i]["sizes"])
-    #     # sizes = np.moveaxis(sizes, 0, -1)
-    #     sizes = 255-(sizes*255).astype(np.uint8)
-    #     skimage.io.imsave('sizes.png', sizes)
+        sizes = np.array(dataset[i]["sizes"])
+        # sizes = np.moveaxis(sizes, 0, -1)
+        sizes = 255-(sizes*255).astype(np.uint8)
+        skimage.io.imsave('sizes.png', sizes)
 
-    #     # valid_mask = np.array(dataset[i]["valid_mask"])
-    #     # # valid_mask = np.moveaxis(valid_mask, 0, -1)
-    #     # skimage.io.imsave('valid_mask.png', valid_mask)
+        # valid_mask = np.array(dataset[i]["valid_mask"])
+        # # valid_mask = np.moveaxis(valid_mask, 0, -1)
+        # skimage.io.imsave('valid_mask.png', valid_mask)
 
-    #     input("Press enter to continue...")
+        input("Press enter to continue...")
     
 if __name__ == '__main__':
     main()
