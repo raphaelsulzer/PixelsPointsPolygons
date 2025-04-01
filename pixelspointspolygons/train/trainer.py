@@ -114,29 +114,12 @@ class Trainer:
     def cleanup(self):
         dist.destroy_process_group()
     
-    
     def setup_dataloader(self):
         self.train_loader = get_train_loader(self.cfg,logger=self.logger)
         self.val_loader = get_val_loader(self.cfg,logger=self.logger)
 
-    def setup_optimizer(self):
-        # Get optimizer
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
-
-        # Get scheduler
-        # num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)                
-        num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
-        self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
-        self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
-        
-        num_warmup_steps = int(0.05 * num_training_steps)
-        self.lr_scheduler = get_linear_schedule_with_warmup(
-            self.optimizer,
-            num_training_steps=num_training_steps,
-            num_warmup_steps=num_warmup_steps
-        )
-
     def save_checkpoint(self, outfile, **kwargs):
+        """Save checkpoint to file. This is a generic function that saves the model, optimizer and scheduler state dicts."""
         
         os.makedirs(os.path.dirname(outfile), exist_ok=True)
             
@@ -153,6 +136,7 @@ class Trainer:
         self.logger.info(f"Save model {os.path.split(outfile)[-1]} to {outfile}")
 
     def load_checkpoint(self):
+        """Load checkpoint from file. This is a generic function that loads the model, optimizer and scheduler state dicts."""
         
         map_location = {'cuda:%d' % 0: 'cuda:%d' % self.local_rank}
         checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
@@ -171,6 +155,7 @@ class Trainer:
 
 
     def train_val_loop(self):
+        """This is just an example of how to use the Trainer class. The actual train_val_loop slighlty varies for different architectures."""
 
         if self.cfg.checkpoint is not None:
             self.load_checkpoint()
@@ -302,6 +287,8 @@ class Trainer:
     
 
     def train(self):
+        """This is just an example of how to use the Trainer class. The actual train function needs to be reimplemented for each architecture."""
+        
         seed_everything(42)
         if self.is_ddp:
             self.setup_ddp()

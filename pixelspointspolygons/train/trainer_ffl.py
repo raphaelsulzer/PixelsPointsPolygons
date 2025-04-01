@@ -13,53 +13,21 @@ import torch
 
 import torch.distributed as dist
 
-from collections import defaultdict
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch import nn
 from torch import optim
-from transformers import get_linear_schedule_with_warmup
+from transformers import  get_cosine_schedule_with_warmup
 from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 
-from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything, SmoothedValue
+from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything, MetricLogger
 from ..models.ffl import *
 from ..models.ffl.losses import build_combined_loss
-from ..models.ffl.local_utils import batch_to_cuda, batch_to_cpu
-from ..predict import Predictor
+from ..models.ffl.local_utils import batch_to_cuda
+from ..models.ffl.measures import iou as compute_iou
+from ..predict.ffl.predictor_ffl import FFLPredictor as Predictor
 from ..eval import Evaluator
-from ..misc.coco_conversions import generate_coco_ann
 
 from .trainer import Trainer
-
-class MetricLogger:
-    def __init__(self, delimiter="\t"):
-        self.meters = defaultdict(SmoothedValue)
-        self.delimiter = delimiter
-
-    def update(self, **kwargs):
-        for k, v in kwargs.items():
-            if isinstance(v, torch.Tensor):
-                v = v.item()
-            assert isinstance(v, (float, int))
-            self.meters[k].update(v)
-
-    def __getattr__(self, attr):
-        if attr in self.meters:
-            return self.meters[attr]
-        if attr in self.__dict__:
-            return self.__dict__[attr]
-        raise AttributeError("'{}' object has no attribute '{}'".format(
-                    type(self).__name__, attr))
-
-    def __str__(self):
-        loss_str = []
-        keys = sorted(self.meters)
-        # for name, meter in self.meters.items():
-        for name in keys:
-            meter = self.meters[name]
-            loss_str.append(
-                "{}: {:.4f} ({:.4f})".format(name, meter.median, meter.global_avg)
-            )
-        return self.delimiter.join(loss_str)
 
 class FFLTrainer(Trainer):
     
@@ -111,15 +79,19 @@ class FFLTrainer(Trainer):
         
         self.model = model
 
-
+        
     def setup_optimizer(self):
         # Get optimizer
         self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
 
         # Get scheduler
-        num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
-        num_warmup_steps = int(0.05 * num_training_steps)
-        self.lr_scheduler = get_linear_schedule_with_warmup(
+        # num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
+        num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
+        self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
+        self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
+        # num_warmup_steps = int(0.05 * num_training_steps)
+        num_warmup_steps = 0
+        self.lr_scheduler = get_cosine_schedule_with_warmup(
             self.optimizer,
             num_training_steps=num_training_steps,
             num_warmup_steps=num_warmup_steps
@@ -162,51 +134,39 @@ class FFLTrainer(Trainer):
         if self.cfg.multi_gpu:
             self.loss_func.sync(self.world_size)
         
-    def valid_one_epoch(self):
+    def valid_one_epoch(self, epoch):
 
         self.logger.info("Validate...")
+        
         self.model.eval()
 
         loss_meter = MetricLogger(" val_")
 
         loader = self.progress_bar(self.val_loader)
 
-        coco_predictions = []
         
         with torch.no_grad():
-            for x_image, x_lidar, y, tile_ids in loader:
+            for batch_dict in loader:
                 
-                batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
+                batch_dict = batch_to_cuda(batch_dict)
                 
-                if self.cfg.use_images:
-                    x_image = x_image.to(self.cfg.device, non_blocking=True)
-                if self.cfg.use_lidar:
-                    x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
-                    
-                    
-                y=self.to_single_device(y,self.cfg.device)
-
-                polygon_output, loss_dict = self.model(x_image, x_lidar, y)
-                
-                ## loss stuff
-                loss = self.loss_reducer(loss_dict)
-                loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
-                loss_reduced = loss.item()
-                loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
-                loader.set_postfix(val_loss=loss_meter.meters["total_loss"].global_avg)
-                ## polygon stuff
-                polygon_output = self.to_single_device(polygon_output, 'cpu')
-                batch_scores = polygon_output['scores']
-                batch_polygons = polygon_output['polys_pred']
-
-                for b in range(batch_size):
-
-                    scores = batch_scores[b]
-                    polys = batch_polygons[b]
-
-                    image_result = generate_coco_ann(polys, tile_ids[b], scores=scores)
-                    if len(image_result) != 0:
-                        coco_predictions.extend(image_result)
+                pred, batch = self.model(batch_dict)
+                loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch)
+            
+                with torch.no_grad():
+                    # Compute IoUs at different thresholds
+                    if "seg" in pred:
+                        y_pred = pred["seg"][:, 0, ...]
+                        y_true = batch["gt_polygons_image"][:, 0, ...]
+                        iou_thresholds = [0.1, 0.25, 0.5, 0.75, 0.9]
+                        for iou_threshold in iou_thresholds:
+                            iou = compute_iou(y_pred.reshape(y_pred.shape[0], -1), y_true.reshape(y_true.shape[0], -1), threshold=iou_threshold)
+                            mean_iou = torch.mean(iou)
+                            loss_dict[f"IoU_{iou_threshold}"] = mean_iou
+                        
+                    loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
+                    loss_reduced = loss.item()
+                    loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
 
         self.logger.debug(f"Validation loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
         
@@ -215,7 +175,7 @@ class FFLTrainer(Trainer):
         
         self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
 
-        return loss_dict, coco_predictions
+        return loss_dict
 
 
 
@@ -241,8 +201,18 @@ class FFLTrainer(Trainer):
             
             pred, batch = self.model(batch_dict)
             loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch)
-
+                
             with torch.no_grad():
+                # Compute IoUs at different thresholds
+                if "seg" in pred:
+                    y_pred = pred["seg"][:, 0, ...]
+                    y_true = batch["gt_polygons_image"][:, 0, ...]
+                    iou_thresholds = [0.1, 0.25, 0.5, 0.75, 0.9]
+                    for iou_threshold in iou_thresholds:
+                        iou = compute_iou(y_pred.reshape(y_pred.shape[0], -1), y_true.reshape(y_true.shape[0], -1), threshold=iou_threshold)
+                        mean_iou = torch.mean(iou)
+                        loss_dict[f"IoU_{iou_threshold}"] = mean_iou
+                
                 loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
                 loss_reduced = loss.item()
                 loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
@@ -280,6 +250,7 @@ class FFLTrainer(Trainer):
         if self.cfg.log_to_wandb and self.local_rank == 0:
             self.setup_wandb()
 
+        predictor = Predictor(self.cfg,local_rank=self.local_rank,world_size=self.world_size)
 
         ## init loss norms
         self.model.train()  # Important for batchnorm and dropout, even in computing loss norms
@@ -325,7 +296,7 @@ class FFLTrainer(Trainer):
             ############################################
             ################ Validation ################
             ############################################
-            val_loss_dict, coco_predictions = self.valid_one_epoch()
+            val_loss_dict = self.valid_one_epoch(epoch)
             if self.local_rank == 0:
                 for k, v in val_loss_dict.items():
                     wandb_dict[f"val_{k}"] = v
@@ -353,10 +324,12 @@ class FFLTrainer(Trainer):
             #############################################
             if (epoch + 1) % self.cfg.val_every == 0:
 
-                self.logger.info("Evaluate validation set with latest model...")
-
+                self.logger.info("Predict validation set with latest model...")
+                coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)
                 
-                if self.is_ddp:
+                self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
+                
+                if self.cfg.multi_gpu:
                     
                     # Gather the list of dictionaries from all ranks
                     gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects
@@ -402,6 +375,8 @@ class FFLTrainer(Trainer):
                 dist.barrier()
 
             if self.cfg.log_to_wandb:
+                for k,v in wandb_dict.items():
+                    self.logger.debug(f"{k}: {v}")
                 if self.local_rank == 0:
                     wandb.log(wandb_dict)
 

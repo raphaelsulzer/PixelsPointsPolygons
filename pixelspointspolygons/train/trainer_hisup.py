@@ -13,15 +13,13 @@ import torch
 
 import torch.distributed as dist
 
-from collections import defaultdict
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch import nn
 from torch import optim
-from transformers import get_linear_schedule_with_warmup, get_cosine_schedule_with_warmup
+from transformers import get_cosine_schedule_with_warmup
 
-from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything, SmoothedValue
+from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything, MetricLogger
 from ..models.hisup import *
-from ..predict import Predictor
 from ..eval import Evaluator
 from ..misc.coco_conversions import generate_coco_ann
 
@@ -38,38 +36,6 @@ class LossReducer:
                           for k in self.loss_weights.keys()])
 
         return total_loss
-    
-
-class MetricLogger:
-    def __init__(self, delimiter="\t"):
-        self.meters = defaultdict(SmoothedValue)
-        self.delimiter = delimiter
-
-    def update(self, **kwargs):
-        for k, v in kwargs.items():
-            if isinstance(v, torch.Tensor):
-                v = v.item()
-            assert isinstance(v, (float, int))
-            self.meters[k].update(v)
-
-    def __getattr__(self, attr):
-        if attr in self.meters:
-            return self.meters[attr]
-        if attr in self.__dict__:
-            return self.__dict__[attr]
-        raise AttributeError("'{}' object has no attribute '{}'".format(
-                    type(self).__name__, attr))
-
-    def __str__(self):
-        loss_str = []
-        keys = sorted(self.meters)
-        # for name, meter in self.meters.items():
-        for name in keys:
-            meter = self.meters[name]
-            loss_str.append(
-                "{}: {:.4f} ({:.4f})".format(name, meter.median, meter.global_avg)
-            )
-        return self.delimiter.join(loss_str)
 
 class HiSupTrainer(Trainer):
     

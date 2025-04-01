@@ -22,11 +22,10 @@ from torch import nn
 from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
-from ..models.tokenizer import Tokenizer
+from ..models.pix2poly import Tokenizer, ImageEncoder, LiDAREncoder, MultiEncoder, EncoderDecoder, Decoder
 from ..misc import AverageMeter, make_logger, get_lr, get_tile_names_from_dataloader, plot_pix2poly, seed_everything
 from ..datasets import get_train_loader, get_val_loader
-from ..models.pix2poly import EncoderDecoder, ImageEncoder, LiDAREncoder, MultiEncoder, Decoder
-from ..predict import Predictor
+from ..predict.predictor_pix2poly import Pix2PolyPredictor as Predictor
 from ..eval import Evaluator
 from .trainer import Trainer
 
@@ -118,6 +117,24 @@ class Pix2PolyTrainer(Trainer):
     def cleanup(self):
         dist.destroy_process_group()
 
+
+    def setup_optimizer(self):
+        # Get optimizer
+        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
+
+        # Get scheduler
+        # num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)                
+        num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
+        self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
+        self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
+        
+        num_warmup_steps = int(0.05 * num_training_steps)
+        self.lr_scheduler = get_linear_schedule_with_warmup(
+            self.optimizer,
+            num_training_steps=num_training_steps,
+            num_warmup_steps=num_warmup_steps
+        )
+        
     def setup_tokenizer(self):
         self.tokenizer = Tokenizer(num_classes=1,
             num_bins=self.cfg.model.tokenizer.num_bins,
@@ -126,7 +143,7 @@ class Pix2PolyTrainer(Trainer):
             max_len=self.cfg.model.tokenizer.max_len
         )
     
-    def setup_dynamic_cfg_vars(self):
+    def setup_cfg_vars(self):
     
         self.cfg.model.tokenizer.pad_idx = self.tokenizer.PAD_code
         self.cfg.model.tokenizer.max_len = self.cfg.model.tokenizer.n_vertices*2+2
@@ -134,6 +151,8 @@ class Pix2PolyTrainer(Trainer):
         self.cfg.model.encoder.num_patches = int((self.cfg.model.encoder.input_size // self.cfg.model.encoder.patch_size) ** 2)
     
     def setup_model(self):
+        
+        ## TODO: maybe it is better to make a model class that goes at the beginning of this file, which can then also be used by the Predictor class
         
         if self.cfg.use_images and self.cfg.use_lidar:
             encoder = MultiEncoder(self.cfg)
@@ -453,9 +472,9 @@ class Pix2PolyTrainer(Trainer):
                 coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)
                 
                 
-                print(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
+                self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
                 
-                if self.is_ddp:
+                if self.cfg.multi_gpu:
                     
                     # Gather the list of dictionaries from all ranks
                     gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects
@@ -512,7 +531,7 @@ class Pix2PolyTrainer(Trainer):
         if self.is_ddp:
             self.setup_ddp()
         self.setup_tokenizer()
-        self.setup_dynamic_cfg_vars()
+        self.setup_cfg_vars()
         self.setup_model()
         self.setup_dataloader()
         self.setup_optimizer()
