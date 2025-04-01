@@ -139,7 +139,29 @@ class FFLTrainer(Trainer):
         tensor /= self.world_size
         return tensor.item()
 
-    
+    def compute_loss_norms(self, dl, total_batches):
+        self.loss_func.reset_norm()
+        
+        self.logger.info("Init loss norms...")
+        t = self.progress_bar(dl)  # Initialise
+
+        batch_i = 0
+        while batch_i < total_batches:
+            for batch in dl:
+                # Update loss norms
+                batch = batch_to_cuda(batch)
+                pred, batch = self.model(batch)
+                self.loss_func.update_norm(pred, batch, batch["image"].shape[0])
+                if t is not None:
+                    t.update(1)
+                batch_i += 1
+                if not batch_i < total_batches:
+                    break
+
+        # Now sync loss norms across GPUs:
+        if self.cfg.multi_gpu:
+            self.loss_func.sync(self.world_size)
+        
     def valid_one_epoch(self):
 
         self.logger.info("Validate...")
@@ -207,6 +229,7 @@ class FFLTrainer(Trainer):
 
         loader = self.progress_bar(self.train_loader)
 
+        self.loss_func.reset_norm()
         for batch_dict in loader:
                         
             # ### debug vis
@@ -217,7 +240,7 @@ class FFLTrainer(Trainer):
             batch_dict = batch_to_cuda(batch_dict)
             
             pred, batch = self.model(batch_dict)
-            self.loss_func.update_norm(pred, batch, batch["image"].shape[0])
+            loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch)
 
             with torch.no_grad():
                 loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
@@ -237,8 +260,6 @@ class FFLTrainer(Trainer):
 
             iter_idx += 1
 
-            # if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
-            #     break
             
         
         self.logger.debug(f"Train loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
@@ -259,12 +280,19 @@ class FFLTrainer(Trainer):
         if self.cfg.log_to_wandb and self.local_rank == 0:
             self.setup_wandb()
 
+
+        ## init loss norms
+        self.model.train()  # Important for batchnorm and dropout, even in computing loss norms
+        with torch.no_grad():
+            loss_norm_batches_min = self.cfg.model.loss.multiloss.normalization_params.min_samples // (2 * self.cfg.model.batch_size) + 1
+            loss_norm_batches_max = self.cfg.model.loss.multiloss.normalization_params.max_samples // (2 * self.cfg.model.batch_size) + 1
+            loss_norm_batches = max(loss_norm_batches_min, min(loss_norm_batches_max, len(self.train_loader)))
+            self.compute_loss_norms(self.train_loader, loss_norm_batches)
+
         best_loss = float('inf')
 
         iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
         epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
-
-        predictor = Predictor(self.cfg,local_rank=self.local_rank,world_size=self.world_size)
 
         if self.local_rank == 0:
             evaluator = Evaluator(self.cfg)

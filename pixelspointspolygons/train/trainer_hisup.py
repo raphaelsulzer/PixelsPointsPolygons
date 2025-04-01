@@ -279,8 +279,6 @@ class HiSupTrainer(Trainer):
         iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
         epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
 
-        predictor = Predictor(self.cfg,local_rank=self.local_rank,world_size=self.world_size)
-
         if self.local_rank == 0:
             evaluator = Evaluator(self.cfg)
         else:

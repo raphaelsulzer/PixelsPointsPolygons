@@ -197,7 +197,6 @@ class DefaultDataset(Dataset):
         
         if self.transform is not None: 
             
-            
             masks = []
             masks.append(ffl_data["gt_polygons_image"][:,:,0])
             masks.append(ffl_data["gt_polygons_image"][:,:,1])
@@ -216,7 +215,10 @@ class DefaultDataset(Dataset):
             gt_polygon_image = []
             for i in range(3):
                 gt_polygon_image.append(augmentations['masks'][i])
-            ffl_data["gt_polygons_image"] = torch.stack(gt_polygon_image, axis=-1).permute(2, 1, 0).to(torch.float32)
+            ffl_data["gt_polygons_image"] = torch.stack(gt_polygon_image, axis=-1).permute(2,0,1)
+            ffl_data["gt_polygons_image"] = ffl_data["gt_polygons_image"]/255.0
+            ffl_data["gt_polygons_image"] = torch.clamp(ffl_data["gt_polygons_image"],0,1)
+            ffl_data["gt_polygons_image"] = ffl_data["gt_polygons_image"].to(torch.float32)
             ffl_data["distances"] = augmentations['masks'][3][None, ...]
             ffl_data["sizes"] = augmentations['masks'][4][None,...]
             ffl_data["gt_crossfield_angle"] = augmentations['masks'][5][None, ...]
@@ -269,9 +271,7 @@ class DefaultDataset(Dataset):
         mask = mask / 255. if mask.max() == 255 else mask
         mask = np.clip(mask, 0, 1)
 
-        ### commented the line below, because I think it makes the polygon vertices axis order incoorect
         corner_coords = np.flip(np.round(corner_coords, 0), axis=-1).astype(np.int32)
-        # corner_coords = np.round(corner_coords, 0).astype(np.int32)
 
         if len(corner_coords) > 0.:
             corner_mask[corner_coords[:, 0], corner_coords[:, 1]] = 1.
