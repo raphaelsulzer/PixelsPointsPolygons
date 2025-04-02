@@ -127,7 +127,7 @@ class MultiLoss(torch.nn.Module):
         extra_dict = {}
         for loss_func_i, weight_i in zip(self.loss_funcs, self.weights):
             loss_i, extra_dict_i = loss_func_i(pred_batch, gt_batch, normalize=normalize)
-            if isinstance(weight_i, scipy.interpolate.interpolate.interp1d) and epoch is not None:
+            if isinstance(weight_i, scipy.interpolate.interp1d) and epoch is not None:
                 current_weight = float(weight_i(epoch))
             else:
                 current_weight = weight_i

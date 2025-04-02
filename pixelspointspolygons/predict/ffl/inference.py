@@ -6,7 +6,7 @@ import scipy
 import numpy as np
 import torch
 
-from . import local_utils
+from ...models.ffl import local_utils
 from . import polygonize
 
 from lydorn_utils import image_utils
@@ -14,14 +14,14 @@ from lydorn_utils import print_utils
 from lydorn_utils import python_utils
 
 
-def network_inference(config, model, batch):
+def network_inference(model, batch):
     batch = local_utils.batch_to_cuda(batch)
-    pred, batch = model(batch, tta=config["eval_params"]["test_time_augmentation"])
+    pred, batch = model(batch)
     return pred, batch
 
 
 def inference(config, model, tile_data, compute_polygonization=False, pool=None):
-    if config["eval_params"]["patch_size"] is not None:
+    if config.model.eval_params.patch_size is not None:
         # Cut image into patches for inference
         inference_with_patching(config, model, tile_data)
         single_sample = True
@@ -46,11 +46,11 @@ def inference_no_patching(config, model, tile_data):
     with torch.no_grad():
         batch = {
             "image": tile_data["image"],
-            "image_mean": tile_data["image_mean"],
-            "image_std": tile_data["image_std"]
+            # "image_mean": tile_data["image_mean"],
+            # "image_std": tile_data["image_std"]
         }
         try:
-            pred, batch = network_inference(config, model, batch)
+            pred, batch = network_inference(model, batch)
         except RuntimeError as e:
             print_utils.print_error("ERROR: " + str(e))
             if 1 < config["optim_params"]["eval_batch_size"]:

@@ -90,18 +90,18 @@ class UNetResNetBackbone(nn.Module):
         super().__init__()
         
         self.dropout_2d = cfg.model.encoder.dropout_2d
-        pretrained = cfg.model.encoder.pretrained
+        pretrained = 'DEFAULT' if cfg.model.encoder.pretrained else None
         num_filters = cfg.model.encoder.num_filters
         is_deconv = cfg.model.encoder.is_deconv
         
         if cfg.model.encoder.depth == 34:
-            self.encoder = torchvision.models.resnet34(pretrained=pretrained)
+            self.encoder = torchvision.models.resnet34(weights=pretrained)
             bottom_channel_nr = 512
         elif cfg.model.encoder.depth == 101:
-            self.encoder = torchvision.models.resnet101(pretrained=pretrained)
+            self.encoder = torchvision.models.resnet101(weights=pretrained)
             bottom_channel_nr = 2048
         elif cfg.model.encoder.depth == 152:
-            self.encoder = torchvision.models.resnet152(pretrained=pretrained)
+            self.encoder = torchvision.models.resnet152(weights=pretrained)
             bottom_channel_nr = 2048
         else:
             raise NotImplementedError('only 34, 101, 152 version of ResNet are implemented')

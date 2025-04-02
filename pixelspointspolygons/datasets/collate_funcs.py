@@ -4,17 +4,12 @@ from collections import defaultdict
 
 def collate_fn_ffl(batch, cfg):
     
-
     batch_dict = defaultdict(list)
     
     for sample in batch:
-        
         for key,val in sample.items():
-            
             batch_dict[key].append(val)
-
-    
-        
+            
     if cfg.use_images:
         batch_dict["image"] = torch.stack(batch_dict["image"])
     else:
