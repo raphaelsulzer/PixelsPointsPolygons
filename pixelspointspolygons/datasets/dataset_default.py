@@ -223,9 +223,6 @@ class DefaultDataset(Dataset):
             ffl_data["sizes"] = augmentations['masks'][4][None,...]
             ffl_data["gt_crossfield_angle"] = augmentations['masks'][5][None, ...]
             
-        # ffl_data["distances"] = torch.from_numpy(ffl_data["distances"])
-        # ffl_data["sizes"] = torch.from_numpy(ffl_data["sizes"])
-        # ffl_data["gt_crossfield_angle"] = torch.from_numpy(ffl_data["gt_crossfield_angle"])
         ffl_data["class_freq"] = torch.from_numpy(self.stats["class_freq"])
         
         

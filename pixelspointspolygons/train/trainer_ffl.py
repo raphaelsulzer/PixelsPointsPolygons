@@ -136,7 +136,7 @@ class FFLTrainer(Trainer):
         
     def valid_one_epoch(self, epoch):
 
-        self.logger.info("Validate...")
+        self.logger.info(f"Validate epoch {epoch}...")
         
         self.model.eval()
 
@@ -254,11 +254,13 @@ class FFLTrainer(Trainer):
 
         ## init loss norms
         self.model.train()  # Important for batchnorm and dropout, even in computing loss norms
-        with torch.no_grad():
-            loss_norm_batches_min = self.cfg.model.loss.multiloss.normalization_params.min_samples // (2 * self.cfg.model.batch_size) + 1
-            loss_norm_batches_max = self.cfg.model.loss.multiloss.normalization_params.max_samples // (2 * self.cfg.model.batch_size) + 1
-            loss_norm_batches = max(loss_norm_batches_min, min(loss_norm_batches_max, len(self.train_loader)))
-            self.compute_loss_norms(self.train_loader, loss_norm_batches)
+        
+        ## compute loss norms for loss weighting
+        # with torch.no_grad():
+        #     loss_norm_batches_min = self.cfg.model.loss.multiloss.normalization_params.min_samples // (2 * self.cfg.model.batch_size) + 1
+        #     loss_norm_batches_max = self.cfg.model.loss.multiloss.normalization_params.max_samples // (2 * self.cfg.model.batch_size) + 1
+        #     loss_norm_batches = max(loss_norm_batches_min, min(loss_norm_batches_max, len(self.train_loader)))
+        #     self.compute_loss_norms(self.train_loader, loss_norm_batches)
 
         best_loss = float('inf')
 
@@ -325,7 +327,8 @@ class FFLTrainer(Trainer):
             if (epoch + 1) % self.cfg.val_every == 0:
 
                 self.logger.info("Predict validation set with latest model...")
-                coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)
+                coco_predictions = predictor.predict_from_loader(self.model,self.val_loader)
+                coco_predictions = coco_predictions['acm.tol_0.125']
                 
                 self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
                 

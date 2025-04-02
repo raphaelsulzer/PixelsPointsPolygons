@@ -107,6 +107,10 @@ def split_batch(tile_data):
     for i in range(tile_data["image"].shape[0]):
         individual_tile_data = {}
         for key, item in tile_data.items():
+            if item is None or len(item) == 0:
+                # None is e.g. for use_images=false or use_lidar=false
+                # len(item) == 0 is for filtering out image_mean and image_std which I am not using
+                continue
             if not i < len(item):
                 print(key, len(item))
             individual_tile_data[key] = item[i]

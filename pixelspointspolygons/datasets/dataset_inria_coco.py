@@ -30,14 +30,11 @@ class InriaCocoDatasetTrain(Dataset):
 
         print(f"Loaded {len(self.coco.anns.items())} annotations from {cfg.dataset.train.annotations}")
         
-        a=5
     
 
     def __len__(self):
         return len(self.image_ids)
 
-    def annToMask(self):
-        return
 
     def shuffle_perm_matrix_by_indices(self, old_perm: torch.Tensor, shuffle_idxs: np.ndarray):
         Nv = old_perm.shape[0]
@@ -211,8 +208,6 @@ class InriaCocoDatasetVal(Dataset):
     def __len__(self):
         return len(self.image_ids)
 
-    def annToMask(self):
-        return
 
     def shuffle_perm_matrix_by_indices(self, old_perm: torch.Tensor, shuffle_idxs: np.ndarray):
         Nv = old_perm.shape[0]

@@ -76,8 +76,34 @@ weight_decay: 1e-4
 
 defaults:
     - lidar_encoder: pointpillars
-
+    - polygonization: asm_acm
 
 augmentations:
     - D4
     - Resize
+
+eval:
+  test_time_augmentation: false # not actually used anywhere
+
+  patch_size: null
+  patch_overlap: 200
+
+  seg_threshold: 0.5
+
+  save_individual_outputs:
+    image: false
+    seg_gt: false
+    seg: false
+    seg_mask: false
+    seg_opencities_mask: false
+    seg_luxcarta: false
+    crossfield: false
+    uv_angles: false
+    poly_shapefile: false
+    poly_geojson: false
+    poly_viz: false
+
+  save_aggregated_outputs:
+    stats: false
+    seg_coco: false
+    poly_coco: false
