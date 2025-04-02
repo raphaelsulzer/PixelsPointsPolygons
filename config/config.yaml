@@ -42,8 +42,8 @@ eval:
     # - mta
     # - topdig
 
-save_best: false
-save_latest: false
+save_best: true
+save_latest: true
 save_every: 10
 val_every: 1
 

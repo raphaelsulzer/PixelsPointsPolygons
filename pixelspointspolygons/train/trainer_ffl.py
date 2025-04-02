@@ -19,7 +19,7 @@ from torch import optim
 from transformers import  get_cosine_schedule_with_warmup
 from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 
-from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything, MetricLogger
+from ..misc import get_lr, plot_ffl, seed_everything, MetricLogger
 from ..models.ffl import *
 from ..models.ffl.losses import build_combined_loss
 from ..models.ffl.local_utils import batch_to_cuda
@@ -194,8 +194,7 @@ class FFLTrainer(Trainer):
                         
             # ### debug vis
             if self.cfg.debug_vis:
-                file_names = get_tile_names_from_dataloader(self.train_loader.dataset.coco.imgs, tile_ids)
-                plot_hisup(image_batch=x_image,lidar_batch=x_lidar,annotations_batch=y,tile_names=file_names)
+                plot_ffl(batch_dict)
 
             batch_dict = batch_to_cuda(batch_dict)
             

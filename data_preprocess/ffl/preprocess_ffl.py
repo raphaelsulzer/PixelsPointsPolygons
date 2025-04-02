@@ -25,7 +25,7 @@ from copy import deepcopy
 # from lydorn_utils import print_utils
 # from lydorn_utils import python_utils
 
-from torch_lydorn.torch.utils.data import Dataset as LydornDataset, __repr__
+from torch_lydorn.torch.utils.data import __repr__
 
 from torch_lydorn.torchvision.datasets import utils
 
@@ -311,6 +311,9 @@ def main(cfg):
     ## Best thing to do would be to add the pt file path to my original coco annotations file so that I could continue to load
     ## with my own dataloader and load the pt file in the __getitem__ method and apply augmentations there.
     ## shouldn't be too hard to augment the frame field
+    
+    ## UPDATE: I should really just add all of this to the ppp_dataset preprocessing and directly store the ffl_info inside the 
+    ## COCO annotations file.
 
     ###########################################
     ########### DEBUG VISUALIZATION ###########
