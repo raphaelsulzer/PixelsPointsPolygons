@@ -87,6 +87,13 @@ pip install -r requirements-torch-cuda.txt
 
 pip install -e .
 
+echo "________________ Install Pytorch_Lydorn and Lydorn_Utils for FFL _______________"
+cd ./pixelspointspolygons/ffl_submodules/lydorn_utils
+pip install .
+cd ../pytorch_lydorn
+pip install .
+cd ../..
+
 ### take this out of the script because it doesn't work on the front end of g5k and probably jz too, because cuda is not properly installed there
 ### instead run this inside the job submission script
 ## make the afm module for hisup
