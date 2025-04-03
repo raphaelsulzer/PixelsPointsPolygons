@@ -174,47 +174,49 @@ class DefaultDataset(Dataset):
         
         group_element = d4_transform['params']['group_element']
         
-        ## v1
-        # if group_element == 'e':
-        #     # Identity, no change
-        #     pass
-        # elif group_element == 'r90':
-        #     crossfield_angle_mask = (crossfield_angle_mask + np.pi / 2) % np.pi
-        # elif group_element == 'r180':
-        #     crossfield_angle_mask = (crossfield_angle_mask + np.pi) % np.pi
-        # elif group_element == 'r270':
-        #     crossfield_angle_mask = (crossfield_angle_mask + 3 * np.pi / 2) % np.pi
-        # elif group_element == 'v':
-        #     crossfield_angle_mask = (np.pi - crossfield_angle_mask) % np.pi
-        # elif group_element == 'hvt':
-        #     crossfield_angle_mask = (3 * np.pi / 2 - crossfield_angle_mask) % np.pi
-        # elif group_element == 'h':
-        #     crossfield_angle_mask = (-crossfield_angle_mask) % np.pi
-        # elif group_element == 't':
-        #     crossfield_angle_mask = (np.pi / 2 - crossfield_angle_mask) % np.pi
-        # else:
-        #     raise ValueError(f"Unknown group element {group_element}")
-        
-        ## v2
+        # v1
         if group_element == 'e':
             # Identity, no change
             pass
         elif group_element == 'r90':
-            crossfield_angle_mask+= (np.pi / 2)
+            crossfield_angle_mask = (crossfield_angle_mask + np.pi / 2) % np.pi
         elif group_element == 'r180':
-            crossfield_angle_mask+= np.pi
+            crossfield_angle_mask = (crossfield_angle_mask + np.pi) % np.pi
         elif group_element == 'r270':
-            crossfield_angle_mask+= (3 * np.pi / 2)
+            crossfield_angle_mask = (crossfield_angle_mask + 3 * np.pi / 2) % np.pi
         elif group_element == 'v':
-            crossfield_angle_mask = np.pi - crossfield_angle_mask
+            crossfield_angle_mask = (np.pi - crossfield_angle_mask) % np.pi
         elif group_element == 'hvt':
-            crossfield_angle_mask+= (3 * np.pi / 2)
+            crossfield_angle_mask = (3 * np.pi / 2 - crossfield_angle_mask) % np.pi
         elif group_element == 'h':
-            pass
+            crossfield_angle_mask = (-crossfield_angle_mask) % np.pi
         elif group_element == 't':
-            crossfield_angle_mask+= (np.pi / 2) # t is equal to r90+h, so in this case just r90
+            crossfield_angle_mask = (np.pi / 2 - crossfield_angle_mask) % np.pi
         else:
             raise ValueError(f"Unknown group element {group_element}")
+        
+        # ## v2
+        # if group_element == 'e':
+        #     # Identity, no change
+        #     pass
+        # elif group_element == 'r90':
+        #     crossfield_angle_mask+= (np.pi / 2)
+        # elif group_element == 'r180':
+        #     crossfield_angle_mask+= np.pi
+        # elif group_element == 'r270':
+        #     crossfield_angle_mask+= (3 * np.pi / 2)
+        # elif group_element == 'v':
+        #     crossfield_angle_mask = np.pi - crossfield_angle_mask
+        # elif group_element == 'hvt':
+        #     crossfield_angle_mask+= (3 * np.pi / 2)
+        # elif group_element == 'h':
+        #     pass
+        # elif group_element == 't':
+        #     crossfield_angle_mask+= (np.pi / 2) # t is equal to r90+h, so in this case just r90
+        # else:
+        #     raise ValueError(f"Unknown group element {group_element}")
+
+
         return crossfield_angle_mask
 
     def __getitem__(self, idx):
