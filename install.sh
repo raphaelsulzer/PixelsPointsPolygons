@@ -88,7 +88,7 @@ pip install -r requirements-torch-cuda.txt
 pip install -e .
 
 echo "________________ Install Pytorch_Lydorn and Lydorn_Utils for FFL _______________"
-cd ./pixelspointspolygons/ffl_submodules/lydorn_utils
+cd ./ffl_submodules/lydorn_utils
 pip install .
 cd ../pytorch_lydorn
 pip install .
