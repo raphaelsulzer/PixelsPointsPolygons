@@ -4,14 +4,17 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
+import json
 import torch
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 import torch.distributed as dist
 
-from ..predictor import Predictor
 from ...models.ffl.local_utils import batch_to_cpu, split_batch, list_of_dicts_to_dict_of_lists, flatten_dict
 from ...models.ffl.model_ffl import FFLModel
+from ...datasets import get_train_loader, get_val_loader
+
+from ..predictor import Predictor
 
 from . import inference
 from . import save_utils
@@ -21,23 +24,35 @@ class FFLPredictor(Predictor):
     
     def predict(self):
         
+        self.logger.info(f"Starting prediction and polygonization...")
+
+
         # TODO: just init the model and load checkpoint here and then call predict_from_loader
         # Loading model
         self.model = FFLModel(self.cfg, self.local_rank)
         self.load_checkpoint(self.model)
-        self.predict_from_loader(self.model, self.loader, save_individual_outputs=self.cfg.model.eval.save_individual_outputs.seg_mask)
         
-        raise NotImplementedError("Predict method not implemented in FFLPredictor class.")
-    
+        self.loader = get_val_loader(self.cfg,logger=self.logger)
+        
+        annotations = self.predict_from_loader(self.model, self.loader)
+        
+        for k,coco_predictions in annotations.items():
+            outfile = os.path.join(os.path.dirname(self.cfg.eval.pred_file), k, f"{self.cfg.checkpoint}.json")
+            os.makedirs(os.path.dirname(outfile), exist_ok=True)
+            self.logger.info(f"Saving prediction {k} to {outfile}")
+            with open(outfile, "w") as fp:
+                fp.write(json.dumps(coco_predictions))
 
         
-    def predict_from_loader(self, model, loader, save_individual_outputs=False, save_aggregated_outputs=True, split_name="val"):
+    def predict_from_loader(self, model, loader):
+        
+        self.logger.debug(f"Prediction from {self.cfg.checkpoint}")
+        self.logger.debug(f"Polygonization with method {self.cfg.model.polygonization.method} and thresholds {self.cfg.model.polygonization.acm_method.tolerance}")
         
         if isinstance(loader.dataset, torch.utils.data.Subset):
             self.logger.warning("You are predicting only a subset of the validation dataset. However, the coco evaluation expects the full validation set, so the its metrics will not be very useful.")
         
         model.eval()
-        
             
         tile_data_list = []
         for tile_i, tile_data in enumerate(loader):
@@ -84,26 +99,6 @@ class FFLPredictor(Predictor):
 
             accumulated_tile_data = batch_to_cpu(accumulated_tile_data)
             sample_list = split_batch(accumulated_tile_data)
-
-            # # Save individual outputs:
-            # if save_individual_outputs:
-            #     for sample in sample_list:
-            #         # saver_async.add_work(sample)  # TODO: fix bug in using saver_async
-            #         save_outputs_partial(sample)
-
-            # # Store aggregated outputs:
-            # if save_aggregated_outputs:
-            #     self.shared_dict["name_list"].extend(accumulated_tile_data["name"])
-            #     if self.cfg.model.eval.save_aggregated_outputs.seg_coco:
-            #         for sample in sample_list:
-            #             annotations = save_utils.seg_coco(sample)
-            #             self.shared_dict["seg_coco_list"].extend(annotations)
-            #     if self.cfg.model.eval.save_aggregated_outputs.poly_coco:
-            #         for sample in sample_list:
-            #             annotations = save_utils.poly_coco(sample["polygons"], sample["polygon_probs"], sample["image_id"].item())
-            #             self.shared_dict["poly_coco_list"].append(annotations)  # annotations could be a dict, or a list
-            # # END of loop over samples
-            
             
             annotations_list = []
             for sample in sample_list:
@@ -116,42 +111,3 @@ class FFLPredictor(Predictor):
             annotations = list_of_dicts_to_dict_of_lists(annotations_list)
             annotations = flatten_dict(annotations)
             return annotations
-
-                
-            # # Save aggregated results
-            # if save_aggregated_outputs:
-            #     self.barrier.wait()  # Wait on all processes so that shared_dict is synchronized.
-            #     if self.gpu == 0:
-            #         if self.cfg.model.eval.save_aggregated_outputs.stats:
-            #             print("Start saving stats:")
-            #             # Save sample_stats in CSV:
-            #             t1 = time.time()
-            #             stats_filepath = os.path.join(self.eval_dirpath, "{}.stats.csv".format(split_name))
-            #             stats_file = open(stats_filepath, "w")
-            #             fnames = ["name", "iou"]
-            #             writer = csv.DictWriter(stats_file, fieldnames=fnames)
-            #             writer.writeheader()
-            #             for name, iou in sorted(zip(self.shared_dict["name_list"], self.shared_dict["iou_list"]), key=lambda pair: pair[0]):
-            #                 writer.writerow({
-            #                     "name": name,
-            #                     "iou": iou
-            #                 })
-            #             stats_file.close()
-            #             print(f"Finished in {time.time() - t1:02}s")
-
-            #         if self.cfg.model.eval.save_aggregated_outputs.seg_coco:
-            #             print("Start saving seg_coco:")
-            #             t1 = time.time()
-            #             seg_coco_filepath = os.path.join(self.eval_dirpath, "{}.annotation.seg.json".format(split_name))
-            #             python_utils.save_json(seg_coco_filepath, list(self.shared_dict["seg_coco_list"]))
-            #             print(f"Finished in {time.time() - t1:02}s")
-
-            #         if self.cfg.model.eval.save_aggregated_outputs.poly_coco:
-            #             print("Start saving poly_coco:")
-            #             poly_coco_base_filepath = os.path.join(self.eval_dirpath, f"{split_name}.annotation.poly")
-            #             t1 = time.time()
-            #             save_utils.save_poly_coco(self.shared_dict["poly_coco_list"], poly_coco_base_filepath)
-            #             print(f"Finished in {time.time() - t1:02}s")
-
-
-
