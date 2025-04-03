@@ -1,6 +1,0 @@
-[submodule "data_preprocess/ffl/pytorch_lydorn"]
-	path = data_preprocess/ffl/pytorch_lydorn
-	url = https://github.com/Lydorn/pytorch_lydorn.git
-[submodule "data_preprocess/ffl/lydorn_utils"]
-	path = data_preprocess/ffl/lydorn_utils
-	url = https://github.com/Lydorn/lydorn_utils.git
