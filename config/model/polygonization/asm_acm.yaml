@@ -1,6 +1,6 @@
 # Possible options: simple, acm, asm, tracing or a list to apply multiple methods
 method: 
-  # - simple
+  - simple
   - acm
   # - asm
   # - tracing
@@ -12,7 +12,7 @@ simple_method:
   data_level: 0.5  # Segmentation level to initialize contours
   tolerance: 
     - 0.125
-    # - 1  # List of values to apply
+    - 1  # List of values to apply
   seg_threshold: 0.5
   min_area: 10
 
@@ -55,6 +55,6 @@ acm_method:
   device: "cuda"
   tolerance:
       - 0.125
-    # - 1  # List of values to apply
+      - 1  # List of values to apply
   seg_threshold: 0.5  # Remove polygons below this threshold
   min_area: 10
