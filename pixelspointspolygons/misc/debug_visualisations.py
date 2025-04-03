@@ -146,44 +146,31 @@ def plot_crossfield_jet(image, mask=None, alpha = 0.7, ax=None, show_axis='off',
     if show:
         plt.show(block=False)
         
-def plot_crossfield(angles_rad, mask, ax=None, show_axis='off', show=False):
 
-    angles_rad = angles_rad.squeeze()/2.0
-    mask = (mask == 1).numpy()
+
+def plot_crossfield(crossfield, crossfield_stride=8, ax=None, show_axis='off', mask=None, alpha=1.0, width=2.0, add_scale=0.7, show=False):
+    
+    crossfield = crossfield.squeeze()
     
     if ax is None:
         fig, ax = plt.subplots(figsize=(5, 5), dpi=50)
     ax.axis(show_axis)
     
-    # Compute arrow directions
-    U = np.cos(angles_rad)  # X component
-    V = np.sin(angles_rad)  # Y component
+    x = np.arange(0, crossfield.shape[1], crossfield_stride)
+    y = np.arange(0, crossfield.shape[0], crossfield_stride)
+    x, y = np.meshgrid(x, y)
 
-
+    scale = add_scale * 1 / crossfield_stride
     
-    # Generate correct X, Y grid matching (512, 512)
-    Y, X = np.meshgrid(np.arange(angles_rad.shape[0]), np.arange(angles_rad.shape[1]), indexing='ij')
-
-    # step = 50  # Adjust for desired density
-    # X = X[::step, ::step]
-    # Y = Y[::step, ::step]
-    # U = U[::step, ::step]
-    # V = V[::step, ::step]
-    # mask = mask[::step, ::step]
+    u = np.cos(crossfield)
+    v = np.sin(crossfield)
     
-    # Apply the mask
-    X_masked, Y_masked = X[mask], Y[mask]
-    U_masked, V_masked = U[mask], V[mask]
+    u = u[::crossfield_stride, ::crossfield_stride]
+    v = v[::crossfield_stride, ::crossfield_stride]
     
-    step = 30
-    X_masked = X_masked[::step]
-    Y_masked = Y_masked[::step]
-    U_masked = U_masked[::step]
-    V_masked = V_masked[::step]
-
-    length = 2.0
-    # Create the plot
-    ax.quiver(X_masked, Y_masked, U_masked, V_masked, color='blue', angles='xy', scale_units='xy', scale=None, width=0.05, headlength=40)
+    quiveropts = dict(color=(0, 0, 1, alpha), headaxislength=0, headlength=0, pivot='middle', angles='xy', units='xy',
+                      scale=scale, width=width, headwidth=1)
+    ax.quiver(x, y, u, -v, **quiveropts)
 
     if show:
         plt.show(block=False)
@@ -347,7 +334,7 @@ def plot_ffl(batch):
         if lidar_batch is not None:
             plot_point_cloud(lidar_batch[i], show=False, ax=ax[i]) 
                
-        # plot_mask(building[i], color=[1,0,0,0.1], show=False, ax=ax[i])
+        plot_mask(building[i], color=[1,0,0,1.0], show=False, ax=ax[i])
         # plot_mask(edges[i], color=[0,1,0,1], show=False, ax=ax[i])
         # plot_mask(vertices[i], color=[0,0,1,1], show=False, ax=ax[i])
         

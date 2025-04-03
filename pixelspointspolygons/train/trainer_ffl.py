@@ -53,7 +53,7 @@ class FFLTrainer(Trainer):
     
     def setup_model(self):
         
-        self.model = FFLModel(self.cfg)
+        self.model = FFLModel(self.cfg, self.local_rank)
 
         
     def setup_optimizer(self):

@@ -159,6 +159,10 @@ class DefaultDataset(Dataset):
         # first bring the values back to [0,180] from 8bit
         crossfield_angle_mask = crossfield_angle_mask * np.pi / 255.0
         
+        # for some reason the normals instead of tangents are stored in the .pt file
+        crossfield_angle_mask = (crossfield_angle_mask + np.pi / 2) % np.pi
+        
+        
         if self.split == 'val':
             return crossfield_angle_mask
     
