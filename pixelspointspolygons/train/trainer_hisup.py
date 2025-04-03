@@ -358,14 +358,3 @@ class HiSupTrainer(Trainer):
 
     
 
-
-    def train(self):
-        seed_everything(42)
-        if self.is_ddp:
-            self.setup_ddp()
-        self.setup_model()
-        self.setup_dataloader()
-        self.setup_optimizer()
-        self.setup_loss_fn_dict()
-        self.train_val_loop()
-        self.cleanup()

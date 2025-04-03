@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 from ..misc import *
 
-class Predictor:
+class HiSupPredictor:
     def __init__(self, cfg, local_rank=0, world_size=1):
         self.cfg = cfg
         
@@ -77,10 +77,15 @@ class Predictor:
                 raise ValueError("Model checkpoint and current config do not match.")   
         
         
-        single_gpu_state_dict = {k.replace(".module.", "."): v for k, v in checkpoint["model"].items()}
+        single_gpu_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["model"].items()}
         # single_gpu_state_dict = {k.replace("encoder.image_encoder", "encoder.encoder"): v for k, v in checkpoint["state_dict"].items()}
         
         # single_gpu_state_dict = checkpoint["state_dict"]
         model.load_state_dict(single_gpu_state_dict)
         epoch = checkpoint['epoch']
         self.logger.info(f"Model loaded from epoch: {epoch}")
+        
+    def predict_with_overlap():
+        
+        # this could should be in the original HiSup repo in the INRIA predictions
+        pass

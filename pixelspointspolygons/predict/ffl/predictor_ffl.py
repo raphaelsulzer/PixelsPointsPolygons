@@ -9,11 +9,9 @@ import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 import torch.distributed as dist
 
-from functools import partial
-
 from ..predictor import Predictor
 from ...models.ffl.local_utils import batch_to_cpu, split_batch, list_of_dicts_to_dict_of_lists, flatten_dict
-
+from ...models.ffl.model_ffl import FFLModel
 
 from . import inference
 from . import save_utils
@@ -25,16 +23,14 @@ class FFLPredictor(Predictor):
         
         # TODO: just init the model and load checkpoint here and then call predict_from_loader
         # Loading model
-        self.setup_model()
-        self.load_checkpoint()
-        self.init_ddp()
+        self.model = FFLModel(self.cfg, self.local_rank)
+        self.load_checkpoint(self.model)
         self.predict_from_loader(self.model, self.loader, save_individual_outputs=self.cfg.model.eval.save_individual_outputs.seg_mask)
         
         raise NotImplementedError("Predict method not implemented in FFLPredictor class.")
     
 
         
-    
     def predict_from_loader(self, model, loader, save_individual_outputs=False, save_aggregated_outputs=True, split_name="val"):
         
         if isinstance(loader.dataset, torch.utils.data.Subset):

@@ -17,9 +17,6 @@ import torch.distributed as dist
 
 from tqdm import tqdm
 from omegaconf import OmegaConf
-from torch import nn
-from torch import optim
-from transformers import get_linear_schedule_with_warmup
 
 from ..misc import make_logger, get_lr, seed_everything
 from ..datasets import get_train_loader, get_val_loader
@@ -69,24 +66,6 @@ class Trainer:
                       leave=True)
     
         return pbar
-    
-    def setup_ddp(self):
-
-        # Initializes the distributed backend which will take care of synchronizing nodes/GPUs.
-        dist_url = "env://"  # default
-
-        dist.init_process_group(
-            backend="nccl",
-            init_method=dist_url,
-            world_size=self.world_size,
-            rank=int(os.environ["RANK"])
-        )
-        
-        # this will make all .cuda() calls work properly.
-        torch.cuda.set_device(self.local_rank)
-
-        # synchronizes all threads to reach this point before moving on.
-        dist.barrier()
         
     def setup_wandb(self):
     
@@ -284,17 +263,18 @@ class Trainer:
                 if self.local_rank == 0:
                     wandb.log(wandb_dict)
 
-    
+    def setup_model(self):
+        pass
+    def setup_optimizer(self):
+        pass
+    def setup_loss_fn_dict(self):
+        pass
 
     def train(self):
-        """This is just an example of how to use the Trainer class. The actual train function needs to be reimplemented for each architecture."""
-        
         seed_everything(42)
-        if self.is_ddp:
-            self.setup_ddp()
-        # self.setup_model()
+        self.setup_model()
         self.setup_dataloader()
         self.setup_optimizer()
-        # self.setup_loss_fn_dict()
+        self.setup_loss_fn_dict()
         self.train_val_loop()
         self.cleanup()
