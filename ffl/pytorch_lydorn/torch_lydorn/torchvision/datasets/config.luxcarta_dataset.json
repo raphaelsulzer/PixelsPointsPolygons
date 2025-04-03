@@ -1,0 +1,28 @@
+{
+  "data_dir_candidates": [
+    "/local/shared/data", // try cluster local node first
+    "/data/titane/user/nigirard/data", // Try cluster /data directory
+    "~/data", // In home directory (docker)
+    "/data" // In landsat's /data volume (docker)
+  ],
+  "data_root_partial_dirpath": "luxcarta_precise_buildings",
+  "num_workers": 10,
+  "dataset_params": {
+    "data_patch_size": 725,  // Size of patch saved on disk if data aug is True (allows for rotating patches for the train split)
+    "input_patch_size": 512 // Size of patch fed to the model
+  },
+  "data_split_params": {
+    "seed": 0,  // Change this to change the random splitting of data in train/val/test
+    "train_fraction": 0.9,
+    "val_fraction": 0.1 // test_fraction is the rest
+  },
+  "data_aug_params": {
+    "enable": true,
+    "vflip": true,
+    "rotate": true,
+    "color_jitter": true,
+    "device": "cuda"
+  },
+
+  "device": "cuda"  // Only has effects when mode is val or test. When mode is train, always use CUDA
+},
