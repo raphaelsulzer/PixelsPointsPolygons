@@ -255,11 +255,11 @@ class FFLTrainer(Trainer):
         self.model.train()  # Important for batchnorm and dropout, even in computing loss norms
         
         ## compute loss norms for loss weighting
-        # with torch.no_grad():
-        #     loss_norm_batches_min = self.cfg.model.loss.multiloss.normalization_params.min_samples // (2 * self.cfg.model.batch_size) + 1
-        #     loss_norm_batches_max = self.cfg.model.loss.multiloss.normalization_params.max_samples // (2 * self.cfg.model.batch_size) + 1
-        #     loss_norm_batches = max(loss_norm_batches_min, min(loss_norm_batches_max, len(self.train_loader)))
-        #     self.compute_loss_norms(self.train_loader, loss_norm_batches)
+        with torch.no_grad():
+            loss_norm_batches_min = self.cfg.model.loss.multiloss.normalization_params.min_samples // (2 * self.cfg.model.batch_size) + 1
+            loss_norm_batches_max = self.cfg.model.loss.multiloss.normalization_params.max_samples // (2 * self.cfg.model.batch_size) + 1
+            loss_norm_batches = max(loss_norm_batches_min, min(loss_norm_batches_max, len(self.train_loader)))
+            self.compute_loss_norms(self.train_loader, loss_norm_batches)
 
         best_loss = float('inf')
 

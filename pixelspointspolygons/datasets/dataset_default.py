@@ -166,7 +166,7 @@ class DefaultDataset(Dataset):
         
         
         if d4_transform["__class_fullname__"] != "D4":
-            self.logger.warning(f"No D4 transform applied.")
+            # self.logger.warning(f"No D4 transform applied.")
             return crossfield_angle_mask
         
         if not d4_transform['applied']:

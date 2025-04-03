@@ -79,7 +79,7 @@ defaults:
     - polygonization: asm_acm
 
 augmentations:
-    - D4
+    # - D4
     - Resize
 
 eval:
