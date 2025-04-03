@@ -13,17 +13,14 @@ import torch
 
 import torch.distributed as dist
 
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch import nn
 from torch import optim
 from transformers import  get_cosine_schedule_with_warmup
-from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 
 from ..misc import get_lr, plot_ffl, seed_everything, MetricLogger
-from ..models.ffl import *
 from ..models.ffl.losses import build_combined_loss
 from ..models.ffl.local_utils import batch_to_cuda
 from ..models.ffl.measures import iou as compute_iou
+from ..models.ffl.model_ffl import FFLModel
 from ..predict.ffl.predictor_ffl import FFLPredictor as Predictor
 from ..eval import Evaluator
 
@@ -56,28 +53,7 @@ class FFLTrainer(Trainer):
     
     def setup_model(self):
         
-        if self.cfg.use_images and self.cfg.use_lidar:
-            model = MultiEncoderDecoder(self.cfg)
-        elif self.cfg.use_images:
-            encoder = UNetResNetBackbone(self.cfg)
-            encoder = _SimpleSegmentationModel(encoder, classifier=torch.nn.Identity())
-        elif self.cfg.use_lidar: 
-            model = LiDAREncoderDecoder(self.cfg)
-        else:
-            raise ValueError("At least one of use_image or use_lidar must be True")
-        
-        model = EncoderDecoder(
-            encoder=encoder,
-            cfg=self.cfg
-        )
-                
-        model.to(self.cfg.device)
-        
-        if self.is_ddp:
-            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model = DDP(model, device_ids=[self.local_rank])
-        
-        self.model = model
+        self.model = FFLModel(self.cfg)
 
         
     def setup_optimizer(self):
@@ -382,17 +358,4 @@ class FFLTrainer(Trainer):
                     self.logger.debug(f"{k}: {v}")
                 if self.local_rank == 0:
                     wandb.log(wandb_dict)
-
-    
-
-
-    def train(self):
-        seed_everything(42)
-        if self.is_ddp:
-            self.setup_ddp()
-        self.setup_model()
-        self.setup_dataloader()
-        self.setup_optimizer()
-        self.setup_loss_fn_dict()
-        self.train_val_loop()
-        self.cleanup()
+        

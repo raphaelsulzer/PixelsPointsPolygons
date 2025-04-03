@@ -1,6 +1,10 @@
 import torch
+
+from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.nn as nn
 from torchvision.models.segmentation._utils import _SimpleSegmentationModel
-from torchvision.models.segmentation._utils import _SimpleSegmentationModel
+
+from .unet_resnet import UNetResNetBackbone
 
 def get_out_channels(module):
     if hasattr(module, "out_channels"):
@@ -14,10 +18,6 @@ def get_out_channels(module):
         i += 1
     # If we get out of the loop but out_channels is None, then the prev child of the parent module will be checked, etc.
     return out_channels
-
-
-    
-
 
 class EncoderDecoder(torch.nn.Module):
     def __init__(self, cfg, encoder):
@@ -99,11 +99,41 @@ class EncoderDecoder(torch.nn.Module):
 
         final_outputs = self.inference(xb["image"])
 
-
-            # # Save image
-            # image_seg_display = plot_utils.get_tensorboard_image_seg_display(image_display, final_outputs["seg"],
-            #                                                                  crossfield=final_outputs["crossfield"])
-            # image_seg_display = image_seg_display[1].cpu().detach().numpy().transpose(1, 2, 0)
-            # skimage.io.imsave(f"out_final.png", image_seg_display)
+        # # Save image
+        # image_seg_display = plot_utils.get_tensorboard_image_seg_display(image_display, final_outputs["seg"],
+        #                                                                  crossfield=final_outputs["crossfield"])
+        # image_seg_display = image_seg_display[1].cpu().detach().numpy().transpose(1, 2, 0)
+        # skimage.io.imsave(f"out_final.png", image_seg_display)
 
         return final_outputs, xb
+
+
+
+class FFLModel:
+    
+    def __new__(self, cfg, local_rank):
+        
+        self.cfg = cfg
+                
+        if self.cfg.use_images and self.cfg.use_lidar:
+            model = MultiEncoderDecoder(self.cfg)
+        elif self.cfg.use_images:
+            encoder = UNetResNetBackbone(self.cfg)
+            encoder = _SimpleSegmentationModel(encoder, classifier=torch.nn.Identity())
+        elif self.cfg.use_lidar: 
+            model = LiDAREncoderDecoder(self.cfg)
+        else:
+            raise ValueError("At least one of use_image or use_lidar must be True")
+        
+        model = EncoderDecoder(
+            encoder=encoder,
+            cfg=self.cfg
+        )
+                
+        model.to(self.cfg.device)
+        
+        if self.cfg.multi_gpu:
+            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            model = DDP(model, device_ids=[local_rank])
+    
+        return model

@@ -152,7 +152,8 @@ class Pix2PolyTrainer(Trainer):
     
     def setup_model(self):
         
-        ## TODO: maybe it is better to make a model class that goes at the beginning of this file, which can then also be used by the Predictor class
+        ## TODO: maybe it is better to make a model class that goes inside the model_{archictecture}.py file, which can then also be used by the Predictor class
+        ## See FFL where this is already done
         
         if self.cfg.use_images and self.cfg.use_lidar:
             encoder = MultiEncoder(self.cfg)
@@ -184,6 +185,9 @@ class Pix2PolyTrainer(Trainer):
             model = DDP(model, device_ids=[self.local_rank])
         
         self.model = model
+        
+        self.setup_tokenizer()
+        self.setup_cfg_vars()
 
     def setup_dataloader(self):
         self.train_loader = get_train_loader(self.cfg,tokenizer=self.tokenizer)
@@ -525,16 +529,3 @@ class Pix2PolyTrainer(Trainer):
 
     
 
-
-    def train(self):
-        seed_everything(42)
-        if self.is_ddp:
-            self.setup_ddp()
-        self.setup_tokenizer()
-        self.setup_cfg_vars()
-        self.setup_model()
-        self.setup_dataloader()
-        self.setup_optimizer()
-        self.setup_loss_fn_dict()
-        self.train_val_loop()
-        self.cleanup()

@@ -5,7 +5,7 @@ import torch
 
 from collections import defaultdict
 
-from .utils import SmoothedValue
+from .shared_utils import SmoothedValue
 
 
 class MetricLogger:

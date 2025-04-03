@@ -38,11 +38,12 @@
             "program": "${workspaceFolder}/scripts/predict.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=debug",
+                "run_type=release",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
+                "checkpoint=validation_best"
             ],
             "justMyCode": false
         },
