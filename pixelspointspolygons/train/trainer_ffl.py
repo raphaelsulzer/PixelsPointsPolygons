@@ -16,7 +16,7 @@ import torch.distributed as dist
 from torch import optim
 from transformers import  get_cosine_schedule_with_warmup
 
-from ..misc import get_lr, plot_ffl, seed_everything, MetricLogger
+from ..misc import get_lr, plot_ffl, MetricLogger
 from ..models.ffl.losses import build_combined_loss
 from ..models.ffl.local_utils import batch_to_cuda
 from ..models.ffl.measures import iou as compute_iou
