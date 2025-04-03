@@ -1,8 +1,7 @@
 name: ffl
 encoder:
     type: UNetResNet101
-    pretrained: False
-    checkpoint_file: ${...host.data_root}/hrnetv2_w48_imagenet_pretrained.pth
+    pretrained: true
 
     input_size: 512
     input_height: ${.input_size}
@@ -57,7 +56,7 @@ loss:
     bce_coef: 1.0
     dice_coef: 0.2
     use_dist: true  # Dist weights as in the original U-Net paper
-    use_size: true  # Size weights increasing importance of smaller buildings
+    use_size: false  # Size weights increasing importance of smaller buildings
     w0: 50  # From original U-Net paper: distance weight to increase loss between objects
     sigma: 10  # From original U-Net paper: distance weight to increase loss between objects
 
