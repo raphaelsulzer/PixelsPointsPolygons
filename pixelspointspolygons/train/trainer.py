@@ -93,9 +93,9 @@ class Trainer:
     def average_across_gpus(self, meter):
         
         if not self.is_ddp:
-            return meter.avg
+            return meter.global_avg
         
-        tensor = torch.tensor([meter.avg], device=self.device)
+        tensor = torch.tensor([meter.global_avg], device=self.device)
         dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
         tensor /= self.world_size
         return tensor.item()
@@ -114,7 +114,7 @@ class Trainer:
             "cfg": self.cfg,
             "model": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
-            "scheduler": self.lr_scheduler.state_dict(),
+            "lr_scheduler": self.lr_scheduler.state_dict(),
             **kwargs
         }
         
@@ -125,17 +125,52 @@ class Trainer:
     def load_checkpoint(self):
         """Load checkpoint from file. This is a generic function that loads the model, optimizer and scheduler state dicts."""
         
-        map_location = {'cuda:%d' % 0: 'cuda:%d' % self.local_rank}
-        checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
+        ## get the file
+        if self.cfg.checkpoint_file is not None:
+            checkpoint_file = self.cfg.checkpoint_file
+            self.cfg.checkpoint = os.path.basename(checkpoint_file).split(".")[0]+"_overwrite"
+        else:
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
         if not os.path.isfile(checkpoint_file):
-            raise FileExistsError(f"Checkpoint file {checkpoint_file} does not exist.")
-
-        self.logger.info(f"Load checkpoint {self.cfg.checkpoint} from {checkpoint_file}...")
+            raise FileExistsError(f"Checkpoint file {checkpoint_file} not found.")
+        self.logger.info(f"Loading model from checkpoint: {checkpoint_file}")
         
-        checkpoint = torch.load(checkpoint_file, map_location=map_location)
-        self.model.load_state_dict(checkpoint.get("model",checkpoint.get("state_dict")))
+        ## load the checkpoint
+        checkpoint = torch.load(checkpoint_file, map_location=self.cfg.device)
+        
+        temp = {}
+        for k,v in checkpoint.items():
+            if "_state_dict" in k:
+                temp[k.replace("_state_dict","")] = v
+            else:
+                temp[k] = v
+        checkpoint = temp
+        del temp
+        
+        ## check for correct model type
+        cfg = checkpoint.get("cfg",None)
+        if cfg is not None:
+            if not cfg.use_lidar == self.cfg.use_lidar:
+                self.logger.error(f"Model checkpoint was trained with use_lidar={cfg.use_lidar}, but current config is use_lidar={self.cfg.use_lidar}.")
+                raise ValueError("Model checkpoint and current config do not match.")
+            if not cfg.use_images == self.cfg.use_images:
+                self.logger.error(f"Model checkpoint was trained with use_images={cfg.use_images}, but current config is use_images={self.cfg.use_images}.")
+                raise ValueError("Model checkpoint and current config do not match.")
+            
+            if hasattr(cfg, "model.fusion") and isattr(self.cfg.model, "fusion"):
+                if not cfg.model.fusion == self.cfg.model.fusion:
+                    self.logger.error(f"Model checkpoint was trained with fusion={cfg.model.fusion}, but current config is fusion={self.cfg.model.fusion}.")
+                    raise ValueError("Model checkpoint and current config do not match.")   
+                
+        if not self.cfg.multi_gpu:
+            model_state_dict = {k.replace(".module.", "."): v for k, v in checkpoint["model"].items()}      
+        else:
+            model_state_dict = checkpoint["model"]  
+        self.model.load_state_dict(model_state_dict)
         self.optimizer.load_state_dict(checkpoint["optimizer"])
-        self.lr_scheduler.load_state_dict(checkpoint["scheduler"])
+        self.lr_scheduler.load_state_dict(checkpoint.get("scheduler",checkpoint.get("lr_scheduler")))
+        if "loss_func" in checkpoint:
+            self.loss_func.load_state_dict(checkpoint["loss_func"])
         
         start_epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))
         self.cfg.model.start_epoch = start_epoch + 1

@@ -14,6 +14,7 @@ import torch
 import torch.distributed as dist
 import matplotlib.pyplot as plt
 
+from collections import defaultdict
 from torch import optim
 from transformers import  get_cosine_schedule_with_warmup
 
@@ -34,20 +35,16 @@ class FFLTrainer(Trainer):
         
     def setup_optimizer(self):
         # Get optimizer
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
+        # self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
 
+        self.optimizer = optim.Adam(self.model.parameters(),lr=self.cfg.model.learning_rate,eps=1e-8)
         # Get scheduler
         # num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
         num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
         self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
         self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
-        # num_warmup_steps = int(0.05 * num_training_steps)
-        num_warmup_steps = 0
-        self.lr_scheduler = get_cosine_schedule_with_warmup(
-            self.optimizer,
-            num_training_steps=num_training_steps,
-            num_warmup_steps=num_warmup_steps
-        )
+        self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, self.cfg.model.gamma)
+
     
     def setup_loss_fn_dict(self):
         
@@ -77,14 +74,12 @@ class FFLTrainer(Trainer):
         if self.cfg.multi_gpu:
             self.loss_func.sync(self.world_size)
         
-        
-    
 
-    def visualization(self, loader, epoch):
+    def visualization(self, loader, epoch, coco=None, show=False, num_images=2):
         
         self.model.eval()
         
-        from ..misc.debug_visualisations import plot_image, plot_mask, plot_crossfield
+        from ..misc.debug_visualisations import plot_image, plot_mask, plot_crossfield, plot_shapely_polygons
         from lydorn_utils.math_utils import compute_crossfield_uv
         import numpy as np
 
@@ -96,7 +91,14 @@ class FFLTrainer(Trainer):
         os.makedirs(outpath, exist_ok=True)
         self.logger.info(f"Save visualizations to {outpath}")
         
-        for i in range(3):
+        coco_anns = defaultdict(list)
+        if coco is not None:
+            for ann in coco:
+                if ann["image_id"] >= num_images: 
+                    break
+                coco_anns[ann["image_id"]].append(ann)
+        
+        for i in range(num_images):
         
             fig, ax = plt.subplots(1,2,figsize=(8, 4), dpi=150)
             ax = ax.flatten()
@@ -104,7 +106,7 @@ class FFLTrainer(Trainer):
             plot_image(batch["image"][i], ax=ax[0])
             plot_image(batch["image"][i], ax=ax[1])
             
-            mask_color = [1,0,0,0.5]
+            mask_color = [1,1,1,0.4]
             plot_mask(batch["gt_polygons_image"][i][0], ax=ax[0], color=mask_color)
             plot_mask(pred["seg"][i].squeeze()>0.5, ax=ax[1], color=mask_color)
             
@@ -114,6 +116,10 @@ class FFLTrainer(Trainer):
             plot_crossfield(pred_crossfield0, ax=ax[1])
             # pred_crossfield1 = np.arctan2(pred_crossfield[1].imag, pred_crossfield[1].real)
             # plot_crossfield(pred_crossfield1, ax=ax[1])
+            
+            polygons = coco_anns[i]
+            if len(polygons):
+                plot_shapely_polygons(polygons, ax=ax[1])
 
             ax[0].set_title("GT_"+batch["name"][i])
             ax[1].set_title("PRED_"+batch["name"][i])
@@ -122,11 +128,12 @@ class FFLTrainer(Trainer):
             outfile = os.path.join(outpath, f"{batch['name'][i]}.png")
             self.logger.debug(f"Save visualization to {outfile}")
             plt.savefig(outfile)
-            plt.show(block=True)
+            if show:
+                plt.show(block=True)
             if self.cfg.log_to_wandb:
                 wandb.log({f"{epoch}: {batch['name'][i]}": wandb.Image(fig)})            
             plt.close(fig)
-
+            
     def valid_one_epoch(self, epoch):
 
         self.logger.info(f"Validate epoch {epoch}...")
@@ -151,9 +158,6 @@ class FFLTrainer(Trainer):
 
         return loss_dict
 
-        
-        
-    
     
     def train_one_epoch(self, epoch, iter_idx):
         
@@ -163,9 +167,9 @@ class FFLTrainer(Trainer):
         loader = self.progress_bar(self.train_loader)
         for batch in loader:
                         
-            # ### debug vis
-            if self.cfg.debug_vis:
-                plot_ffl(batch)
+            # # ### debug vis
+            # if self.cfg.debug_vis:
+            #     plot_ffl(batch)
 
             batch = batch_to_cuda(batch)
             pred, batch = self.model(batch)
@@ -194,33 +198,31 @@ class FFLTrainer(Trainer):
 
     def train_val_loop(self):
 
-        if self.cfg.checkpoint is not None:
+        if self.cfg.checkpoint is not None or self.cfg.checkpoint_file is not None:
             self.load_checkpoint()
-            
-        if self.cfg.log_to_wandb and self.local_rank == 0:
-            self.setup_wandb()
-
-        predictor = Predictor(self.cfg,local_rank=self.local_rank,world_size=self.world_size)
-        
-        ## compute loss norms for loss weighting
-        if self.cfg.run_type.name == "release":
-            self.model.train()  # Important for batchnorm and dropout, even in computing loss norms
-            with torch.no_grad():
-                loss_norm_batches_min = self.cfg.model.loss.multiloss.normalization_params.min_samples // (2 * self.cfg.model.batch_size) + 1
-                loss_norm_batches_max = self.cfg.model.loss.multiloss.normalization_params.max_samples // (2 * self.cfg.model.batch_size) + 1
-                loss_norm_batches = max(loss_norm_batches_min, min(loss_norm_batches_max, len(self.train_loader)))
-                self.setup_loss_norms(self.train_loader, loss_norm_batches)
+        # else:
+        #     ## compute loss norms for loss weighting
+        #     if self.cfg.run_type.name == "release":
+        #         self.model.train()  # Important for batchnorm and dropout, even in computing loss norms
+        #         with torch.no_grad():
+        #             loss_norm_batches_min = self.cfg.model.loss.multiloss.normalization_params.min_samples // (2 * self.cfg.model.batch_size) + 1
+        #             loss_norm_batches_max = self.cfg.model.loss.multiloss.normalization_params.max_samples // (2 * self.cfg.model.batch_size) + 1
+        #             loss_norm_batches = max(loss_norm_batches_min, min(loss_norm_batches_max, len(self.train_loader)))
+        #             self.setup_loss_norms(self.train_loader, loss_norm_batches)
 
         best_loss = float('inf')
-
         iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
         epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
 
+        predictor = Predictor(self.cfg,local_rank=self.local_rank,world_size=self.world_size)
         if self.local_rank == 0:
             evaluator = Evaluator(self.cfg)
         else:
             evaluator = None
         
+        if self.cfg.log_to_wandb and self.local_rank == 0:
+            self.setup_wandb()
+            
         for epoch in self.progress_bar(epoch_iterator):
             
             ############################################
@@ -238,8 +240,7 @@ class FFLTrainer(Trainer):
             
             if self.local_rank == 0:
                 with torch.no_grad():
-                    self.visualization(self.train_loader,epoch)
-                    self.visualization(self.val_loader,epoch)
+                    self.visualization(self.train_loader,epoch,show=self.cfg.debug_vis)
                 wandb_dict ={}
                 wandb_dict['epoch'] = epoch
                 for k, v in train_loss_dict.items():
@@ -282,6 +283,8 @@ class FFLTrainer(Trainer):
                 coco_predictions = predictor.predict_from_loader(self.model,self.val_loader)
                 coco_predictions = coco_predictions['acm.tol_0.125']
                 
+                self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
+
                 self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
                 
                 if self.cfg.multi_gpu:

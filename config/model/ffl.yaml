@@ -21,6 +21,8 @@ encoder:
 compute_seg: True
 compute_crossfield: True
 
+
+
 seg_params:
     compute_interior: True
     compute_edge: False
@@ -69,9 +71,9 @@ batch_size: 32
 start_epoch: 0
 num_epochs: 300
 milestone: 0
-learning_rate: 1e-4
-weight_decay: 1e-4
-
+learning_rate: 1e-3
+weight_decay: 0.0
+gamma: 0.95
 
 defaults:
     - lidar_encoder: pointpillars
