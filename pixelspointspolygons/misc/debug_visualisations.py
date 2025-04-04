@@ -327,7 +327,7 @@ def plot_pix2poly(image_batch=None,lidar_batch=None,tile_names=None,mask_batch=N
 
 
 
-def plot_ffl(batch):
+def plot_ffl(batch,show=True):
     
     image_batch = batch.get("image",None)
     lidar_batch = batch.get("lidar",None)
@@ -343,9 +343,12 @@ def plot_ffl(batch):
     n_rows = np.ceil(np.sqrt(batch_size)).astype(int)
     n_cols = n_rows
     
-    fig, ax = plt.subplots(n_rows,n_cols,figsize=(int(n_cols*3), int(n_cols*3)), dpi=150)
-    ax = ax.flatten()
-
+    fig, ax = plt.subplots(n_rows,n_cols,figsize=(16,16), dpi=80)
+    if isinstance(ax, np.ndarray):
+        ax = ax.flatten()
+    else:
+        ax = [ax]
+    
     if image_batch is not None:
         image_batch = image_batch.permute(0, 2, 3, 1).cpu().numpy()
         
@@ -364,7 +367,7 @@ def plot_ffl(batch):
         if lidar_batch is not None:
             plot_point_cloud(lidar_batch[i], show=False, ax=ax[i]) 
                
-        plot_mask(building[i], color=[1,0,0,1.0], show=False, ax=ax[i])
+        plot_mask(building[i], color=[1,1,0,0.3], show=False, ax=ax[i])
         # plot_mask(edges[i], color=[0,1,0,1], show=False, ax=ax[i])
         # plot_mask(vertices[i], color=[0,0,1,1], show=False, ax=ax[i])
         
@@ -375,4 +378,8 @@ def plot_ffl(batch):
         #     ax[i].set_title(tile_names[i], fontsize=4)
     
     plt.tight_layout()
-    plt.show(block=True)
+    fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    if show:
+        plt.show(block=True)
+    
+    return fig

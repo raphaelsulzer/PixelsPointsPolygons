@@ -49,6 +49,27 @@ def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
         transforms.append(A.ColorJitter())
     if "GaussNoise" in cfg.model.augmentations:
         transforms.append(A.GaussNoise())
+    # ## this is just used for debugging
+    # if "e" in cfg.model.augmentations:
+    #     transforms.append(A.Compose([]))
+    # if "r90" in cfg.model.augmentations:
+    #     transforms.append(A.Rotate(limit=(90, 90), p=1.0))
+    # if "r180" in cfg.model.augmentations:
+    #     transforms.append(A.Rotate(limit=(180, 180), p=1.0))
+    # if "r270" in cfg.model.augmentations:
+    #     transforms.append(A.Rotate(limit=(270, 270), p=1.0))
+    # if "h" in cfg.model.augmentations:
+    #     transforms.append(A.HorizontalFlip(p=1.0))
+    # if "v" in cfg.model.augmentations:
+    #     transforms.append(A.VerticalFlip(p=1.0))
+    # if "t" in cfg.model.augmentations:
+    #     transforms.append(A.Transpose(p=1.0))
+    # if "hvt" in cfg.model.augmentations:
+    #     transforms.append(A.Compose([
+    #         A.HorizontalFlip(p=1.0),
+    #         A.VerticalFlip(p=1.0),
+    #         A.Transpose(p=1.0),
+    #     ]))
     
     if logger is not None:
         for t in transforms:

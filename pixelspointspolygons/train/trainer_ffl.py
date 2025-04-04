@@ -148,11 +148,12 @@ class FFLTrainer(Trainer):
                 
                 batch = batch_to_cuda(batch)
                 pred, batch = self.model(batch)
-                loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch)
+                loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch, normalize=False)
 
                 loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
                 loss_reduced = loss.item()
                 loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
+                loader.set_postfix(val_loss=loss_meter.meters["total_loss"].global_avg)
 
         for k,v in loss_meter.meters.items():
             self.logger.debug(f"Validation {k}: {v.global_avg:.3f}")
@@ -176,7 +177,7 @@ class FFLTrainer(Trainer):
 
             batch = batch_to_cuda(batch)
             pred, batch = self.model(batch)
-            loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch)
+            loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch, normalize=False)
                 
             with torch.no_grad():                
                 loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
@@ -284,7 +285,7 @@ class FFLTrainer(Trainer):
 
                 self.logger.info("Predict validation set with latest model...")
                 coco_predictions = predictor.predict_from_loader(self.model,self.val_loader)
-                coco_predictions = coco_predictions['acm.tol_1.0']
+                coco_predictions = coco_predictions['asm.tol_1']
                 
                 self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
 

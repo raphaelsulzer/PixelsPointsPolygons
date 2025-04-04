@@ -77,11 +77,12 @@ defaults:
     - polygonization: asm_acm
 
 augmentations:
-    # - D4
+    - D4
     - Resize
+    - ColorJitter
+    - GaussNoise
 
 eval:
-  test_time_augmentation: false # not actually used anywhere
 
   patch_size: null
   patch_overlap: 200
