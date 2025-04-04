@@ -1,8 +1,10 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 import torch
 
+import numpy as np
+
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import matplotlib.patches as Patches
 
 def plot_point_cloud(point_cloud, ax=None, show=False, alpha=0.15):
     
@@ -19,6 +21,23 @@ def plot_point_cloud(point_cloud, ax=None, show=False, alpha=0.15):
                c=cmap(norm(point_cloud[:, 2])), s=0.1, zorder=2,
                alpha=alpha)
     
+    if show:
+        plt.show(block=False)
+
+
+def plot_shapely_polygons(polygons, ax=None, color=[1,0,1,0.7], pointsize=3, linewidth=2, show=False):
+    
+    for poly in polygons:
+
+        ax.add_patch(Patches.Polygon(poly.geom.exterior.coords[:-1], fill=False, ec=color, linewidth=linewidth))
+        juncs = np.array(poly.geom.exterior.coords[:-1])
+        ax.plot(juncs[:, 0], juncs[:, 1], color=color, marker='.', markersize=pointsize, linestyle='none')
+        if len(poly.geom.interiors) != 0:
+            for inter in poly.geom.interiors:
+                ax.add_patch(Patches.Polygon(inter.coords[:-1], fill=False, ec=color, linewidth=linewidth))
+                juncs = np.array(inter.coords[:-1])
+                ax.plot(juncs[:, 0], juncs[:, 1], color=color, marker='.', markersize=pointsize, linestyle='none')
+                
     if show:
         plt.show(block=False)
     

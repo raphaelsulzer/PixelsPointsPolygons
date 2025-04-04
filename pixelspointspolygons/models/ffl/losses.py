@@ -333,7 +333,10 @@ class SegLoss(Loss):
         weights = gt_batch["seg_loss_weights"][:, self.gt_channel_selector, ...]
         dice = measures.dice_loss(pred_seg, gt_seg)
         mean_dice = torch.mean(dice)
-        mean_cross_entropy = F.binary_cross_entropy(pred_seg, gt_seg, weight=weights, reduction="mean")
+        
+        ## RS: removing the weighting here. It leads to crazy high seg_loss values. Is it really supposed to be used?
+        # mean_cross_entropy = F.binary_cross_entropy(pred_seg, gt_seg, weight=weights, reduction="mean")
+        mean_cross_entropy = F.binary_cross_entropy(pred_seg, gt_seg, reduction="mean")
 
         # Display:
         # dispaly_pred_seg = pred_seg[0, 0].cpu().detach().numpy()

@@ -26,14 +26,11 @@ class FFLPredictor(Predictor):
         
         self.logger.info(f"Starting prediction and polygonization...")
 
-
-        # TODO: just init the model and load checkpoint here and then call predict_from_loader
         # Loading model
         self.model = FFLModel(self.cfg, self.local_rank)
         self.load_checkpoint(self.model)
         
         self.loader = get_val_loader(self.cfg,logger=self.logger)
-        
         annotations = self.predict_from_loader(self.model, self.loader)
         
         for k,coco_predictions in annotations.items():
