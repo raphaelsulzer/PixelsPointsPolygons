@@ -25,18 +25,24 @@ def plot_point_cloud(point_cloud, ax=None, show=False, alpha=0.15):
         plt.show(block=False)
 
 
-def plot_shapely_polygons(polygons, ax=None, color=[1,0,1,0.7], pointsize=3, linewidth=2, show=False):
+def plot_shapely_polygons(polygons, ax=None, color=[1,0,1,0.7], pointcolor=None, edgecolor=None, fillcolor=None, pointsize=3, linewidth=2, show=False):
+    
+    
+    if pointcolor is None:
+        pointcolor = color
+    if edgecolor is None:
+        edgecolor = color
     
     for poly in polygons:
 
-        ax.add_patch(Patches.Polygon(poly.geom.exterior.coords[:-1], fill=False, ec=color, linewidth=linewidth))
-        juncs = np.array(poly.geom.exterior.coords[:-1])
-        ax.plot(juncs[:, 0], juncs[:, 1], color=color, marker='.', markersize=pointsize, linestyle='none')
-        if len(poly.geom.interiors) != 0:
-            for inter in poly.geom.interiors:
-                ax.add_patch(Patches.Polygon(inter.coords[:-1], fill=False, ec=color, linewidth=linewidth))
+        ax.add_patch(Patches.Polygon(poly.exterior.coords[:-1], fill=fillcolor, ec=edgecolor, linewidth=linewidth))
+        juncs = np.array(poly.exterior.coords[:-1])
+        ax.plot(juncs[:, 0], juncs[:, 1], color=pointcolor, marker='.', markersize=pointsize, linestyle='none')
+        if len(poly.interiors) != 0:
+            for inter in poly.interiors:
+                ax.add_patch(Patches.Polygon(inter.coords[:-1], fill=False, ec=edgecolor, linewidth=linewidth))
                 juncs = np.array(inter.coords[:-1])
-                ax.plot(juncs[:, 0], juncs[:, 1], color=color, marker='.', markersize=pointsize, linestyle='none')
+                ax.plot(juncs[:, 0], juncs[:, 1], color=pointcolor, marker='.', markersize=pointsize, linestyle='none')
                 
     if show:
         plt.show(block=False)

@@ -17,11 +17,8 @@ encoder:
     output_width: ${.output_size}
     out_feature_channels: 32
 
-
 compute_seg: True
 compute_crossfield: True
-
-
 
 seg_params:
     compute_interior: True
@@ -57,7 +54,7 @@ loss:
   seg_loss_params:
     bce_coef: 1.0
     dice_coef: 0.2
-    use_dist: true  # Dist weights as in the original U-Net paper
+    use_dist: false  # Dist weights as in the original U-Net paper
     use_size: false  # Size weights increasing importance of smaller buildings
     w0: 50  # From original U-Net paper: distance weight to increase loss between objects
     sigma: 10  # From original U-Net paper: distance weight to increase loss between objects
