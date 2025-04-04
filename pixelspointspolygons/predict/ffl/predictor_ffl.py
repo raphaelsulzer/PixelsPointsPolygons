@@ -52,6 +52,7 @@ class FFLPredictor(Predictor):
         model.eval()
             
         tile_data_list = []
+        annotations_list = []
         for tile_i, tile_data in enumerate(loader):
             # --- Inference, add result to tile_data_list
             if self.cfg.model.eval.patch_size is not None:
@@ -64,7 +65,7 @@ class FFLPredictor(Predictor):
             tile_data_list.append(tile_data)
 
             # --- Accumulate batches into tile_data_list until capacity is reached (or this is the last batch)
-            if self.cfg.model.batch_size <= len(tile_data_list) or tile_i == len(loader) - 1:
+            if self.cfg.model.batch_size <= len(tile_data_list) or (tile_i == len(loader) - 1):
                 # Concat tensors of tile_data_list
                 accumulated_tile_data = {}
                 for key in tile_data_list[0].keys():
@@ -73,7 +74,8 @@ class FFLPredictor(Predictor):
                     elif isinstance(tile_data_list[0][key], torch.Tensor):
                         accumulated_tile_data[key] = torch.cat([_tile_data[key] for _tile_data in tile_data_list], dim=0)
                     else:
-                        print(f"Skipping key {key}")
+                        pass
+                        # print(f"Skipping key {key}")
                         # raise TypeError(f"Type {type(tile_data_list[0][key])} is not handled!")
                 tile_data_list = []  # Empty tile_data_list
             else:
@@ -97,14 +99,10 @@ class FFLPredictor(Predictor):
             accumulated_tile_data = batch_to_cpu(accumulated_tile_data)
             sample_list = split_batch(accumulated_tile_data)
             
-            annotations_list = []
             for sample in sample_list:
                 annotations = save_utils.poly_coco(sample["polygons"], sample["polygon_probs"], sample["image_id"])
                 annotations_list.append(annotations)  # annotations could be a dict, or a list
-            
-            if self.cfg.multi_gpu:
-                dist.barrier()
-            
-            annotations = list_of_dicts_to_dict_of_lists(annotations_list)
-            annotations = flatten_dict(annotations)
-            return annotations
+             
+        annotations = list_of_dicts_to_dict_of_lists(annotations_list)
+        annotations = flatten_dict(annotations)
+        return annotations

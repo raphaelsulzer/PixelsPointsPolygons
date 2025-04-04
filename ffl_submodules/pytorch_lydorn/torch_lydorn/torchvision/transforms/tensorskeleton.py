@@ -16,7 +16,7 @@ import torch
 class Skeleton:
     def __init__(self, coordinates=None, paths=None, degrees=None):
         if coordinates is None:
-            self.coordinates = np.empty((0, 2), dtype=np.float)
+            self.coordinates = np.empty((0, 2), dtype=np.float_)
         else:
             self.coordinates = coordinates
         if paths is None:
@@ -24,7 +24,7 @@ class Skeleton:
         else:
             self.paths = paths
         if degrees is None:
-            self.degrees = np.empty(0, dtype=np.long)
+            self.degrees = np.empty(0, dtype=np.int_)
         else:
             self.degrees = degrees
 
@@ -32,11 +32,11 @@ class Skeleton:
 class Paths:
     def __init__(self, indices=None, indptr=None):
         if indices is None:
-            self.indices = np.empty(0, dtype=np.long)
+            self.indices = np.empty(0, dtype=np.int_)
         else:
             self.indices = indices
         if indptr is None:
-            self.indptr = np.empty(0, dtype=np.long)
+            self.indptr = np.empty(0, dtype=np.int_)
         else:
             self.indptr = indptr
 
@@ -129,7 +129,7 @@ def skeletons_to_tensorskeleton(skeletons_batch: List[Skeleton], device: str=Non
             path_delim = skeleton.paths.indptr
         path_delim += path_delim_offset
         path_delim_list.append(path_delim)
-        batch_list.append(batch_i * np.ones(n_points, dtype=np.long))
+        batch_list.append(batch_i * np.ones(n_points, dtype=np.int_))
 
         # Setup next batch:
         path_index_offset += n_points
@@ -210,7 +210,7 @@ def main():
     spatial_shape = (10, 10)
 
     skan_skeletons_batch = []
-    skeleton_image = np.zeros(spatial_shape, dtype=np.bool)
+    skeleton_image = np.zeros(spatial_shape, dtype=bool)
     skeleton_image[2, :] = True
     skeleton_image[:, 2] = True
     skeleton_image[7, :] = True
@@ -221,7 +221,7 @@ def main():
     plot_skeleton(skan_skeleton)
     plt.show()
 
-    skeleton_image = np.zeros(spatial_shape, dtype=np.bool)
+    skeleton_image = np.zeros(spatial_shape, dtype=bool)
     skeleton_image[5, :] = True
     skeleton_image[:, 5] = True
     skan_skeleton = skan.Skeleton(skeleton_image, keep_images=False)

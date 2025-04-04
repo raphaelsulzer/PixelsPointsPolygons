@@ -79,6 +79,7 @@ class FFLTrainer(Trainer):
         
         self.model.eval()
         
+        from ..misc.coco_conversions import coco_anns_to_shapely_polys
         from ..misc.debug_visualisations import plot_image, plot_mask, plot_crossfield, plot_shapely_polygons
         from lydorn_utils.math_utils import compute_crossfield_uv
         import numpy as np
@@ -106,7 +107,7 @@ class FFLTrainer(Trainer):
             plot_image(batch["image"][i], ax=ax[0])
             plot_image(batch["image"][i], ax=ax[1])
             
-            mask_color = [1,1,1,0.4]
+            mask_color = [1,1,0,0.3]
             plot_mask(batch["gt_polygons_image"][i][0], ax=ax[0], color=mask_color)
             plot_mask(pred["seg"][i].squeeze()>0.5, ax=ax[1], color=mask_color)
             
@@ -114,12 +115,14 @@ class FFLTrainer(Trainer):
             pred_crossfield = compute_crossfield_uv(pred["crossfield"][i].permute(1,2,0).detach().cpu().numpy())
             pred_crossfield0 = np.arctan2(pred_crossfield[0].imag, pred_crossfield[0].real)
             plot_crossfield(pred_crossfield0, ax=ax[1])
+            ## plot the orthogonal linefield (i.e. the full crossfield)
             # pred_crossfield1 = np.arctan2(pred_crossfield[1].imag, pred_crossfield[1].real)
             # plot_crossfield(pred_crossfield1, ax=ax[1])
             
             polygons = coco_anns[i]
             if len(polygons):
-                plot_shapely_polygons(polygons, ax=ax[1])
+                polygons = coco_anns_to_shapely_polys(polygons)
+                plot_shapely_polygons(polygons, ax=ax[1],pointcolor=[1,1,0],edgecolor=[1,0,1])
 
             ax[0].set_title("GT_"+batch["name"][i])
             ax[1].set_title("PRED_"+batch["name"][i])
@@ -151,8 +154,8 @@ class FFLTrainer(Trainer):
                 loss_reduced = loss.item()
                 loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
 
-        self.logger.debug(f"Validation loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
         for k,v in loss_meter.meters.items():
+            self.logger.debug(f"Validation {k}: {v.global_avg:.3f}")
             loss_dict[k] = self.average_across_gpus(v)
         self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
 
@@ -188,8 +191,8 @@ class FFLTrainer(Trainer):
             loader.set_postfix(train_loss=loss_meter.meters["total_loss"].global_avg, lr=f"{lr:.5f}")
             iter_idx += 1
         
-        self.logger.debug(f"Train loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
         for k,v in loss_meter.meters.items():
+            self.logger.debug(f"Train {k}: {v.global_avg:.3f}")
             loss_dict[k] = self.average_across_gpus(v)
         self.logger.info(f"Train loss: {loss_dict['total_loss']:.3f}")
 
@@ -281,7 +284,7 @@ class FFLTrainer(Trainer):
 
                 self.logger.info("Predict validation set with latest model...")
                 coco_predictions = predictor.predict_from_loader(self.model,self.val_loader)
-                coco_predictions = coco_predictions['acm.tol_0.125']
+                coco_predictions = coco_predictions['acm.tol_1.0']
                 
                 self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
 

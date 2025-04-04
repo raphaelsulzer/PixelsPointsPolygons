@@ -24,7 +24,7 @@ from functools import partial
 import torch
 import torch_scatter
 
-from frame_field_learning import polygonize_utils, plot_utils, frame_field_utils, save_utils
+from . import polygonize_utils
 
 from torch_lydorn.torch.nn.functionnal import bilinear_interpolate
 from torch_lydorn.torchvision.transforms import Paths, Skeleton, TensorSkeleton, skeletons_to_tensorskeleton, tensorskeleton_to_skeletons
@@ -877,7 +877,7 @@ def polygonize(seg_batch, crossfield_batch, config, pool=None, pre_computed=None
 
 
 def main():
-    from frame_field_learning import inference
+    from . import inference
     import os
 
     def save_gt_poly(raw_pred_filepath, name):

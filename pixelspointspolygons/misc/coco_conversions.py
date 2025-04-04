@@ -74,5 +74,5 @@ def coco_anns_to_shapely_polys(coco_anns):
         # xmin, ymin, w, h = ann.get('bbox')
         # bbox_poly = Polygon([(xmin, ymin), (xmin + w, ymin), (xmin + w, ymin + h), (xmin, ymin + h)])
         
-        polygons.append(poly)
+        polygons.append(Polygon(poly))
     return polygons
