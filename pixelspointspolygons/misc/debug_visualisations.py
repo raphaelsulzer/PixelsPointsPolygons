@@ -104,10 +104,11 @@ def plot_polygons_hisup(annotations, ax=None, pointsize=3, linewidth=2, show=Fal
 
 def plot_mask(image, color=[1,0,0,1], ax=None, show_axis='off', show=False):
     
-    # if isinstance(image, torch.Tensor):
-    #     if image.ndim == 2:
-    #         image = image[None, :, :]
-    #     image = image.permute(1, 2, 0).cpu().numpy()
+    if isinstance(image, torch.Tensor):
+        if image.ndim == 2:
+            image = image[None, :, :]
+        image = image.permute(1, 2, 0).detach().cpu().numpy()
+        image = image.squeeze()
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(5, 5), dpi=50)
@@ -148,9 +149,13 @@ def plot_crossfield_jet(image, mask=None, alpha = 0.7, ax=None, show_axis='off',
         
 
 
-def plot_crossfield(crossfield, crossfield_stride=8, ax=None, show_axis='off', mask=None, alpha=1.0, width=2.0, add_scale=0.7, show=False):
+def plot_crossfield(crossfield, crossfield_stride=8, ax=None, show_axis='off', mask=None, alpha=0.8, width=1.8, add_scale=0.8, show=False):
     
-    crossfield = crossfield.squeeze()
+    if isinstance(crossfield, torch.Tensor):
+        if crossfield.ndim == 2:
+            crossfield = crossfield[None, :, :]
+        crossfield = crossfield.permute(1, 2, 0).detach().cpu().numpy()
+        crossfield = crossfield.squeeze()
     
     if ax is None:
         fig, ax = plt.subplots(figsize=(5, 5), dpi=50)

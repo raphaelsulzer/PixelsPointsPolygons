@@ -90,8 +90,16 @@ class Trainer:
         log_outfile = os.path.join(self.cfg.output_dir, 'wandb.log')
         wandb.run.log_code(log_outfile)
 
-    def cleanup(self):
-        dist.destroy_process_group()
+    def average_across_gpus(self, meter):
+        
+        if not self.is_ddp:
+            return meter.avg
+        
+        tensor = torch.tensor([meter.avg], device=self.device)
+        dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
+        tensor /= self.world_size
+        return tensor.item()
+
     
     def setup_dataloader(self):
         self.train_loader = get_train_loader(self.cfg,logger=self.logger)
@@ -101,7 +109,7 @@ class Trainer:
         """Save checkpoint to file. This is a generic function that saves the model, optimizer and scheduler state dicts."""
         
         os.makedirs(os.path.dirname(outfile), exist_ok=True)
-            
+        
         checkpoint = {
             "cfg": self.cfg,
             "model": self.model.state_dict(),
@@ -269,7 +277,10 @@ class Trainer:
         pass
     def setup_loss_fn_dict(self):
         pass
-
+    
+    def cleanup(self):
+        dist.destroy_process_group()
+        
     def train(self):
         seed_everything(42)
         self.setup_model()
