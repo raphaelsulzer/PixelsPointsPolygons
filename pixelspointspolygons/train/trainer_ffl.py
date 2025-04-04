@@ -12,6 +12,7 @@ import shutil
 import torch
 
 import torch.distributed as dist
+import matplotlib.pyplot as plt
 
 from torch import optim
 from transformers import  get_cosine_schedule_with_warmup
@@ -28,33 +29,8 @@ from .trainer import Trainer
 
 class FFLTrainer(Trainer):
     
-    def to_device(self,data,device):
-        if isinstance(data,torch.Tensor):
-            return data.to(device)
-        if isinstance(data, dict):
-    #         import pdb; pdb.set_trace()
-            for key in data:
-                if isinstance(data[key],torch.Tensor):
-                    data[key] = data[key].to(device)
-            return data
-        if isinstance(data,list):
-            return [self.to_device(d,device) for d in data]
-
-    def to_single_device(self,data,device):
-        if isinstance(data, torch.Tensor):
-            return data.to(device)
-        if isinstance(data, dict):
-            for key in data:
-                if isinstance(data[key], torch.Tensor):
-                    data[key] = data[key].to(device)
-            return data
-        if isinstance(data, list):
-            return [self.to_device(d, device) for d in data]
-    
     def setup_model(self):
-        
         self.model = FFLModel(self.cfg, self.local_rank)
-
         
     def setup_optimizer(self):
         # Get optimizer
@@ -77,17 +53,8 @@ class FFLTrainer(Trainer):
         
         self.loss_func = build_combined_loss(self.cfg).cuda()
         
-    def average_across_gpus(self, meter):
-        
-        if not self.is_ddp:
-            return meter.global_avg
-        
-        tensor = torch.tensor([meter.global_avg], device=self.device)
-        dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
-        tensor /= self.world_size
-        return tensor.item()
 
-    def compute_loss_norms(self, dl, total_batches):
+    def setup_loss_norms(self, dl, total_batches):
         self.loss_func.reset_norm()
         
         self.logger.info("Init loss norms...")
@@ -110,108 +77,116 @@ class FFLTrainer(Trainer):
         if self.cfg.multi_gpu:
             self.loss_func.sync(self.world_size)
         
+        
+    
+
+    def visualization(self, loader, epoch):
+        
+        self.model.eval()
+        
+        from ..misc.debug_visualisations import plot_image, plot_mask, plot_crossfield
+        from lydorn_utils.math_utils import compute_crossfield_uv
+        import numpy as np
+
+        batch = next(iter(loader))
+        batch = batch_to_cuda(batch)
+        pred, batch = self.model(batch)
+        
+        outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
+        os.makedirs(outpath, exist_ok=True)
+        self.logger.info(f"Save visualizations to {outpath}")
+        
+        for i in range(3):
+        
+            fig, ax = plt.subplots(1,2,figsize=(8, 4), dpi=150)
+            ax = ax.flatten()
+
+            plot_image(batch["image"][i], ax=ax[0])
+            plot_image(batch["image"][i], ax=ax[1])
+            
+            mask_color = [1,0,0,0.5]
+            plot_mask(batch["gt_polygons_image"][i][0], ax=ax[0], color=mask_color)
+            plot_mask(pred["seg"][i].squeeze()>0.5, ax=ax[1], color=mask_color)
+            
+            plot_crossfield(batch["gt_crossfield_angle"][i].squeeze(), ax=ax[0])
+            pred_crossfield = compute_crossfield_uv(pred["crossfield"][i].permute(1,2,0).detach().cpu().numpy())
+            pred_crossfield0 = np.arctan2(pred_crossfield[0].imag, pred_crossfield[0].real)
+            plot_crossfield(pred_crossfield0, ax=ax[1])
+            # pred_crossfield1 = np.arctan2(pred_crossfield[1].imag, pred_crossfield[1].real)
+            # plot_crossfield(pred_crossfield1, ax=ax[1])
+
+            ax[0].set_title("GT_"+batch["name"][i])
+            ax[1].set_title("PRED_"+batch["name"][i])
+            
+            plt.tight_layout()
+            outfile = os.path.join(outpath, f"{batch['name'][i]}.png")
+            self.logger.debug(f"Save visualization to {outfile}")
+            plt.savefig(outfile)
+            plt.show(block=True)
+            if self.cfg.log_to_wandb:
+                wandb.log({f"{epoch}: {batch['name'][i]}": wandb.Image(fig)})            
+            plt.close(fig)
+
     def valid_one_epoch(self, epoch):
 
         self.logger.info(f"Validate epoch {epoch}...")
-        
         self.model.eval()
-
         loss_meter = MetricLogger(" val_")
-
         loader = self.progress_bar(self.val_loader)
-
-        
         with torch.no_grad():
-            for batch_dict in loader:
+            for batch in loader:
                 
-                batch_dict = batch_to_cuda(batch_dict)
-                
-                pred, batch = self.model(batch_dict)
+                batch = batch_to_cuda(batch)
+                pred, batch = self.model(batch)
                 loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch)
-            
-                with torch.no_grad():
-                    # Compute IoUs at different thresholds
-                    if "seg" in pred:
-                        y_pred = pred["seg"][:, 0, ...]
-                        y_true = batch["gt_polygons_image"][:, 0, ...]
-                        iou_thresholds = [0.1, 0.25, 0.5, 0.75, 0.9]
-                        for iou_threshold in iou_thresholds:
-                            iou = compute_iou(y_pred.reshape(y_pred.shape[0], -1), y_true.reshape(y_true.shape[0], -1), threshold=iou_threshold)
-                            mean_iou = torch.mean(iou)
-                            loss_dict[f"IoU_{iou_threshold}"] = mean_iou
-                        
-                    loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
-                    loss_reduced = loss.item()
-                    loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
+
+                loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
+                loss_reduced = loss.item()
+                loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
 
         self.logger.debug(f"Validation loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
-        
         for k,v in loss_meter.meters.items():
             loss_dict[k] = self.average_across_gpus(v)
-        
         self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict
 
-
-
+        
+        
+    
+    
     def train_one_epoch(self, epoch, iter_idx):
         
         self.logger.info(f"Train epoch {epoch}...")
-        
         self.model.train()
-
         loss_meter = MetricLogger(" train_")
-
         loader = self.progress_bar(self.train_loader)
-
-        self.loss_func.reset_norm()
-        for batch_dict in loader:
+        for batch in loader:
                         
             # ### debug vis
             if self.cfg.debug_vis:
-                plot_ffl(batch_dict)
+                plot_ffl(batch)
 
-            batch_dict = batch_to_cuda(batch_dict)
-            
-            pred, batch = self.model(batch_dict)
+            batch = batch_to_cuda(batch)
+            pred, batch = self.model(batch)
             loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch)
                 
-            with torch.no_grad():
-                # Compute IoUs at different thresholds
-                if "seg" in pred:
-                    y_pred = pred["seg"][:, 0, ...]
-                    y_true = batch["gt_polygons_image"][:, 0, ...]
-                    iou_thresholds = [0.1, 0.25, 0.5, 0.75, 0.9]
-                    for iou_threshold in iou_thresholds:
-                        iou = compute_iou(y_pred.reshape(y_pred.shape[0], -1), y_true.reshape(y_true.shape[0], -1), threshold=iou_threshold)
-                        mean_iou = torch.mean(iou)
-                        loss_dict[f"IoU_{iou_threshold}"] = mean_iou
-                
+            with torch.no_grad():                
                 loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
                 loss_reduced = loss.item()
                 loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
             
-
             self.optimizer.zero_grad(set_to_none=True)
             loss.backward()
             self.optimizer.step()
-
             self.lr_scheduler.step()
-
             lr = get_lr(self.optimizer)
-
             loader.set_postfix(train_loss=loss_meter.meters["total_loss"].global_avg, lr=f"{lr:.5f}")
-
             iter_idx += 1
-
-            
         
         self.logger.debug(f"Train loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
-        
         for k,v in loss_meter.meters.items():
             loss_dict[k] = self.average_across_gpus(v)
-        
         self.logger.info(f"Train loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict, iter_idx
@@ -226,17 +201,15 @@ class FFLTrainer(Trainer):
             self.setup_wandb()
 
         predictor = Predictor(self.cfg,local_rank=self.local_rank,world_size=self.world_size)
-
-        ## init loss norms
-        self.model.train()  # Important for batchnorm and dropout, even in computing loss norms
         
         ## compute loss norms for loss weighting
         if self.cfg.run_type.name == "release":
+            self.model.train()  # Important for batchnorm and dropout, even in computing loss norms
             with torch.no_grad():
                 loss_norm_batches_min = self.cfg.model.loss.multiloss.normalization_params.min_samples // (2 * self.cfg.model.batch_size) + 1
                 loss_norm_batches_max = self.cfg.model.loss.multiloss.normalization_params.max_samples // (2 * self.cfg.model.batch_size) + 1
                 loss_norm_batches = max(loss_norm_batches_min, min(loss_norm_batches_max, len(self.train_loader)))
-                self.compute_loss_norms(self.train_loader, loss_norm_batches)
+                self.setup_loss_norms(self.train_loader, loss_norm_batches)
 
         best_loss = float('inf')
 
@@ -264,6 +237,9 @@ class FFLTrainer(Trainer):
                 dist.barrier()
             
             if self.local_rank == 0:
+                with torch.no_grad():
+                    self.visualization(self.train_loader,epoch)
+                    self.visualization(self.val_loader,epoch)
                 wandb_dict ={}
                 wandb_dict['epoch'] = epoch
                 for k, v in train_loss_dict.items():
