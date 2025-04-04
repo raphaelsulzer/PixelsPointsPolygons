@@ -38,8 +38,8 @@ asm_method:
   gamma: 0.995
   device: "cuda"
   tolerance: 
-      - 0.125
-    # - 1  # List of values to apply
+      # - 0.125
+      - 1  # List of values to apply
   seg_threshold: 0.5
   min_area: 10
 

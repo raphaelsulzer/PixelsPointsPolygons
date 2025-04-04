@@ -44,7 +44,7 @@ class FFLPredictor(Predictor):
     def predict_from_loader(self, model, loader):
         
         self.logger.debug(f"Prediction from {self.cfg.checkpoint}")
-        self.logger.debug(f"Polygonization with method {self.cfg.model.polygonization.method} and thresholds {self.cfg.model.polygonization.acm_method.tolerance}")
+        self.logger.debug(f"Polygonization with method {self.cfg.model.polygonization.method}")
         
         if isinstance(loader.dataset, torch.utils.data.Subset):
             self.logger.warning("You are predicting only a subset of the validation dataset. However, the coco evaluation expects the full validation set, so the its metrics will not be very useful.")

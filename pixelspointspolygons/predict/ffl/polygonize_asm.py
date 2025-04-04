@@ -26,6 +26,8 @@ import torch_scatter
 
 from . import polygonize_utils
 
+from ...models.ffl import frame_field_utils
+
 from torch_lydorn.torch.nn.functionnal import bilinear_interpolate
 from torch_lydorn.torchvision.transforms import Paths, Skeleton, TensorSkeleton, skeletons_to_tensorskeleton, tensorskeleton_to_skeletons
 import torch_lydorn.kornia
@@ -366,6 +368,8 @@ class TensorSkeletonOptimizer:
 
         # Save endpoints that are tips so that they can be reset after each step (tips are not meant to be moved)
         self.is_tip = self.tensorskeleton.degrees == 1
+        # RS: clamping the length of tensorskeleton because I had a case where it was longer then self.tensorskeleton.pos
+        self.is_tip = self.is_tip[:len(self.tensorskeleton.pos)]
         self.tip_pos = self.tensorskeleton.pos[self.is_tip]
 
         # Require grads for graph.pos: this is what is optimized
@@ -466,7 +470,7 @@ def shapely_postprocess(polylines, np_indicator, tolerance, config):
 
         # Find polygons:
         polygons = shapely.ops.polygonize(multi_line_string)
-        polygons = list(polygons.geoms)
+        polygons = list(polygons)
 
         # debug_print("Remove small polygons")
 
@@ -538,16 +542,16 @@ def get_skeleton(np_edge_mask, config):
 
     skeleton = Skeleton()
     if 0 < skeleton_image.sum():
-        # skan does not work in some cases (paths of 2 pixels or less, etc) which raises a ValueError, in witch case we continue with an empty skeleton.
+        # skan does not work in some cases (paths of 2 pixels or less, etc) which raises a ValueError, in which case we continue with an empty skeleton.
 
         try:
-            skeleton = skan.Skeleton(skeleton_image, keep_images=False, junction_mode=skan.csr.JunctionModes.Centroid)
+            skeleton = skan.Skeleton(skeleton_image, keep_images=False)
 
-            polylines_coords = skeleton_to_polylines(skeleton)
-            plt.imshow(skeleton_image)
-            for polyline_coords in polylines_coords:
-                plt.plot(polyline_coords[:, 1], polyline_coords[:, 0])
-            plt.show()
+            # polylines_coords = skeleton_to_polylines(skeleton)
+            # plt.imshow(skeleton_image)
+            # for polyline_coords in polylines_coords:
+            #     plt.plot(polyline_coords[:, 1], polyline_coords[:, 0])
+            # plt.show()
 
             # skan.skeleton sometimes returns skeleton.coordinates.shape[0] != skeleton.degrees.shape[0] or
             # skeleton.coordinates.shape[0] != skeleton.paths.indices.max() + 1
@@ -759,6 +763,7 @@ class PolygonizerASM:
 
         int_prob_batch = seg_batch[:, 0, :, :]
         # dist_batch = dist_batch.to(config["device"])
+        
         tensorskeleton_optimizer = TensorSkeletonOptimizer(self.config, tensorskeleton, int_prob_batch,
                                                            crossfield_batch)
 
