@@ -6,7 +6,6 @@
             "name": "train",
             "type": "debugpy",
             "request": "launch",
-            // "program": "${file}",
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
@@ -16,7 +15,6 @@
                 "log_to_wandb=false",
                 "multi_gpu=false",
                 "checkpoint=null",
-                "run_type.logging=DEBUG",
                 "experiment_name=debug",
                 // "model=ffl",
                 // "use_lidar=true",
@@ -34,7 +32,6 @@
             "name": "predict",
             "type": "debugpy",
             "request": "launch",
-            // "program": "${file}",
             "program": "${workspaceFolder}/scripts/predict.py",
             "console": "integratedTerminal",
             "args": [
@@ -43,6 +40,9 @@
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
+                "checkpoint=validation_best",
+                "experiment_name=debug",
+                // "checkpoint_file=/data/rsulzer/ffl_outputs/checkpoint.best_val.epoch_000234.tar"
             ],
             "justMyCode": false
         },
@@ -50,7 +50,6 @@
             "name": "evaluate",
             "type": "debugpy",
             "request": "launch",
-            // "program": "${file}",
             "program": "${workspaceFolder}/scripts/evaluate.py",
             "console": "integratedTerminal",
             "args": [
@@ -66,7 +65,6 @@
             "name": "preprocess_ffl",
             "type": "debugpy",
             "request": "launch",
-            // "program": "${file}",
             "program": "${workspaceFolder}/data_preprocess/ffl/preprocess_ffl.py",
             "console": "integratedTerminal",
             "args": [
@@ -82,10 +80,10 @@
             "name": "current_file",
             "type": "debugpy",
             "request": "launch",
-            // "program": "${file}",
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
+                "run_type=debug",
             ],
             "justMyCode": false
         }

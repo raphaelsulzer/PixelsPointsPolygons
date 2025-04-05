@@ -74,6 +74,7 @@ class DefaultDataset(Dataset):
 
             points = np.vstack((las.x, las.y, las.z)).transpose()
 
+            ### stop doing this scaling here
             points[:, :2] = (points[:, :2] - img_info['top_left']) / img_info.get('res_x', 0.25)
             points[:, 1] = img_info['height'] - points[:, 1]
 
@@ -117,7 +118,7 @@ class DefaultDataset(Dataset):
             return torch.from_numpy(lidar)
         
         # translate to center so all the transformations are easily applied around the center
-        center = [self.cfg.model.encoder.input_width // 2, self.cfg.model.encoder.input_height // 2]
+        center = [self.cfg.model.encoder.in_width // 2, self.cfg.model.encoder.in_height // 2]
         lidar[:, :2] -= center
         
         group_element = d4_transform['params']['group_element']
@@ -153,28 +154,26 @@ class DefaultDataset(Dataset):
         return torch.from_numpy(lidar)
     
     
-    def apply_augmentations_to_ffl_crossfield_angle(self, augmentation_replay, crossfield_angle_mask):
-        
-        
-        # first bring the values back to [0,180] from 8bit
-        crossfield_angle_mask = crossfield_angle_mask * np.pi / 255.0
+    def apply_augmentations_to_ffl_crossfield_angle(self, crossfield_angle_mask, augmentation_replay=None, group_element=None):
         
         if self.split == 'val':
             return crossfield_angle_mask
     
-        d4_transform = augmentation_replay["transforms"][0]
+        if augmentation_replay is not None:
+            d4_transform = augmentation_replay["transforms"][0]
+            
+            if d4_transform["__class_fullname__"] != "D4":
+                # self.logger.warning(f"No D4 transform applied.")
+                return crossfield_angle_mask
+            
+            if not d4_transform['applied']:
+                return crossfield_angle_mask
         
+        if group_element is None:
+            group_element = d4_transform['params']['group_element']
         
-        if d4_transform["__class_fullname__"] != "D4":
-            # self.logger.warning(f"No D4 transform applied.")
-            return crossfield_angle_mask
+        # self.logger.debug(f"Apply {group_element} augmentation")
         
-        if not d4_transform['applied']:
-            return crossfield_angle_mask
-        
-        group_element = d4_transform['params']['group_element']
-        
-        # v1
         if group_element == 'e':
             # Identity, no change
             pass
@@ -194,28 +193,6 @@ class DefaultDataset(Dataset):
             crossfield_angle_mask = (np.pi / 2 - crossfield_angle_mask) % np.pi
         else:
             raise ValueError(f"Unknown group element {group_element}")
-        
-        # ## v2
-        # if group_element == 'e':
-        #     # Identity, no change
-        #     pass
-        # elif group_element == 'r90':
-        #     crossfield_angle_mask+= (np.pi / 2)
-        # elif group_element == 'r180':
-        #     crossfield_angle_mask+= np.pi
-        # elif group_element == 'r270':
-        #     crossfield_angle_mask+= (3 * np.pi / 2)
-        # elif group_element == 'v':
-        #     crossfield_angle_mask = np.pi - crossfield_angle_mask
-        # elif group_element == 'hvt':
-        #     crossfield_angle_mask+= (3 * np.pi / 2)
-        # elif group_element == 'h':
-        #     pass
-        # elif group_element == 't':
-        #     crossfield_angle_mask+= (np.pi / 2) # t is equal to r90+h, so in this case just r90
-        # else:
-        #     raise ValueError(f"Unknown group element {group_element}")
-
 
         return crossfield_angle_mask
 
@@ -264,9 +241,9 @@ class DefaultDataset(Dataset):
         if self.transform is not None: 
             
             masks = []
-            masks.append(ffl_data["gt_polygons_image"][:,:,0])  # interior
-            masks.append(ffl_data["gt_polygons_image"][:,:,1])  # edges
-            masks.append(ffl_data["gt_polygons_image"][:,:,2])  # vertices
+            masks.append(ffl_data["gt_polygons_image"][:,:,0]>250)  # interior
+            masks.append(ffl_data["gt_polygons_image"][:,:,1]/255)  # edges
+            masks.append(ffl_data["gt_polygons_image"][:,:,2]/255)  # vertices
             masks.append(ffl_data["distances"])
             masks.append(ffl_data["sizes"])
             masks.append(ffl_data["gt_crossfield_angle"])
@@ -274,7 +251,7 @@ class DefaultDataset(Dataset):
             augmentations = self.transform(image=image,masks=masks)
             
             if self.use_lidar:
-                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar)
+                ffl_data["lidar"] = self.apply_augmentations_to_lidar(augmentations["replay"], lidar)
             
             ffl_data["image"] = augmentations['image']
             
@@ -282,13 +259,24 @@ class DefaultDataset(Dataset):
             for i in range(3):
                 gt_polygon_image.append(augmentations['masks'][i])
             ffl_data["gt_polygons_image"] = torch.stack(gt_polygon_image, axis=-1).permute(2,0,1)
-            ffl_data["gt_polygons_image"] = ffl_data["gt_polygons_image"]/255.0
             ffl_data["gt_polygons_image"] = torch.clamp(ffl_data["gt_polygons_image"],0,1)
             ffl_data["gt_polygons_image"] = ffl_data["gt_polygons_image"].to(torch.float32)
             ffl_data["distances"] = augmentations['masks'][3][None, ...]
             ffl_data["sizes"] = augmentations['masks'][4][None,...]
-            ffl_data["gt_crossfield_angle"] = self.apply_augmentations_to_ffl_crossfield_angle(augmentations["replay"], 
-                                                                                               augmentations['masks'][5])[None, ...]
+            
+            # first bring the values back to [0,180] from 8bit
+            ffl_data["gt_crossfield_angle"] = augmentations['masks'][5] * np.pi / 255.0
+            
+            # for some reason the normals instead of tangents are stored in the .pt file
+            ffl_data["gt_crossfield_angle"] = (ffl_data["gt_crossfield_angle"] + np.pi / 2) % np.pi
+            
+            # rotate the angles inside the crossfield            
+            ffl_data["gt_crossfield_angle"] = self.apply_augmentations_to_ffl_crossfield_angle(ffl_data["gt_crossfield_angle"],
+                                                                                               augmentation_replay=augmentations["replay"])
+            ffl_data["gt_crossfield_angle"] = ffl_data["gt_crossfield_angle"][None,...]
+            
+            # if self.split == "train":
+            #     ffl_data["augmentation_replay"] = augmentations["replay"]["transforms"][0]['params']['group_element']
             
         ffl_data["class_freq"] = torch.from_numpy(self.stats["class_freq"])
         
@@ -557,4 +545,3 @@ class DefaultDataset(Dataset):
             ann['juncs_index'] = np.asarray([0])
 
         return ann
-

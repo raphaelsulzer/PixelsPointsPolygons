@@ -4,6 +4,8 @@ import hydra
 from omegaconf import OmegaConf
 from pixelspointspolygons.train import FFLTrainer, HiSupTrainer, Pix2PolyTrainer
 
+from pixelspointspolygons.misc.shared_utils import setup_ddp
+
 # torch.autograd.set_detect_anomaly(True)
 # import warnings
 # warnings.filterwarnings("error")
@@ -16,6 +18,7 @@ def main(cfg):
     if cfg.multi_gpu:
         world_size = torch.cuda.device_count()
         local_rank = int(os.environ['LOCAL_RANK'])
+        setup_ddp(world_size, local_rank)
     else:
         world_size = 1
         local_rank = 0

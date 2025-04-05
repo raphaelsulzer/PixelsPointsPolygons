@@ -1,10 +1,15 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 import torch
 
+import numpy as np
+
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import matplotlib.patches as Patches
 
 def plot_point_cloud(point_cloud, ax=None, show=False, alpha=0.15):
+    
+    if isinstance(point_cloud, torch.Tensor):
+        point_cloud = point_cloud.detach().cpu().numpy()
     
     if ax is None:
         fig, ax = plt.subplots(figsize=(5, 5), dpi=50)
@@ -19,6 +24,29 @@ def plot_point_cloud(point_cloud, ax=None, show=False, alpha=0.15):
                c=cmap(norm(point_cloud[:, 2])), s=0.1, zorder=2,
                alpha=alpha)
     
+    if show:
+        plt.show(block=False)
+
+
+def plot_shapely_polygons(polygons, ax=None, color=[1,0,1,0.7], pointcolor=None, edgecolor=None, fillcolor=None, pointsize=3, linewidth=2, show=False):
+    
+    
+    if pointcolor is None:
+        pointcolor = color
+    if edgecolor is None:
+        edgecolor = color
+    
+    for poly in polygons:
+
+        ax.add_patch(Patches.Polygon(poly.exterior.coords[:-1], fill=fillcolor, ec=edgecolor, linewidth=linewidth))
+        juncs = np.array(poly.exterior.coords[:-1])
+        ax.plot(juncs[:, 0], juncs[:, 1], color=pointcolor, marker='.', markersize=pointsize, linestyle='none')
+        if len(poly.interiors) != 0:
+            for inter in poly.interiors:
+                ax.add_patch(Patches.Polygon(inter.coords[:-1], fill=False, ec=edgecolor, linewidth=linewidth))
+                juncs = np.array(inter.coords[:-1])
+                ax.plot(juncs[:, 0], juncs[:, 1], color=pointcolor, marker='.', markersize=pointsize, linestyle='none')
+                
     if show:
         plt.show(block=False)
     
@@ -104,10 +132,11 @@ def plot_polygons_hisup(annotations, ax=None, pointsize=3, linewidth=2, show=Fal
 
 def plot_mask(image, color=[1,0,0,1], ax=None, show_axis='off', show=False):
     
-    # if isinstance(image, torch.Tensor):
-    #     if image.ndim == 2:
-    #         image = image[None, :, :]
-    #     image = image.permute(1, 2, 0).cpu().numpy()
+    if isinstance(image, torch.Tensor):
+        if image.ndim == 2:
+            image = image[None, :, :]
+        image = image.permute(1, 2, 0).detach().cpu().numpy()
+        image = image.squeeze()
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(5, 5), dpi=50)
@@ -146,44 +175,35 @@ def plot_crossfield_jet(image, mask=None, alpha = 0.7, ax=None, show_axis='off',
     if show:
         plt.show(block=False)
         
-def plot_crossfield(angles_rad, mask, ax=None, show_axis='off', show=False):
 
-    angles_rad = angles_rad.squeeze()/2.0
-    mask = (mask == 1).numpy()
+
+def plot_crossfield(crossfield, crossfield_stride=8, ax=None, show_axis='off', mask=None, alpha=0.8, width=1.8, add_scale=0.8, show=False):
+    
+    if isinstance(crossfield, torch.Tensor):
+        if crossfield.ndim == 2:
+            crossfield = crossfield[None, :, :]
+        crossfield = crossfield.permute(1, 2, 0).detach().cpu().numpy()
+        crossfield = crossfield.squeeze()
     
     if ax is None:
         fig, ax = plt.subplots(figsize=(5, 5), dpi=50)
     ax.axis(show_axis)
     
-    # Compute arrow directions
-    U = np.cos(angles_rad)  # X component
-    V = np.sin(angles_rad)  # Y component
+    x = np.arange(0, crossfield.shape[1], crossfield_stride)
+    y = np.arange(0, crossfield.shape[0], crossfield_stride)
+    x, y = np.meshgrid(x, y)
 
-
+    scale = add_scale * 1 / crossfield_stride
     
-    # Generate correct X, Y grid matching (512, 512)
-    Y, X = np.meshgrid(np.arange(angles_rad.shape[0]), np.arange(angles_rad.shape[1]), indexing='ij')
-
-    # step = 50  # Adjust for desired density
-    # X = X[::step, ::step]
-    # Y = Y[::step, ::step]
-    # U = U[::step, ::step]
-    # V = V[::step, ::step]
-    # mask = mask[::step, ::step]
+    u = np.cos(crossfield)
+    v = np.sin(crossfield)
     
-    # Apply the mask
-    X_masked, Y_masked = X[mask], Y[mask]
-    U_masked, V_masked = U[mask], V[mask]
+    u = u[::crossfield_stride, ::crossfield_stride]
+    v = v[::crossfield_stride, ::crossfield_stride]
     
-    step = 30
-    X_masked = X_masked[::step]
-    Y_masked = Y_masked[::step]
-    U_masked = U_masked[::step]
-    V_masked = V_masked[::step]
-
-    length = 2.0
-    # Create the plot
-    ax.quiver(X_masked, Y_masked, U_masked, V_masked, color='blue', angles='xy', scale_units='xy', scale=None, width=0.05, headlength=40)
+    quiveropts = dict(color=(0, 0, 1, alpha), headaxislength=0, headlength=0, pivot='middle', angles='xy', units='xy',
+                      scale=scale, width=width, headwidth=1)
+    ax.quiver(x, y, u, -v, **quiveropts)
 
     if show:
         plt.show(block=False)
@@ -310,7 +330,7 @@ def plot_pix2poly(image_batch=None,lidar_batch=None,tile_names=None,mask_batch=N
 
 
 
-def plot_ffl(batch):
+def plot_ffl(batch,show=True):
     
     image_batch = batch.get("image",None)
     lidar_batch = batch.get("lidar",None)
@@ -326,9 +346,12 @@ def plot_ffl(batch):
     n_rows = np.ceil(np.sqrt(batch_size)).astype(int)
     n_cols = n_rows
     
-    fig, ax = plt.subplots(n_rows,n_cols,figsize=(int(n_cols*3), int(n_cols*3)), dpi=150)
-    ax = ax.flatten()
-
+    fig, ax = plt.subplots(n_rows,n_cols,figsize=(16,16), dpi=80)
+    if isinstance(ax, np.ndarray):
+        ax = ax.flatten()
+    else:
+        ax = [ax]
+    
     if image_batch is not None:
         image_batch = image_batch.permute(0, 2, 3, 1).cpu().numpy()
         
@@ -347,7 +370,7 @@ def plot_ffl(batch):
         if lidar_batch is not None:
             plot_point_cloud(lidar_batch[i], show=False, ax=ax[i]) 
                
-        # plot_mask(building[i], color=[1,0,0,0.1], show=False, ax=ax[i])
+        plot_mask(building[i], color=[1,1,0,0.3], show=False, ax=ax[i])
         # plot_mask(edges[i], color=[0,1,0,1], show=False, ax=ax[i])
         # plot_mask(vertices[i], color=[0,0,1,1], show=False, ax=ax[i])
         
@@ -358,4 +381,8 @@ def plot_ffl(batch):
         #     ax[i].set_title(tile_names[i], fontsize=4)
     
     plt.tight_layout()
-    plt.show(block=True)
+    fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    if show:
+        plt.show(block=True)
+    
+    return fig

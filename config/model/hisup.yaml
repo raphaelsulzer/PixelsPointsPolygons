@@ -4,13 +4,13 @@ encoder:
     pretrained: True
     checkpoint_file: ${...host.data_root}/hrnetv2_w48_imagenet_pretrained.pth
 
-    input_size: 512
-    input_height: ${.input_size}
-    input_width: ${.input_size}
+    in_size: 512
+    in_height: ${.in_size}
+    in_width: ${.in_size}
     
-    output_size: 128
-    output_height: ${.output_size}
-    output_width: ${.output_size}
+    out_feature_size: 128
+    out_feature_height: ${.out_feature_size}
+    out__featurewidth: ${.out_feature_size}
     
     out_feature_channels: 256
 
@@ -39,43 +39,27 @@ defaults:
     - lidar_encoder: pointpillars
 
 
-
-# lidar_encoder:
-#     # in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56
-#     in_voxel_size:
-#         x: 2
-#         y: 2
-
-#     max_num_points_per_voxel: 4 # this should be something around points_per_tile / num_voxels_per_tile
-
-#     max_num_voxels:
-#         train: 65536 # 256**2
-#         test: 65536 # 256**2
-
-#     out_width: 256
-#     out_height: 256
-
-#     out_embed_dim: 64
-
 lidar_encoder:
     # in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56
+    # in fact, one voxel is always 0.25m x 0.25m, so the standard voxel size is 2m x 2m
     in_voxel_size:
         x: 8
         y: 8
 
-    max_num_points_per_voxel: 128 # this should be something around points_per_tile / num_voxels_per_tile
+    max_num_points_per_voxel: 128 # this should be something around points_per_tile / num_voxels_per_tile, however, I find that half of that value is enough
 
     max_num_voxels: # here: (512/8)**2
         train: 4096 # 256**2
         test: 4096 # 256**2
 
-    out_width: 256
-    out_height: 256
+    out_width: ${.encoder.out_width}
+    out_height: ${.encoder.out_height}
 
-    out_embed_dim: 64
+    out_feature_channels: ${.encoder.out_feature_channels}
+
 
 augmentations:
     - D4
     - Resize
-    # - ColorJitter
-    # - GaussNoise
+    - ColorJitter
+    - GaussNoise

@@ -42,37 +42,16 @@ def inference(config, model, tile_data, compute_polygonization=False, pool=None)
     return tile_data
 
 
-def inference_no_patching(config, model, tile_data):
+def inference_no_patching(config, model, batch):
     with torch.no_grad():
-        batch = {
-            "image": tile_data["image"],
-            # "image_mean": tile_data["image_mean"],
-            # "image_std": tile_data["image_std"]
-        }
-        try:
-            pred, batch = network_inference(model, batch)
-        except RuntimeError as e:
-            print_utils.print_error("ERROR: " + str(e))
-            if 1 < config["optim_params"]["eval_batch_size"]:
-                print_utils.print_info("INFO: Try lowering the effective batch_size (which is {} currently). "
-                                       "Note that in eval mode, the effective bath_size is equal to double the batch_size "
-                                       "because gradients do not need to "
-                                       "be computed so double the memory is available. "
-                                       "You can override the effective batch_size with the --eval_batch_size command-line argument."
-                                       .format(config["optim_params"]["eval_batch_size"]))
-            else:
-                print_utils.print_info("INFO: The effective batch_size is 1 but the GPU still ran out of memory."
-                                       "You can specify parameters to split the image into patches for inference:\n"
-                                       "--eval_patch_size is the size of the patch and should be chosen as big as memory allows.\n"
-                                       "--eval_patch_overlap (optional, default=200) adds overlaps between patches to avoid border artifacts."
-                                       .format(config["optim_params"]["eval_batch_size"]))
-            sys.exit()
 
-        tile_data["seg"] = pred["seg"]
+        pred, batch = network_inference(model, batch)
+        
+        batch["seg"] = pred["seg"]
         if "crossfield" in pred:
-            tile_data["crossfield"] = pred["crossfield"]
+            batch["crossfield"] = pred["crossfield"]
 
-    return tile_data
+    return batch
 
 
 def inference_with_patching(config, model, tile_data):
@@ -138,29 +117,3 @@ def inference_with_patching(config, model, tile_data):
             tile_data["crossfield"] /= weight_map
 
     return tile_data
-
-
-def load_checkpoint(model, checkpoints_dirpath, device):
-    """
-    Loads best val checkpoint in checkpoints_dirpath
-    """
-    filepaths = python_utils.get_filepaths(checkpoints_dirpath, startswith_str="checkpoint.best_val.",
-                                           endswith_str=".tar")
-    if len(filepaths):
-        filepaths = sorted(filepaths)
-        filepath = filepaths[-1]  # Last best val checkpoint filepath in case there is more than one
-        print_utils.print_info("Loading best val checkpoint: {}".format(filepath))
-    else:
-        # No best val checkpoint fount: find last checkpoint:
-        filepaths = python_utils.get_filepaths(checkpoints_dirpath, endswith_str=".tar",
-                                               startswith_str="checkpoint.")
-        filepaths = sorted(filepaths)
-        filepath = filepaths[-1]  # Last checkpoint
-        print_utils.print_info("Loading last checkpoint: {}".format(filepath))
-
-    device = torch.device(device)
-    checkpoint = torch.load(filepath, map_location=device)  # map_location is used to load on current device
-
-    model.load_state_dict(checkpoint['model_state_dict'])
-
-    return model

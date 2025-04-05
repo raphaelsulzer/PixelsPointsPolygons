@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 from ..misc import *
 
-class Predictor:
+class HiSupPredictor:
     def __init__(self, cfg, local_rank=0, world_size=1):
         self.cfg = cfg
         
@@ -52,7 +52,6 @@ class Predictor:
     
     def load_checkpoint(self, model):
         
-        ## get the file
         if self.cfg.checkpoint_file is not None:
             checkpoint_file = self.cfg.checkpoint_file
             self.cfg.checkpoint = os.path.basename(checkpoint_file).split(".")[0]+"_overwrite"
@@ -61,36 +60,32 @@ class Predictor:
         if not os.path.isfile(checkpoint_file):
             raise FileExistsError(f"Checkpoint file {checkpoint_file} not found.")
         self.logger.info(f"Loading model from checkpoint: {checkpoint_file}")
-        
-        ## load the checkpoint
         checkpoint = torch.load(checkpoint_file, map_location=self.cfg.device)
-        for k in checkpoint.keys():
-            if "_state_dict" in k:
-                checkpoint[k.replace("_state_dict","")] = checkpoint.pop(k)
         
-        ## check for correct model type
-        cfg = checkpoint.get("cfg",None)
-        if cfg is not None:
-            if not cfg.use_lidar == self.cfg.use_lidar:
-                self.logger.error(f"Model checkpoint was trained with use_lidar={cfg.use_lidar}, but current config is use_lidar={self.cfg.use_lidar}.")
-                raise ValueError("Model checkpoint and current config do not match.")
-            if not cfg.use_images == self.cfg.use_images:
-                self.logger.error(f"Model checkpoint was trained with use_images={cfg.use_images}, but current config is use_images={self.cfg.use_images}.")
-                raise ValueError("Model checkpoint and current config do not match.")
-            
-            if hasattr(cfg, "model.fusion") and isattr(self.cfg.model, "fusion"):
-                if not cfg.model.fusion == self.cfg.model.fusion:
-                    self.logger.error(f"Model checkpoint was trained with fusion={cfg.model.fusion}, but current config is fusion={self.cfg.model.fusion}.")
-                    raise ValueError("Model checkpoint and current config do not match.")   
+        # check for correct model type
+        cfg = checkpoint.get("cfg")
+        if not cfg.use_lidar == self.cfg.use_lidar:
+            self.logger.error(f"Model checkpoint was trained with use_lidar={cfg.use_lidar}, but current config is use_lidar={self.cfg.use_lidar}.")
+            raise ValueError("Model checkpoint and current config do not match.")
+        if not cfg.use_images == self.cfg.use_images:
+            self.logger.error(f"Model checkpoint was trained with use_images={cfg.use_images}, but current config is use_images={self.cfg.use_images}.")
+            raise ValueError("Model checkpoint and current config do not match.")
         
-        ## load the model weights
-        if not self.cfg.multi_gpu:
-            single_gpu_state_dict = {k.replace(".module.", "."): v for k, v in checkpoint["model"].items()}      
-        else:
-            single_gpu_state_dict = checkpoint["model"]  
+        if hasattr(cfg, "model.fusion") and isattr(self.cfg.model, "fusion"):
+            if not cfg.model.fusion == self.cfg.model.fusion:
+                self.logger.error(f"Model checkpoint was trained with fusion={cfg.model.fusion}, but current config is fusion={self.cfg.model.fusion}.")
+                raise ValueError("Model checkpoint and current config do not match.")   
+        
+        
+        single_gpu_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["model"].items()}
+        # single_gpu_state_dict = {k.replace("encoder.image_encoder", "encoder.encoder"): v for k, v in checkpoint["state_dict"].items()}
+        
+        # single_gpu_state_dict = checkpoint["state_dict"]
         model.load_state_dict(single_gpu_state_dict)
         epoch = checkpoint['epoch']
-        
         self.logger.info(f"Model loaded from epoch: {epoch}")
         
+    def predict_with_overlap():
         
+        # this could should be in the original HiSup repo in the INRIA predictions
+        pass

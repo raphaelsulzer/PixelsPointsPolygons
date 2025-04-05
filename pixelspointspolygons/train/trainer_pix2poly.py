@@ -30,93 +30,6 @@ from ..eval import Evaluator
 from .trainer import Trainer
 
 class Pix2PolyTrainer(Trainer):
-    def __init__(self, cfg, local_rank, world_size):
-        
-        self.cfg = cfg
-        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
-        if verbosity == logging.INFO and local_rank != 0:
-            verbosity = logging.WARNING
-        self.verbosity = verbosity
-        self.logger = make_logger(f"Trainer (rank {local_rank})",level=verbosity)
-        self.update_pbar_every = cfg.update_pbar_every
-
-        self.logger.log(logging.INFO, f"Init Trainer on rank {local_rank} in world size {world_size}...")
-        self.logger.info("Configuration:")
-        self.logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
-        if local_rank == 0:
-            self.logger.info(f"Create output directory {self.cfg.output_dir}")
-            os.makedirs(self.cfg.output_dir, exist_ok=True)
-        
-        self.local_rank = local_rank
-        self.world_size = world_size
-        self.device = torch.device(f"cuda:{local_rank}")
-        self.model = None
-        self.optimizer = None
-        self.train_loader = None
-        self.val_loader = None
-        self.lr_scheduler = None
-        self.loss_fn_dict = {}
-        
-        self.is_ddp = self.cfg.multi_gpu
-        
-        
-    def progress_bar(self,item):
-        
-        disable = self.verbosity >= logging.WARNING
-        
-        pbar = tqdm(item, total=len(item), 
-                      file=sys.stdout, 
-                      mininterval=self.update_pbar_every,                      
-                      disable=disable,
-                      position=0,
-                      leave=True)
-    
-        return pbar
-    
-    def setup_ddp(self):
-
-        # Initializes the distributed backend which will take care of synchronizing nodes/GPUs.
-        dist_url = "env://"  # default
-
-        dist.init_process_group(
-            backend="nccl",
-            init_method=dist_url,
-            world_size=self.world_size,
-            rank=int(os.environ["RANK"])
-        )
-        
-        # this will make all .cuda() calls work properly.
-        torch.cuda.set_device(self.local_rank)
-
-        # synchronizes all threads to reach this point before moving on.
-        dist.barrier()
-        
-    def setup_wandb(self):
-    
-        if self.cfg.host.name == "jeanzay":
-            os.environ["WANDB_MODE"] = "offline"
-        
-        cfg_container = OmegaConf.to_container(
-            self.cfg, resolve=True, throw_on_missing=True
-        )
-
-        # start a new wandb run to track this script
-        wandb.init(
-            # set the wandb project where this run will be logged
-            project="HiSup",
-            name=self.cfg.experiment_name,
-            group="v1_pix2poly",
-            # track hyperparameters and run metadata
-            config=cfg_container,
-            dir=self.cfg.output_dir,
-        )
-        
-        log_outfile = os.path.join(self.cfg.output_dir, 'wandb.log')
-        wandb.run.log_code(log_outfile)
-
-    def cleanup(self):
-        dist.destroy_process_group()
-
 
     def setup_optimizer(self):
         # Get optimizer
@@ -152,7 +65,8 @@ class Pix2PolyTrainer(Trainer):
     
     def setup_model(self):
         
-        ## TODO: maybe it is better to make a model class that goes at the beginning of this file, which can then also be used by the Predictor class
+        ## TODO: maybe it is better to make a model class that goes inside the model_{archictecture}.py file, which can then also be used by the Predictor class
+        ## See FFL where this is already done
         
         if self.cfg.use_images and self.cfg.use_lidar:
             encoder = MultiEncoder(self.cfg)
@@ -184,10 +98,10 @@ class Pix2PolyTrainer(Trainer):
             model = DDP(model, device_ids=[self.local_rank])
         
         self.model = model
+        
+        self.setup_tokenizer()
+        self.setup_cfg_vars()
 
-    def setup_dataloader(self):
-        self.train_loader = get_train_loader(self.cfg,tokenizer=self.tokenizer)
-        self.val_loader = get_val_loader(self.cfg,tokenizer=self.tokenizer)
 
     def setup_optimizer(self):
         # Get optimizer
@@ -201,50 +115,6 @@ class Pix2PolyTrainer(Trainer):
             num_training_steps=num_training_steps,
             num_warmup_steps=num_warmup_steps
         )
-
-    def save_checkpoint(self, outfile, **kwargs):
-        
-        os.makedirs(os.path.dirname(outfile), exist_ok=True)
-            
-        checkpoint = {
-            "cfg": self.cfg,
-            "model": self.model.state_dict(),
-            "optimizer": self.optimizer.state_dict(),
-            "scheduler": self.lr_scheduler.state_dict(),
-            **kwargs
-        }
-        
-        torch.save(checkpoint, outfile)
-        
-        self.logger.info(f"Save model {os.path.split(outfile)[-1]} to {outfile}")
-
-    def load_checkpoint(self):
-        
-        map_location = {'cuda:%d' % 0: 'cuda:%d' % self.local_rank}
-        checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
-        if not os.path.isfile(checkpoint_file):
-            raise FileExistsError(f"Checkpoint file {checkpoint_file} does not exist.")
-
-        self.logger.info(f"Load checkpoint {self.cfg.checkpoint} from {checkpoint_file}...")
-        
-        checkpoint = torch.load(checkpoint_file, map_location=map_location)
-        self.model.load_state_dict(checkpoint.get("model",checkpoint.get("state_dict")))
-        self.optimizer.load_state_dict(checkpoint["optimizer"])
-        self.lr_scheduler.load_state_dict(checkpoint["scheduler"])
-        
-        start_epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))
-        self.cfg.model.start_epoch = start_epoch + 1
-
-    def average_across_gpus(self, meter):
-        
-        if not self.is_ddp:
-            return meter.avg
-        
-        tensor = torch.tensor([meter.avg], device=self.device)
-        dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
-        tensor /= self.world_size
-        return tensor.item()
-    
     
     def setup_loss_fn_dict(self):
         
@@ -525,16 +395,3 @@ class Pix2PolyTrainer(Trainer):
 
     
 
-
-    def train(self):
-        seed_everything(42)
-        if self.is_ddp:
-            self.setup_ddp()
-        self.setup_tokenizer()
-        self.setup_cfg_vars()
-        self.setup_model()
-        self.setup_dataloader()
-        self.setup_optimizer()
-        self.setup_loss_fn_dict()
-        self.train_val_loop()
-        self.cleanup()

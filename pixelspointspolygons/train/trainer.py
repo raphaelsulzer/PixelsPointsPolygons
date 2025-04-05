@@ -17,9 +17,6 @@ import torch.distributed as dist
 
 from tqdm import tqdm
 from omegaconf import OmegaConf
-from torch import nn
-from torch import optim
-from transformers import get_linear_schedule_with_warmup
 
 from ..misc import make_logger, get_lr, seed_everything
 from ..datasets import get_train_loader, get_val_loader
@@ -69,24 +66,6 @@ class Trainer:
                       leave=True)
     
         return pbar
-    
-    def setup_ddp(self):
-
-        # Initializes the distributed backend which will take care of synchronizing nodes/GPUs.
-        dist_url = "env://"  # default
-
-        dist.init_process_group(
-            backend="nccl",
-            init_method=dist_url,
-            world_size=self.world_size,
-            rank=int(os.environ["RANK"])
-        )
-        
-        # this will make all .cuda() calls work properly.
-        torch.cuda.set_device(self.local_rank)
-
-        # synchronizes all threads to reach this point before moving on.
-        dist.barrier()
         
     def setup_wandb(self):
     
@@ -111,8 +90,16 @@ class Trainer:
         log_outfile = os.path.join(self.cfg.output_dir, 'wandb.log')
         wandb.run.log_code(log_outfile)
 
-    def cleanup(self):
-        dist.destroy_process_group()
+    def average_across_gpus(self, meter):
+        
+        if not self.is_ddp:
+            return meter.global_avg
+        
+        tensor = torch.tensor([meter.global_avg], device=self.device)
+        dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
+        tensor /= self.world_size
+        return tensor.item()
+
     
     def setup_dataloader(self):
         self.train_loader = get_train_loader(self.cfg,logger=self.logger)
@@ -122,12 +109,12 @@ class Trainer:
         """Save checkpoint to file. This is a generic function that saves the model, optimizer and scheduler state dicts."""
         
         os.makedirs(os.path.dirname(outfile), exist_ok=True)
-            
+        
         checkpoint = {
             "cfg": self.cfg,
             "model": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
-            "scheduler": self.lr_scheduler.state_dict(),
+            "lr_scheduler": self.lr_scheduler.state_dict(),
             **kwargs
         }
         
@@ -138,17 +125,52 @@ class Trainer:
     def load_checkpoint(self):
         """Load checkpoint from file. This is a generic function that loads the model, optimizer and scheduler state dicts."""
         
-        map_location = {'cuda:%d' % 0: 'cuda:%d' % self.local_rank}
-        checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
+        ## get the file
+        if self.cfg.checkpoint_file is not None:
+            checkpoint_file = self.cfg.checkpoint_file
+            self.cfg.checkpoint = os.path.basename(checkpoint_file).split(".")[0]+"_overwrite"
+        else:
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
         if not os.path.isfile(checkpoint_file):
-            raise FileExistsError(f"Checkpoint file {checkpoint_file} does not exist.")
-
-        self.logger.info(f"Load checkpoint {self.cfg.checkpoint} from {checkpoint_file}...")
+            raise FileExistsError(f"Checkpoint file {checkpoint_file} not found.")
+        self.logger.info(f"Loading model from checkpoint: {checkpoint_file}")
         
-        checkpoint = torch.load(checkpoint_file, map_location=map_location)
-        self.model.load_state_dict(checkpoint.get("model",checkpoint.get("state_dict")))
+        ## load the checkpoint
+        checkpoint = torch.load(checkpoint_file, map_location=self.cfg.device)
+        
+        temp = {}
+        for k,v in checkpoint.items():
+            if "_state_dict" in k:
+                temp[k.replace("_state_dict","")] = v
+            else:
+                temp[k] = v
+        checkpoint = temp
+        del temp
+        
+        ## check for correct model type
+        cfg = checkpoint.get("cfg",None)
+        if cfg is not None:
+            if not cfg.use_lidar == self.cfg.use_lidar:
+                self.logger.error(f"Model checkpoint was trained with use_lidar={cfg.use_lidar}, but current config is use_lidar={self.cfg.use_lidar}.")
+                raise ValueError("Model checkpoint and current config do not match.")
+            if not cfg.use_images == self.cfg.use_images:
+                self.logger.error(f"Model checkpoint was trained with use_images={cfg.use_images}, but current config is use_images={self.cfg.use_images}.")
+                raise ValueError("Model checkpoint and current config do not match.")
+            
+            if hasattr(cfg, "model.fusion") and isattr(self.cfg.model, "fusion"):
+                if not cfg.model.fusion == self.cfg.model.fusion:
+                    self.logger.error(f"Model checkpoint was trained with fusion={cfg.model.fusion}, but current config is fusion={self.cfg.model.fusion}.")
+                    raise ValueError("Model checkpoint and current config do not match.")   
+                
+        if not self.cfg.multi_gpu:
+            model_state_dict = {k.replace(".module.", "."): v for k, v in checkpoint["model"].items()}      
+        else:
+            model_state_dict = checkpoint["model"]  
+        self.model.load_state_dict(model_state_dict)
         self.optimizer.load_state_dict(checkpoint["optimizer"])
-        self.lr_scheduler.load_state_dict(checkpoint["scheduler"])
+        self.lr_scheduler.load_state_dict(checkpoint.get("scheduler",checkpoint.get("lr_scheduler")))
+        if "loss_func" in checkpoint:
+            self.loss_func.load_state_dict(checkpoint["loss_func"])
         
         start_epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))
         self.cfg.model.start_epoch = start_epoch + 1
@@ -284,17 +306,21 @@ class Trainer:
                 if self.local_rank == 0:
                     wandb.log(wandb_dict)
 
+    def setup_model(self):
+        pass
+    def setup_optimizer(self):
+        pass
+    def setup_loss_fn_dict(self):
+        pass
     
-
-    def train(self):
-        """This is just an example of how to use the Trainer class. The actual train function needs to be reimplemented for each architecture."""
+    def cleanup(self):
+        dist.destroy_process_group()
         
+    def train(self):
         seed_everything(42)
-        if self.is_ddp:
-            self.setup_ddp()
-        # self.setup_model()
+        self.setup_model()
         self.setup_dataloader()
         self.setup_optimizer()
-        # self.setup_loss_fn_dict()
+        self.setup_loss_fn_dict()
         self.train_val_loop()
         self.cleanup()

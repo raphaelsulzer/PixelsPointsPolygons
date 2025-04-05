@@ -44,11 +44,32 @@ def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
     if "D4" in cfg.model.augmentations:
         transforms.append(A.D4(p=1.0))
     if "Resize" in cfg.model.augmentations:
-        transforms.append(A.Resize(height=cfg.model.encoder.input_height, width=cfg.model.encoder.input_width))
+        transforms.append(A.Resize(height=cfg.model.encoder.in_height, width=cfg.model.encoder.in_width))
     if "ColorJitter" in cfg.model.augmentations:
         transforms.append(A.ColorJitter())
     if "GaussNoise" in cfg.model.augmentations:
         transforms.append(A.GaussNoise())
+    # ## this is just used for debugging
+    # if "e" in cfg.model.augmentations:
+    #     transforms.append(A.Compose([]))
+    # if "r90" in cfg.model.augmentations:
+    #     transforms.append(A.Rotate(limit=(90, 90), p=1.0))
+    # if "r180" in cfg.model.augmentations:
+    #     transforms.append(A.Rotate(limit=(180, 180), p=1.0))
+    # if "r270" in cfg.model.augmentations:
+    #     transforms.append(A.Rotate(limit=(270, 270), p=1.0))
+    # if "h" in cfg.model.augmentations:
+    #     transforms.append(A.HorizontalFlip(p=1.0))
+    # if "v" in cfg.model.augmentations:
+    #     transforms.append(A.VerticalFlip(p=1.0))
+    # if "t" in cfg.model.augmentations:
+    #     transforms.append(A.Transpose(p=1.0))
+    # if "hvt" in cfg.model.augmentations:
+    #     transforms.append(A.Compose([
+    #         A.HorizontalFlip(p=1.0),
+    #         A.VerticalFlip(p=1.0),
+    #         A.Transpose(p=1.0),
+    #     ]))
     
     if logger is not None:
         for t in transforms:
@@ -98,7 +119,7 @@ def get_val_loader_lidarpoly(cfg,tokenizer,logger=None):
     
     transforms = []
     if "Resize" in cfg.model.augmentations:
-        transforms.append(A.Resize(height=cfg.model.encoder.input_height, width=cfg.model.encoder.input_width))
+        transforms.append(A.Resize(height=cfg.model.encoder.in_height, width=cfg.model.encoder.in_width))
         
     transforms.append(A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0)) 
     transforms.append(ToTensorV2())

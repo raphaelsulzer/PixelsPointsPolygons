@@ -8,7 +8,7 @@ defaults:
 # experiment_name: images_only
 # experiment_name: debug
 # experiment_name: inria_D4_aug
-experiment_name: debug
+experiment_name: ffl_D4_noLossNorm
 group_name: v2_${.model.name}
 multi_gpu: false
 device: cuda
@@ -28,13 +28,15 @@ use_images: true
 
 debug_vis: false
 
-checkpoint: null
-checkpoint_file: null # override for loading a specific checkpoint file
+checkpoint: latest
+checkpoint_file: null # override for loading a specific checkpoint file not in the output_dir
+# checkpoint_file : /data/rsulzer/ffl_outputs/checkpoint.best_val.epoch_000234.tar
+
 
 eval:
   gt_file: ${..dataset.annotations.val}
   pred_file: ${..output_dir}/predictions/${..checkpoint}.json
-  out_file: ${..output_dir}/eval/${..checkpoint}.csv
+  eval_file: ${..output_dir}/eval/${..checkpoint}.csv
   modes:
     - coco
     - iou

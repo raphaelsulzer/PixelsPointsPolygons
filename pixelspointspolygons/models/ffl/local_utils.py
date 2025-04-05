@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import time
+import torch
 
 from lydorn_utils import run_utils, print_utils
 from lydorn_utils import python_utils
@@ -101,18 +102,22 @@ def batch_to_cpu(batch):
     return batch
 
 
-def split_batch(tile_data):
-    assert len(tile_data["image"].shape) == 4, "tile_data[\"image\"] should be (N, C, H, W)"
+def split_batch(batch, batch_size):
+    # assert len(batch["image"].shape) == 4, "tile_data[\"image\"] should be (N, C, H, W)"
     tile_data_list = []
-    for i in range(tile_data["image"].shape[0]):
+    for i in range(batch_size):
         individual_tile_data = {}
-        for key, item in tile_data.items():
+        for key, item in batch.items():
             if item is None or len(item) == 0:
                 # None is e.g. for use_images=false or use_lidar=false
                 # len(item) == 0 is for filtering out image_mean and image_std which I am not using
                 continue
             if not i < len(item):
                 print(key, len(item))
+            # support for nested lidar tensors
+            if isinstance(item, torch.Tensor):
+                if item.is_nested:
+                    item = item.unbind(0)
             individual_tile_data[key] = item[i]
         tile_data_list.append(individual_tile_data)
     return tile_data_list

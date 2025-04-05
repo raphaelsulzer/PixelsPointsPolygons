@@ -102,17 +102,6 @@ class HiSupTrainer(Trainer):
     def setup_loss_fn_dict(self):
         
         self.loss_reducer = LossReducer(self.cfg)
-        
-    def average_across_gpus(self, meter):
-        
-        if not self.is_ddp:
-            return meter.global_avg
-        
-        tensor = torch.tensor([meter.global_avg], device=self.device)
-        dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
-        tensor /= self.world_size
-        return tensor.item()
-
     
     def valid_one_epoch(self):
 
@@ -358,14 +347,3 @@ class HiSupTrainer(Trainer):
 
     
 
-
-    def train(self):
-        seed_everything(42)
-        if self.is_ddp:
-            self.setup_ddp()
-        self.setup_model()
-        self.setup_dataloader()
-        self.setup_optimizer()
-        self.setup_loss_fn_dict()
-        self.train_val_loop()
-        self.cleanup()
