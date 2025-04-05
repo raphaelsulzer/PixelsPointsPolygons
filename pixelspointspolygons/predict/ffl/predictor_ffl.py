@@ -8,11 +8,12 @@ import json
 import torch
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
-import torch.distributed as dist
+
+from collections import defaultdict
 
 from ...models.ffl.local_utils import batch_to_cpu, split_batch, list_of_dicts_to_dict_of_lists, flatten_dict
 from ...models.ffl.model_ffl import FFLModel
-from ...datasets import get_train_loader, get_val_loader
+from ...datasets import get_val_loader
 
 from ..predictor import Predictor
 
@@ -84,17 +85,16 @@ class FFLPredictor(Predictor):
 
             # --- Polygonize
             crossfield = accumulated_tile_data.get("crossfield", None)
-            accumulated_tile_data["polygons"], accumulated_tile_data["polygon_probs"] = polygonize.polygonize(
-                self.cfg.model.polygonization, accumulated_tile_data["seg"],
-                crossfield_batch=crossfield,
-                pool=None)
-
-            # --- Save output
-            if self.cfg.model.eval.save_individual_outputs.seg_mask or \
-                    self.cfg.model.eval.save_aggregated_outputs.seg_coco:
-                # Take seg_interior:
-                seg_pred_mask = self.cfg.model.eval.seg_threshold < accumulated_tile_data["seg"][:, 0, ...]
-                accumulated_tile_data["seg_mask"] = seg_pred_mask
+            try:
+                accumulated_tile_data["polygons"], accumulated_tile_data["polygon_probs"] = polygonize.polygonize(
+                    self.cfg.model.polygonization, accumulated_tile_data["seg"],
+                    crossfield_batch=crossfield,
+                    pool=None)
+            except Exception as e:
+                # raise e
+                self.logger.error(f"Polygonization failed: {e}")
+                self.logger.error("Skipping this batch...")
+                continue
 
             accumulated_tile_data = batch_to_cpu(accumulated_tile_data)
             sample_list = split_batch(accumulated_tile_data)
@@ -102,7 +102,10 @@ class FFLPredictor(Predictor):
             for sample in sample_list:
                 annotations = save_utils.poly_coco(sample["polygons"], sample["polygon_probs"], sample["image_id"])
                 annotations_list.append(annotations)  # annotations could be a dict, or a list
-             
-        annotations = list_of_dicts_to_dict_of_lists(annotations_list)
-        annotations = flatten_dict(annotations)
-        return annotations
+        
+        if len(annotations_list):
+            annotations = list_of_dicts_to_dict_of_lists(annotations_list)
+            annotations = flatten_dict(annotations)
+            return annotations
+        else:
+            return defaultdict(list)

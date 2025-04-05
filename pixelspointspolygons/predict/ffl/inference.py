@@ -53,7 +53,7 @@ def inference_no_patching(config, model, tile_data):
             pred, batch = network_inference(model, batch)
         except RuntimeError as e:
             print_utils.print_error("ERROR: " + str(e))
-            if 1 < config["optim_params"]["eval_batch_size"]:
+            if 1 < config.model.batch_size:
                 print_utils.print_info("INFO: Try lowering the effective batch_size (which is {} currently). "
                                        "Note that in eval mode, the effective bath_size is equal to double the batch_size "
                                        "because gradients do not need to "

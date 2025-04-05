@@ -11,10 +11,12 @@ def collate_fn_ffl(batch, cfg):
             batch_dict[key].append(val)
             
     if cfg.use_images:
+        assert (len(batch_dict["image"]) > 0), "Image batch is empty"
         batch_dict["image"] = torch.stack(batch_dict["image"])
     else:
         batch_dict["image"] = None
     if cfg.use_lidar:
+        assert (len(batch_dict["lidar"]) > 0), "LiDAR batch is empty"
         batch_dict["lidar"] = torch.nested.nested_tensor(batch_dict["lidar"], layout=torch.jagged)
     else:
         batch_dict["lidar"] = None

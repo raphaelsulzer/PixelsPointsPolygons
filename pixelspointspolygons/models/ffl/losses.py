@@ -144,7 +144,7 @@ class MultiLoss(torch.nn.Module):
 
 
 # --- Build combined loss: --- #
-def compute_seg_loss_weigths(pred_batch, gt_batch, config):
+def compute_seg_loss_weigths(pred_batch, gt_batch, cfg):
     """
     Combines distances (from U-Net paper) with sizes (from https://github.com/neptune-ai/open-solution-mapping-challenge).
 
@@ -153,12 +153,14 @@ def compute_seg_loss_weigths(pred_batch, gt_batch, config):
     @return:
     """
     device = gt_batch["distances"].device
-    use_dist = config.model.loss.seg_loss_params.use_dist
-    use_size = config.model.loss.seg_loss_params.use_size
-    w0 = config.model.loss.seg_loss_params.w0
-    sigma = config.model.loss.seg_loss_params.sigma
-    height = gt_batch["image"].shape[2]
-    width = gt_batch["image"].shape[3]
+    use_dist = cfg.model.loss.seg.use_dist
+    use_size = cfg.model.loss.seg.use_size
+    w0 = cfg.model.loss.seg.w0
+    sigma = cfg.model.loss.seg.sigma
+    # height = gt_batch["image"].shape[2]
+    # width = gt_batch["image"].shape[3]
+    height = cfg.model.encoder.in_height
+    width = cfg.model.encoder.in_width
     im_radius = math.sqrt(height * width) / 2
 
     # --- Class imbalance weight (not forgetting background):
@@ -233,61 +235,61 @@ def build_combined_loss(cfg):
     weights = []
     
     # Segment Loss
-    if cfg.model.compute_seg:
-        partial_compute_seg_loss_weigths = partial(compute_seg_loss_weigths, config=cfg)
+    if cfg.model.encoder.compute_seg:
+        partial_compute_seg_loss_weigths = partial(compute_seg_loss_weigths, cfg=cfg)
         pre_processes.append(partial_compute_seg_loss_weigths)
         
         gt_channel_selector = [
-            cfg.model.seg_params.compute_interior, 
-            cfg.model.seg_params.compute_edge, 
-            cfg.model.seg_params.compute_vertex
+            cfg.model.encoder.seg.compute_interior, 
+            cfg.model.encoder.seg.compute_edge, 
+            cfg.model.encoder.seg.compute_vertex
         ]
         
         loss_funcs.append(SegLoss(
             name="seg",
             gt_channel_selector=gt_channel_selector,
-            bce_coef=cfg.model.loss.seg_loss_params.bce_coef,
-            dice_coef=cfg.model.loss.seg_loss_params.dice_coef
+            bce_coef=cfg.model.loss.seg.bce_coef,
+            dice_coef=cfg.model.loss.seg.dice_coef
         ))
-        weights.append(cfg.model.loss.multiloss.coefs.seg)
+        weights.append(cfg.model.loss.multi.weights.seg)
 
     # Crossfield Losses
-    if cfg.model.compute_crossfield:
+    if cfg.model.encoder.compute_crossfield:
         pre_processes.append(compute_gt_field)
         
         loss_funcs.append(CrossfieldAlignLoss(name="crossfield_align"))
-        weights.append(cfg.model.loss.multiloss.coefs.crossfield_align)
+        weights.append(cfg.model.loss.multi.weights.crossfield_align)
         
         loss_funcs.append(CrossfieldAlign90Loss(name="crossfield_align90"))
-        weights.append(cfg.model.loss.multiloss.coefs.crossfield_align90)
+        weights.append(cfg.model.loss.multi.weights.crossfield_align90)
         
         loss_funcs.append(CrossfieldSmoothLoss(name="crossfield_smooth"))
-        weights.append(cfg.model.loss.multiloss.coefs.crossfield_smooth)
+        weights.append(cfg.model.loss.multi.weights.crossfield_smooth)
 
     # Coupling Losses: Segment and Crossfield
-    if cfg.model.compute_seg:
+    if cfg.model.encoder.compute_seg:
         need_seg_grads = False
         pred_channel = -1
         
         # Seg interior <-> Crossfield coupling:
-        if cfg.model.seg_params.compute_interior and cfg.model.compute_crossfield:
+        if cfg.model.encoder.seg.compute_interior and cfg.model.encoder.compute_crossfield:
             need_seg_grads = True
             pred_channel += 1
             loss_funcs.append(SegCrossfieldLoss(name="seg_interior_crossfield", pred_channel=pred_channel))
-            weights.append(list(cfg.model.loss.multiloss.coefs.seg_interior_crossfield))
+            weights.append(list(cfg.model.loss.multi.weights.seg_interior_crossfield))
         
         # Seg edge <-> Crossfield coupling:
-        if cfg.model.seg_params.compute_edge and cfg.model.compute_crossfield:
+        if cfg.model.encoder.seg.compute_edge and cfg.model.encoder.compute_crossfield:
             need_seg_grads = True
             pred_channel += 1
             loss_funcs.append(SegCrossfieldLoss(name="seg_edge_crossfield", pred_channel=pred_channel))
-            weights.append(list(cfg.model.loss.multiloss.coefs.seg_edge_crossfield))
+            weights.append(list(cfg.model.loss.multi.weights.seg_edge_crossfield))
 
         # Seg edge <-> seg interior coupling:
-        if cfg.model.seg_params.compute_interior and cfg.model.seg_params.compute_edge:
+        if cfg.model.encoder.seg.compute_interior and cfg.model.encoder.seg.compute_edge:
             need_seg_grads = True
             loss_funcs.append(SegEdgeInteriorLoss(name="seg_edge_interior"))
-            weights.append(list(cfg.model.loss.multiloss.coefs.seg_edge_interior))
+            weights.append(list(cfg.model.loss.multi.weights.seg_edge_interior))
 
         # Add gradient computation for segmentation if necessary
         if need_seg_grads:
@@ -297,7 +299,7 @@ def build_combined_loss(cfg):
     combined_loss = MultiLoss(
         loss_funcs,
         weights,
-        epoch_thresholds=cfg.model.loss.multiloss.coefs.epoch_thresholds,
+        epoch_thresholds=cfg.model.loss.multi.epoch_thresholds,
         pre_processes=pre_processes
     )
     
