@@ -76,7 +76,7 @@ class FFLPredictor(Predictor):
             if self.cfg.multi_gpu:
                 """make a single batch from the DDP batch"""
                 for k in batch.keys():
-                    temp = [None] * self.workd_size
+                    temp = [None] * self.world_size
                     dist.all_gather(temp, batch[k])
                     batch[k] = torch.stack([item for sublist in temp for item in sublist])
                 
