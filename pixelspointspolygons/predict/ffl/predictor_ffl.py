@@ -94,7 +94,7 @@ class FFLPredictor(Predictor):
                 # Flatten the list of lists into a single list
                 batch["crossfield"] = torch.stack(crossfield,dim=0)
                 
-                self.logger.debug(f"Seg is now of shape {batch["seg"].shape}")
+                self.logger.debug(f"Seg is now of shape {batch['seg'].shape}")
                 
             
             if self.local_rank == 0:
