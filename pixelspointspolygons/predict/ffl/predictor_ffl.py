@@ -63,7 +63,7 @@ class FFLPredictor(Predictor):
             # --- Inference, add result to batch_list
             if self.cfg.model.eval.patch_size is not None:
                 # Cut image into patches for inference
-                inference.inference_with_patching(self.cfg, model, batch)
+                batch = inference.inference_with_patching(self.cfg, model, batch)
                 pool = None
             else:
                 # Feed images as-is to the model
@@ -120,12 +120,20 @@ class FFLPredictor(Predictor):
         # else:
         #     self.logger.info(f"Rank {self.local_rank} waiting until polygonization is done...")
         if self.cfg.multi_gpu:
-            dist.barrier()
-            
+            # dist.barrier()
+                        
+            # Gather the list of dictionaries from all ranks
+            temp = [None] * self.world_size  # Placeholder for gathered objects
+            dist.all_gather_object(temp, annotations_list)
+
+            # Flatten the list of lists into a single list
+            annotations_list = [item for sublist in temp for item in sublist]
+
+        
 
         if len(annotations_list):
             annotations = list_of_dicts_to_dict_of_lists(annotations_list)
             annotations = flatten_dict(annotations)
             return annotations
         else:
-            return []
+            return dict()
