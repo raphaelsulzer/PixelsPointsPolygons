@@ -77,6 +77,7 @@ class FFLPredictor(Predictor):
                 """make a single batch from the DDP batch"""
                 for k in batch.keys():
                     temp = [None] * self.world_size
+                    self.logger.debug(f"Gathering {k} : {type(batch[k])}")
                     dist.all_gather(temp, batch[k])
                     batch[k] = torch.stack([item for sublist in temp for item in sublist])
                 
