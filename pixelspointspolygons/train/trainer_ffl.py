@@ -285,7 +285,7 @@ class FFLTrainer(Trainer):
                 
                 if self.local_rank == 0:
                     
-                    self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
+                    # self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
     
                     self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 
                     self.logger.info(f"Run coco evaluation on rank {self.local_rank}...")
