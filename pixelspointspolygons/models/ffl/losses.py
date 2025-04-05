@@ -153,6 +153,7 @@ def compute_seg_loss_weigths(pred_batch, gt_batch, cfg):
     @return:
     """
     device = gt_batch["distances"].device
+    use_freq = cfg.model.loss.seg.use_freq
     use_dist = cfg.model.loss.seg.use_dist
     use_size = cfg.model.loss.seg.use_size
     w0 = cfg.model.loss.seg.w0
@@ -197,7 +198,9 @@ def compute_seg_loss_weigths(pred_batch, gt_batch, cfg):
         # print(size_weights.shape, size_weights.min().item(), size_weights.max().item())
         # print(freq_weights.shape, freq_weights.min().item(), freq_weights.max().item())
 
-    gt_batch["seg_loss_weights"] = freq_weights
+    gt_batch["seg_loss_weights"] = torch.ones(*tuple(gt_batch["gt_polygons_image"].shape),device=device)
+    if use_freq:
+        gt_batch["seg_loss_weights"] = freq_weights
     if use_dist:
         gt_batch["seg_loss_weights"] += distance_weights
     if use_size:
@@ -347,8 +350,8 @@ class SegLoss(Loss):
         
         
         ## RS: removing the weighting here. It leads to crazy high seg_loss values. Is it really supposed to be used?
-        # mean_cross_entropy = F.binary_cross_entropy(pred_seg, gt_seg, weight=weights, reduction="mean")
-        mean_cross_entropy = F.binary_cross_entropy(pred_seg, gt_seg, reduction="mean")
+        mean_cross_entropy = F.binary_cross_entropy(pred_seg, gt_seg, weight=weights, reduction="mean")
+        # mean_cross_entropy = F.binary_cross_entropy(pred_seg, gt_seg, reduction="mean")
 
         # Display:
         # dispaly_pred_seg = pred_seg[0, 0].cpu().detach().numpy()
