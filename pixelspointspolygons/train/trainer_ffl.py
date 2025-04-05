@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 
 from collections import defaultdict
 from transformers import  get_cosine_schedule_with_warmup
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 from ..misc import get_lr, plot_ffl, MetricLogger, get_tile_names_from_dataloader
 from ..models.ffl.losses import build_combined_loss
@@ -51,7 +52,12 @@ class FFLTrainer(Trainer):
 
     
     def setup_loss_fn_dict(self):
-        self.loss_func = build_combined_loss(self.cfg).cuda()
+        loss_func = build_combined_loss(self.cfg).to(self.cfg.device)
+        
+        if self.cfg.multi_gpu:
+            loss_func = DDP(loss_func, device_ids=[self.local_rank])
+            
+        self.loss_func = loss_func
 
     def visualization(self, loader, epoch, coco=None, show=False, num_images=2):
         
