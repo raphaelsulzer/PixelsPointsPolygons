@@ -8,8 +8,10 @@ import json
 import torch
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
+import torch.distributed as dist
 
 from collections import defaultdict
+from multiprocessing import Pool
 
 from ...models.ffl.local_utils import batch_to_cpu, split_batch, list_of_dicts_to_dict_of_lists, flatten_dict
 from ...models.ffl.model_ffl import FFLModel
@@ -62,49 +64,42 @@ class FFLPredictor(Predictor):
             if self.cfg.model.eval.patch_size is not None:
                 # Cut image into patches for inference
                 inference.inference_with_patching(self.cfg, model, batch)
+                pool = None
             else:
                 # Feed images as-is to the model
                 inference.inference_no_patching(self.cfg, model, batch)
-
-            # batch_list.append(batch)
-            #### this whole thing is totally useless. if you want to have a different batch size for the polygonization, just specify it in the loader!!
-            # # --- Accumulate batches into batch_list until capacity is reached (or this is the last batch)
-            # if self.cfg.model.batch_size <= len(batch_list) or (tile_i == len(loader) - 1):
-            #     # Concat tensors of batch_list
-            #     accumulated_batch= {}
-            #     for key in batch_list[0].keys():
-            #         if isinstance(batch_list[0][key], list):
-            #             accumulated_batch[key] = [item for _batchin batch_list for item in _batch[key]]
-            #         elif isinstance(batch_list[0][key], torch.Tensor):
-            #             accumulated_batch[key] = torch.cat([_batch[key] for _batchin batch_list], dim=0)
-            #         else:
-            #             pass
-            #             # print(f"Skipping key {key}")
-            #             # raise TypeError(f"Type {type(batch_list[0][key])} is not handled!")
-            #     batch_list = []  # Empty batch_list
-            # else:
-            #     # batch_list is not full yet, continue running inference...
-            #     continue
-
-            # --- Polygonize
-            crossfield = batch.get("crossfield", None)
-            try:
-                batch["polygons"], batch["polygon_probs"] = polygonize.polygonize(
-                    self.cfg.model.polygonization, batch["seg"],
-                    crossfield_batch=crossfield,
-                    pool=None)
-            except Exception as e:
-                raise e
-                self.logger.error(f"Polygonization failed: {e}")
-                self.logger.error("Skipping this batch...")
-                continue
-
-            batch = batch_to_cpu(batch)
-            sample_list = split_batch(batch,batch_size=batch_size)
+                num_workers = self.cfg.run_type.num_workers
+                # pool = Pool(processes=num_workers) if num_workers > 0 else None
+                pool = None # there is some skan error when I try with Pool()
+                
+            ## need this before the polygonization so all batches are available in batch, otherwise there will be an error
+            if self.cfg.multi_gpu:
+                dist.barrier()
             
-            for sample in sample_list:
-                annotations = save_utils.poly_coco(sample["polygons"], sample["polygon_probs"], sample["image_id"])
-                annotations_list.append(annotations)  # annotations could be a dict, or a list
+            if self.local_rank == 0:
+    
+                # --- Polygonize
+                try:
+                    batch["polygons"], batch["polygon_probs"] = polygonize.polygonize(
+                        self.cfg.model.polygonization, batch["seg"],
+                        crossfield_batch=batch.get("crossfield", None),
+                        pool=pool)
+                except Exception as e:
+                    raise e
+                    self.logger.error(f"Polygonization failed: {e}")
+                    self.logger.error("Skipping this batch...")
+                    continue
+
+                batch = batch_to_cpu(batch)
+                sample_list = split_batch(batch,batch_size=batch_size)
+                
+                for sample in sample_list:
+                    annotations = save_utils.poly_coco(sample["polygons"], sample["polygon_probs"], sample["image_id"])
+                    annotations_list.append(annotations)  # annotations could be a dict, or a list
+    
+    
+        if self.cfg.multi_gpu:
+            dist.barrier()
         
         if len(annotations_list):
             annotations = list_of_dicts_to_dict_of_lists(annotations_list)
