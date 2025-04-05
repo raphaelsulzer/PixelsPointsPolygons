@@ -94,7 +94,7 @@ class FFLPredictor(Predictor):
                 # Flatten the list of lists into a single list
                 batch["crossfield"] = torch.cat(crossfield,dim=0)
                 
-                self.logger.debug(f"Seg is now of shape {batch['seg'].shape}")
+                # self.logger.debug(f"Seg is now of shape {batch['seg'].shape}")
                 
             
             if self.local_rank == 0:
@@ -117,11 +117,11 @@ class FFLPredictor(Predictor):
                     annotations = save_utils.poly_coco(sample["polygons"], sample["polygon_probs"], sample["image_id"])
                     annotations_list.append(annotations)  # annotations could be a dict, or a list
                     
-            else:
-                self.logger.info("Rank {self.rank} waiting until polygonization is done...")
-        
-        if self.cfg.multi_gpu:
-            dist.barrier()
+            # else:
+            #     self.logger.info(f"Rank {self.local_rank} waiting until polygonization is done...")
+            if self.cfg.multi_gpu:
+                dist.barrier()
+            
 
         if len(annotations_list):
             annotations = list_of_dicts_to_dict_of_lists(annotations_list)
