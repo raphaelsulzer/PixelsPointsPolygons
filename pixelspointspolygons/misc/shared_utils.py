@@ -84,11 +84,12 @@ def get_lr(optimizer):
         return param_group['lr']
 
 
-def get_tile_names_from_dataloader(img_dict, ids):
-    file_names = []
-    for id in ids:
-        file_names.append(img_dict[id.item()]['file_name'])
-    return file_names
+def get_tile_names_from_dataloader(loader, ids):
+    names = []
+    img_infos = loader.dataset.coco.loadImgs(ids)
+    for i in range(len(ids)):
+        names.append(img_infos[i]["file_name"].split("/")[-1].split(".")[0])
+    return names
 
 def plot_model_architecture(model, input_shape=(16,3,224,224), outfile="/data/rsulzer/model_architecture.svg"):
     from torchview import draw_graph

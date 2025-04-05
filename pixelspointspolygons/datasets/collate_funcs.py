@@ -21,6 +21,7 @@ def collate_fn_ffl(batch, cfg):
     else:
         batch_dict["lidar"] = None
     
+    batch_dict["image_id"] = torch.stack(batch_dict["image_id"])
     batch_dict["distances"] = torch.stack(batch_dict["distances"])
     batch_dict["sizes"] = torch.stack(batch_dict["sizes"])
     batch_dict["gt_crossfield_angle"] = torch.stack(batch_dict["gt_crossfield_angle"])

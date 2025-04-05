@@ -237,13 +237,19 @@ class DefaultDataset(Dataset):
         if not os.path.isfile(ffl_pt_file):
             raise FileExistsError(ffl_pt_file)
         ffl_data = torch.load(ffl_pt_file,weights_only=False)
+        del ffl_data["gt_polygons"]
+        del ffl_data["image_relative_filepath"]
+        del ffl_data["name"]
+        del ffl_data["image_id"]
+        
+        ffl_data["image_id"] = torch.IntTensor([img_id])
         
         if self.transform is not None: 
             
             masks = []
-            masks.append(ffl_data["gt_polygons_image"][:,:,0]>250)  # interior
-            masks.append(ffl_data["gt_polygons_image"][:,:,1]/255)  # edges
-            masks.append(ffl_data["gt_polygons_image"][:,:,2]/255)  # vertices
+            masks.append(ffl_data["gt_polygons_image"][:,:,0])  # interior
+            masks.append(ffl_data["gt_polygons_image"][:,:,1])  # edges
+            masks.append(ffl_data["gt_polygons_image"][:,:,2])  # vertices
             masks.append(ffl_data["distances"])
             masks.append(ffl_data["sizes"])
             masks.append(ffl_data["gt_crossfield_angle"])
@@ -259,9 +265,14 @@ class DefaultDataset(Dataset):
             for i in range(3):
                 gt_polygon_image.append(augmentations['masks'][i])
             ffl_data["gt_polygons_image"] = torch.stack(gt_polygon_image, axis=-1).permute(2,0,1)
+            ffl_data["gt_polygons_image"] = ffl_data["gt_polygons_image"]/255
             ffl_data["gt_polygons_image"] = torch.clamp(ffl_data["gt_polygons_image"],0,1)
             ffl_data["gt_polygons_image"] = ffl_data["gt_polygons_image"].to(torch.float32)
+            
+            # used for optional seg_loss weighting
             ffl_data["distances"] = augmentations['masks'][3][None, ...]
+            
+            # used for optional seg_loss weighting
             ffl_data["sizes"] = augmentations['masks'][4][None,...]
             
             # first bring the values back to [0,180] from 8bit

@@ -246,6 +246,7 @@ def build_combined_loss(cfg):
         ]
         
         loss_funcs.append(SegLoss(
+            cfg=cfg,
             name="seg",
             gt_channel_selector=gt_channel_selector,
             bce_coef=cfg.model.loss.seg.bce_coef,
@@ -307,13 +308,14 @@ def build_combined_loss(cfg):
 
 # --- Specific losses --- #
 class SegLoss(Loss):
-    def __init__(self, name, gt_channel_selector, bce_coef=0.5, dice_coef=0.5):
+    def __init__(self, cfg, name, gt_channel_selector, bce_coef=0.5, dice_coef=0.5):
         """
         :param name:
         :param gt_channel_selector: used to select which channels gt_polygons_image to use to compare to predicted seg
                                     (see docstring of method compute() for more details).
         """
         super(SegLoss, self).__init__(name)
+        self.cfg = cfg
         self.gt_channel_selector = gt_channel_selector
         self.bce_coef = bce_coef
         self.dice_coef = dice_coef
@@ -335,6 +337,14 @@ class SegLoss(Loss):
         weights = gt_batch["seg_loss_weights"][:, self.gt_channel_selector, ...]
         dice = measures.dice_loss(pred_seg, gt_seg)
         mean_dice = torch.mean(dice)
+        
+        if self.cfg.model.loss.seg.type == "float":
+            pass
+        elif self.cfg.model.loss.seg.type == "bool":
+            gt_seg = (gt_seg > 0.97).to(torch.float32)
+        else:
+            raise NotImplementedError("cfg.model.loss.seg.type has to be either float or bool")
+        
         
         ## RS: removing the weighting here. It leads to crazy high seg_loss values. Is it really supposed to be used?
         # mean_cross_entropy = F.binary_cross_entropy(pred_seg, gt_seg, weight=weights, reduction="mean")
