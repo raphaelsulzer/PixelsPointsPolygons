@@ -105,7 +105,7 @@ class FFLPredictor(Predictor):
                     crossfield_batch=batch.get("crossfield", None),
                     pool=pool)
             except Exception as e:
-                raise e
+                # raise e
                 self.logger.error(f"Polygonization failed: {e}")
                 self.logger.error("Skipping this batch...")
                 continue
