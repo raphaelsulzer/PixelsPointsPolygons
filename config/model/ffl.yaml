@@ -73,6 +73,7 @@ loss:
     use_size: false  # Size weights increasing importance of smaller buildings
     w0: 50  # From original U-Net paper: distance weight to increase loss between objects
     sigma: 10  # From original U-Net paper: distance weight to increase loss between objects
+    type: float # or bool
 
 
 # training

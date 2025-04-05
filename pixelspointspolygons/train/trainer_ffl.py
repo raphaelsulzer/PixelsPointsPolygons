@@ -17,10 +17,9 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 from transformers import  get_cosine_schedule_with_warmup
 
-from ..misc import get_lr, plot_ffl, MetricLogger
+from ..misc import get_lr, plot_ffl, MetricLogger, get_tile_names_from_dataloader
 from ..models.ffl.losses import build_combined_loss
 from ..models.ffl.local_utils import batch_to_cuda
-from ..models.ffl.measures import iou as compute_iou
 from ..models.ffl.model_ffl import FFLModel
 from ..predict.ffl.predictor_ffl import FFLPredictor as Predictor
 from ..eval import Evaluator
@@ -80,6 +79,8 @@ class FFLTrainer(Trainer):
         
         if self.cfg.use_lidar:
             lidar_batches = torch.unbind(batch["lidar"], dim=0)
+            
+        names = get_tile_names_from_dataloader(loader, batch["image_id"].cpu().numpy().flatten().tolist())
 
         for i in range(num_images):
         
@@ -110,17 +111,17 @@ class FFLTrainer(Trainer):
                 polygons = coco_anns_to_shapely_polys(polygons)
                 plot_shapely_polygons(polygons, ax=ax[1],pointcolor=[1,1,0],edgecolor=[1,0,1])
 
-            ax[0].set_title("GT_"+batch["name"][i])
-            ax[1].set_title("PRED_"+batch["name"][i])
+            ax[0].set_title("GT_"+names[i])
+            ax[1].set_title("PRED_"+names[i])
             
             plt.tight_layout()
-            outfile = os.path.join(outpath, f"{batch['name'][i]}.png")
+            outfile = os.path.join(outpath, f"{names[i]}.png")
             self.logger.debug(f"Save visualization to {outfile}")
             plt.savefig(outfile)
             if show:
                 plt.show(block=True)
             if self.cfg.log_to_wandb:
-                wandb.log({f"{epoch}: {batch['name'][i]}": wandb.Image(fig)})            
+                wandb.log({f"{epoch}: {names[i]}": wandb.Image(fig)})            
             plt.close(fig)
             
     def valid_one_epoch(self, epoch):
