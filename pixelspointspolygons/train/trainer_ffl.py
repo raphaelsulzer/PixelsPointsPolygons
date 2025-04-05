@@ -263,6 +263,8 @@ class FFLTrainer(Trainer):
                     checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
                     self.save_checkpoint(checkpoint_file, epoch=epoch)
 
+            continue
+            
             #############################################
             ############## COCO Evaluation ##############
             #############################################
