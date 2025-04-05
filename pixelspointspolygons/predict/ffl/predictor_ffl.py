@@ -71,27 +71,45 @@ class FFLPredictor(Predictor):
                 num_workers = self.cfg.run_type.num_workers
                 # pool = Pool(processes=num_workers) if num_workers > 0 else None
                 pool = None # there is some skan error when I try with Pool()
+            
+            
+            if self.cfg.multi_gpu:
+                
+                # Gather the list of dictionaries from all ranks
+                seg = [None] * self.world_size  # Placeholder for gathered objects
+                dist.all_gather_object(seg, batch["seg"])
+
+                # Flatten the list of lists into a single list
+                batch["seg"] = [item for sublist in seg for item in sublist]
+                
                 
             
-            # --- Polygonize
-            try:
-                batch["polygons"], batch["polygon_probs"] = polygonize.polygonize(
-                    self.cfg.model.polygonization, batch["seg"],
-                    crossfield_batch=batch.get("crossfield", None),
-                    pool=pool)
-            except Exception as e:
-                raise e
-                self.logger.error(f"Polygonization failed: {e}")
-                self.logger.error("Skipping this batch...")
-                continue
+            if self.local_rank == 0:
+                # --- Polygonize
+                try:
+                    batch["polygons"], batch["polygon_probs"] = polygonize.polygonize(
+                        self.cfg.model.polygonization, batch["seg"],
+                        crossfield_batch=batch.get("crossfield", None),
+                        pool=pool)
+                except Exception as e:
+                    raise e
+                    self.logger.error(f"Polygonization failed: {e}")
+                    self.logger.error("Skipping this batch...")
+                    continue
 
-            batch = batch_to_cpu(batch)
-            sample_list = split_batch(batch,batch_size=batch_size)
-            
-            for sample in sample_list:
-                annotations = save_utils.poly_coco(sample["polygons"], sample["polygon_probs"], sample["image_id"])
-                annotations_list.append(annotations)  # annotations could be a dict, or a list
+                batch = batch_to_cpu(batch)
+                sample_list = split_batch(batch,batch_size=batch_size)
+                
+                for sample in sample_list:
+                    annotations = save_utils.poly_coco(sample["polygons"], sample["polygon_probs"], sample["image_id"])
+                    annotations_list.append(annotations)  # annotations could be a dict, or a list
+                    
+            else:
+                self.logger.info("Rank {self.rank} waiting until polygonization is done...")
         
+        if self.cfg.multi_gpu:
+            dist.barrier()
+
         if len(annotations_list):
             annotations = list_of_dicts_to_dict_of_lists(annotations_list)
             annotations = flatten_dict(annotations)

@@ -200,11 +200,12 @@ class FFLTrainer(Trainer):
         iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
         epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
 
+        predictor = Predictor(self.cfg, local_rank=self.local_rank, world_size=self.world_size)
         if self.local_rank == 0:
-            predictor = Predictor(self.cfg)
+            # predictor = Predictor(self.cfg)
             evaluator = Evaluator(self.cfg)
         else:
-            predictor = None
+            # predictor = None
             evaluator = None
             
         
@@ -262,35 +263,37 @@ class FFLTrainer(Trainer):
                     checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
                     self.save_checkpoint(checkpoint_file, epoch=epoch)
 
-                #############################################
-                ############## COCO Evaluation ##############
-                #############################################
-                if (epoch + 1) % self.cfg.val_every == 0:
+            #############################################
+            ############## COCO Evaluation ##############
+            #############################################
+            if (epoch + 1) % self.cfg.val_every == 0:
 
-                    self.logger.info("Predict validation set with latest model...")
-                    coco_predictions = predictor.predict_from_loader(self.model,self.val_loader)
-                    # coco_predictions = coco_predictions['asm.tol_1']
-                    poly_method, coco_predictions = next(iter(coco_predictions.items()))
-                    self.logger.info(f"Evaluate {poly_method} polygonization...")
-                    
-                    self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
+                self.logger.info("Predict validation set with latest model...")
+                coco_predictions = predictor.predict_from_loader(self.model,self.val_loader)
+                # coco_predictions = coco_predictions['asm.tol_1']
+                poly_method, coco_predictions = next(iter(coco_predictions.items()))
+                self.logger.info(f"Evaluate {poly_method} polygonization...")
+                
+                self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
 
-                    self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
+                self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
+                
+                # if self.cfg.multi_gpu:
                     
-                    # if self.cfg.multi_gpu:
-                        
-                    #     # Gather the list of dictionaries from all ranks
-                    #     gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects
-                    #     dist.all_gather_object(gathered_predictions, coco_predictions)
+                #     # Gather the list of dictionaries from all ranks
+                #     gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects
+                #     dist.all_gather_object(gathered_predictions, coco_predictions)
 
-                    #     # Flatten the list of lists into a single list
-                    #     coco_predictions = [item for sublist in gathered_predictions for item in sublist]
-                        
+                #     # Flatten the list of lists into a single list
+                #     coco_predictions = [item for sublist in gathered_predictions for item in sublist]
                     
-                    if not len(coco_predictions):
-                        self.logger.info("No polygons predicted. Skipping coco evaluation...")
-                        continue
-                        
+                
+                if not len(coco_predictions):
+                    self.logger.info("No polygons predicted. Skipping coco evaluation...")
+                    continue
+                
+                if self.local_rank == 0:
+    
                     self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 
                     self.logger.info(f"Run coco evaluation on rank {self.local_rank}...")
 
