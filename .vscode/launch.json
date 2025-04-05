@@ -16,6 +16,7 @@
                 "multi_gpu=false",
                 "checkpoint=null",
                 "experiment_name=debug",
+                "run_type.num_workers=4"
                 // "model=ffl",
                 // "use_lidar=true",
                 // "use_images=false",
