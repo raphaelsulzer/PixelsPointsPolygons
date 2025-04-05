@@ -86,13 +86,13 @@ def get_run_dirpath(runs_dirpath, run_name):
     return run_dirpath
 
 
-def batch_to_cuda(batch):
+def batch_to_cuda(batch,device):
     # Send data to computing device:
     for key, item in batch.items():
         if hasattr(item, "cuda"):
-            batch[key] = item.cuda(non_blocking=True)
+            batch[key] = item.to(device, non_blocking=True)
         else:
-            pass
+            print(f"Non tensor in batch to cuda {key}. This is not allowed in DDP")
     return batch
 
 
