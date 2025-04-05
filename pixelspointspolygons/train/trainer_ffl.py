@@ -283,8 +283,7 @@ class FFLTrainer(Trainer):
                     coco_predictions = list(coco_predictions.values())[0]
                     self.logger.info(f"Evaluate {poly_method} polygonization...")
                 
-                continue
-                if self.local_rank == 0 and len(coco_predictions):
+                if self.local_rank == 0:
                     
                     self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
     
@@ -309,8 +308,8 @@ class FFLTrainer(Trainer):
                     for metric, value in val_metrics_dict.items():
                         wandb_dict[f"val_{metric}"] = value
                         
-                else:
-                    self.logger.info(f"Rank {self.local_rank} waiting until coco evaluation is done...")
+                # else:
+                #     self.logger.info(f"Rank {self.local_rank} waiting until coco evaluation is done...")
 
             self.logger.info("Validation finished...\n")
                 
