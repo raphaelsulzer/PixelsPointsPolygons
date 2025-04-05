@@ -37,7 +37,7 @@ dependencies = [
     "skan",
     "jsmin",
     # ffl asm polygonization
-    "torch-scatter"
+    # "torch-scatter", has to be specified in requirements-torch-cuda for specific cuda version
 ]
 
 
