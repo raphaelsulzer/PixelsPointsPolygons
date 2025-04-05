@@ -143,6 +143,6 @@ class FFLModel(torch.nn.Module):
         
         if self.cfg.multi_gpu:
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model = DDP(model, device_ids=[local_rank])
+            model = DDP(model, device_ids=[local_rank], find_unused_parameters=True)
     
         return model
