@@ -128,4 +128,4 @@ class FFLPredictor(Predictor):
             annotations = flatten_dict(annotations)
             return annotations
         else:
-            return defaultdict(list)
+            return []

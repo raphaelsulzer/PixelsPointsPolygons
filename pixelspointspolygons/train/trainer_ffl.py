@@ -273,9 +273,10 @@ class FFLTrainer(Trainer):
                 
                 # self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
                 
-                if coco_predictions is None:
+                if not len(coco_predictions):
                     self.logger.info("No polygons predicted. Skipping coco evaluation...")
                 else:
+                    assert isinstance(coco_predictions,dict), f"Coco predictions should be of type dict not {type(coco_predictions)}"
                     poly_method = list(coco_predictions.keys())[0]
                     coco_predictions = list(coco_predictions.values())[0]
                     self.logger.info(f"Evaluate {poly_method} polygonization...")
