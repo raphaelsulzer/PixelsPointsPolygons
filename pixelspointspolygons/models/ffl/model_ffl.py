@@ -84,6 +84,9 @@ class EncoderDecoder(torch.nn.Module):
     def inference(self, image):
         outputs = {}
 
+        if not image.shape[0] == 4:
+            a=5
+
         # --- Extract features for every pixel of the image with a U-Net --- #
         backbone_features = self.backbone(image)["out"]
 

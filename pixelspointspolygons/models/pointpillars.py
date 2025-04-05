@@ -83,8 +83,8 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         # print(f"x_lidar device {x_lidar.device}")
         voxels, num_points, coors = self.voxelize(x_lidar)
         voxel_features = self.voxel_encoder(voxels, num_points, coors)
-        # batch_size = coors[-1, 0].item() + 1
-        x = self.middle_encoder(voxel_features, coors, self.batch_size)
+        batch_size = x_lidar.shape[0] # WARNING: do not use self.cfg.model.batch_size here, because it can be wrong for truncated batches at the end of the loader in drop_last=False, e.g. in validation and testing
+        x = self.middle_encoder(voxel_features, coors, batch_size)
 
         if self.cfg.model.name == "pix2poly":
             # flatten patches, NCHW -> NLC. Needed to pass directly to next layer of VisionTransformer (self.vit)

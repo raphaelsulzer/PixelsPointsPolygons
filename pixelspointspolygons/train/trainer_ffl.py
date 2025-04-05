@@ -93,7 +93,7 @@ class FFLTrainer(Trainer):
                 plot_point_cloud(lidar_batches[i], ax=ax[0])
                 plot_point_cloud(lidar_batches[i], ax=ax[1])
                 
-            mask_color = [1,0,1,0.3]
+            mask_color = [1,0,1,0.6]
             plot_mask(batch["gt_polygons_image"][i][0], ax=ax[0], color=mask_color)
             plot_mask(pred["seg"][i].squeeze()>0.5, ax=ax[1], color=mask_color)
             
@@ -190,15 +190,6 @@ class FFLTrainer(Trainer):
 
         if self.cfg.checkpoint is not None or self.cfg.checkpoint_file is not None:
             self.load_checkpoint()
-        # else:
-        #     ## compute loss norms for loss weighting
-        #     if self.cfg.run_type.name == "release":
-        #         self.model.train()  # Important for batchnorm and dropout, even in computing loss norms
-        #         with torch.no_grad():
-        #             loss_norm_batches_min = self.cfg.model.loss.multiloss.normalization_params.min_samples // (2 * self.cfg.model.batch_size) + 1
-        #             loss_norm_batches_max = self.cfg.model.loss.multiloss.normalization_params.max_samples // (2 * self.cfg.model.batch_size) + 1
-        #             loss_norm_batches = max(loss_norm_batches_min, min(loss_norm_batches_max, len(self.train_loader)))
-        #             self.setup_loss_norms(self.train_loader, loss_norm_batches)
 
         best_loss = float('inf')
         iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
@@ -272,8 +263,8 @@ class FFLTrainer(Trainer):
                 self.logger.info("Predict validation set with latest model...")
                 coco_predictions = predictor.predict_from_loader(self.model,self.val_loader)
                 # coco_predictions = coco_predictions['asm.tol_1']
-                coco_predictions = coco_predictions.values()[0]
-                self.logger.info(f"Evaluate {coco_predictions.keys()[0]} polygonization...")
+                poly_method, coco_predictions = next(iter(coco_predictions.items()))
+                self.logger.info(f"Evaluate {poly_method} polygonization...")
                 
                 self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
 
