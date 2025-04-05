@@ -118,7 +118,7 @@ class EncoderDecoder(torch.nn.Module):
 
 
 
-class FFLModel:
+class FFLModel(torch.nn.Module):
     
     def __new__(self, cfg, local_rank):
         
