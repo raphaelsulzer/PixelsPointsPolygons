@@ -52,11 +52,9 @@ class FFLTrainer(Trainer):
 
     
     def setup_loss_fn_dict(self):
-        loss_func = build_combined_loss(self.cfg).to(self.cfg.device)
-        
-        if self.cfg.multi_gpu:
-            loss_func = DDP(loss_func, device_ids=[self.local_rank])
-            
+        loss_func = build_combined_loss(self.cfg).to(self.local_rank)
+        # if self.cfg.multi_gpu:
+        #     loss_func = DDP(loss_func, device_ids=[self.local_rank])
         self.loss_func = loss_func
 
     def visualization(self, loader, epoch, coco=None, show=False, num_images=2):
