@@ -67,7 +67,7 @@ class FFLPredictor(Predictor):
                 pool = None
             else:
                 # Feed images as-is to the model
-                inference.inference_no_patching(self.cfg, model, batch)
+                batch = inference.inference_no_patching(self.cfg, model, batch)
                 num_workers = self.cfg.run_type.num_workers
                 # pool = Pool(processes=num_workers) if num_workers > 0 else None
                 pool = None # there is some skan error when I try with Pool()
