@@ -73,6 +73,12 @@ def compute_geom_prob(geom, prob_map, output_debug=False):
         miny = int(miny)
         maxx = int(maxx) + 1
         maxy = int(maxy) + 1
+        
+        if minx < 0 or miny < 0 or maxx > prob_map.shape[1] or maxy > prob_map.shape[0]:
+            if output_debug:
+                print_utils.print_warning(f"WARNING: polygon out of bounds in compute_geom_prob().")
+            return 0
+        
         geom = shapely.affinity.translate(geom, xoff=-minx, yoff=-miny)
         prob_map = prob_map[miny:maxy, minx:maxx]
 
@@ -80,6 +86,7 @@ def compute_geom_prob(geom, prob_map, output_debug=False):
         raster = np.zeros(prob_map.shape, dtype=np.uint8)
         exterior_array = np.round(np.array(geom.exterior.coords)).astype(np.int32)
         interior_array_list = [np.round(np.array(interior.coords)).astype(np.int32) for interior in geom.interiors]
+        
         cv2.fillPoly(raster, [exterior_array], color=1)
         cv2.fillPoly(raster, interior_array_list, color=0)
 
