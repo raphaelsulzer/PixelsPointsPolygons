@@ -85,14 +85,14 @@ class FFLPredictor(Predictor):
                 dist.all_gather_object(seg, batch["seg"].cuda(0))
 
                 # Flatten the list of lists into a single list
-                batch["seg"] = torch.stack(seg,dim=0)
+                batch["seg"] = torch.cat(seg,dim=0)
                 
                 # Gather the list of dictionaries from all ranks
                 crossfield = [None] * self.world_size  # Placeholder for gathered objects
                 dist.all_gather_object(crossfield, batch["crossfield"].cuda(0))
 
                 # Flatten the list of lists into a single list
-                batch["crossfield"] = torch.stack(crossfield,dim=0)
+                batch["crossfield"] = torch.cat(crossfield,dim=0)
                 
                 self.logger.debug(f"Seg is now of shape {batch['seg'].shape}")
                 
