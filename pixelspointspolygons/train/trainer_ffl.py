@@ -263,7 +263,6 @@ class FFLTrainer(Trainer):
                     checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
                     self.save_checkpoint(checkpoint_file, epoch=epoch)
 
-            continue
             
             #############################################
             ############## COCO Evaluation ##############
@@ -284,7 +283,7 @@ class FFLTrainer(Trainer):
                     coco_predictions = list(coco_predictions.values())[0]
                     self.logger.info(f"Evaluate {poly_method} polygonization...")
                 
-
+                continue
                 if self.local_rank == 0 and len(coco_predictions):
                     
                     self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
