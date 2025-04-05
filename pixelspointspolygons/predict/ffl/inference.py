@@ -14,8 +14,8 @@ from lydorn_utils import print_utils
 from lydorn_utils import python_utils
 
 
-def network_inference(model, batch):
-    batch = local_utils.batch_to_cuda(batch)
+def network_inference(model, batch, device):
+    batch = local_utils.batch_to_cuda(batch,device=device)
     pred, batch = model(batch)
     return pred, batch
 
@@ -45,7 +45,7 @@ def inference(config, model, tile_data, compute_polygonization=False, pool=None)
 def inference_no_patching(config, model, batch):
     with torch.no_grad():
 
-        pred, batch = network_inference(model, batch)
+        pred, batch = network_inference(model, batch, device=config.device)
         
         batch["seg"] = pred["seg"]
         if "crossfield" in pred:
@@ -98,7 +98,7 @@ def inference_with_patching(config, model, tile_data):
             }
             # Send batch to device
             try:
-                pred, batch = network_inference(config, model, batch)
+                pred, batch = network_inference(config, model, batch, device=config.device)
             except RuntimeError as e:
                 print_utils.print_error("ERROR: " + str(e))
                 print_utils.print_info("INFO: Reduce --eval_patch_size until the patch fits in memory.")
