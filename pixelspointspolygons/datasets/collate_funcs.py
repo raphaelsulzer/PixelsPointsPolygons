@@ -29,7 +29,7 @@ def collate_fn_ffl(batch, cfg):
     batch_dict["gt_polygons_image"] = torch.stack(batch_dict["gt_polygons_image"])
     batch_dict["class_freq"] = torch.stack(batch_dict["class_freq"])
     
-    return batch_dict
+    return dict(batch_dict)
 
 
 
