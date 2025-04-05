@@ -270,29 +270,19 @@ class FFLTrainer(Trainer):
 
                 self.logger.info("Predict validation set with latest model...")
                 coco_predictions = predictor.predict_from_loader(self.model,self.val_loader)
-                # coco_predictions = coco_predictions['asm.tol_1']
-                poly_method, coco_predictions = next(iter(coco_predictions.items()))
-                self.logger.info(f"Evaluate {poly_method} polygonization...")
                 
-                self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
-
-                self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
+                # self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
                 
-                # if self.cfg.multi_gpu:
-                    
-                #     # Gather the list of dictionaries from all ranks
-                #     gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects
-                #     dist.all_gather_object(gathered_predictions, coco_predictions)
-
-                #     # Flatten the list of lists into a single list
-                #     coco_predictions = [item for sublist in gathered_predictions for item in sublist]
-                    
-                
-                if not len(coco_predictions):
+                if coco_predictions is None:
                     self.logger.info("No polygons predicted. Skipping coco evaluation...")
-                    continue
+                else:
+                    poly_method = list(coco_predictions.keys())[0]
+                    coco_predictions = list(coco_predictions.values())[0]
+                    self.logger.info(f"Evaluate {poly_method} polygonization...")
                 
-                if self.local_rank == 0:
+                    self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
+
+                if self.local_rank == 0 and len(coco_predictions):
     
                     self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 
                     self.logger.info(f"Run coco evaluation on rank {self.local_rank}...")
