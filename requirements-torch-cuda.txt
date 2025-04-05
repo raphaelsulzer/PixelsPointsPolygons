@@ -2,3 +2,5 @@
 torch==2.2.2+cu121
 -f https://download.pytorch.org/whl/torchvision/
 torchvision==0.17.2+cu121
+-f https://data.pyg.org/whl/torch-2.2.2+cu121.html
+torch-scatter==2.1.2+cu121
