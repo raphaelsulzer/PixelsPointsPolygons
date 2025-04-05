@@ -276,14 +276,16 @@ class FFLTrainer(Trainer):
                 if not len(coco_predictions):
                     self.logger.info("No polygons predicted. Skipping coco evaluation...")
                 else:
+                    ## note that this results in self.local_rank == 0
                     assert isinstance(coco_predictions,dict), f"Coco predictions should be of type dict not {type(coco_predictions)}"
                     poly_method = list(coco_predictions.keys())[0]
                     coco_predictions = list(coco_predictions.values())[0]
                     self.logger.info(f"Evaluate {poly_method} polygonization...")
                 
-                    self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
 
                 if self.local_rank == 0 and len(coco_predictions):
+                    
+                    self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
     
                     self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 
                     self.logger.info(f"Run coco evaluation on rank {self.local_rank}...")
@@ -307,7 +309,7 @@ class FFLTrainer(Trainer):
                         wandb_dict[f"val_{metric}"] = value
                         
                 else:
-                    self.logger.info("Rank {self.rank} waiting until coco evaluation is done...")
+                    self.logger.info(f"Rank {self.local_rank} waiting until coco evaluation is done...")
 
             self.logger.info("Validation finished...\n")
                 
