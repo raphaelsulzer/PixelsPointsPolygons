@@ -91,6 +91,8 @@ def batch_to_cuda(batch):
     for key, item in batch.items():
         if hasattr(item, "cuda"):
             batch[key] = item.cuda(non_blocking=True)
+        else:
+            pass
     return batch
 
 
