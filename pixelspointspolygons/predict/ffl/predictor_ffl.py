@@ -73,54 +73,54 @@ class FFLPredictor(Predictor):
                 pool = None # there is some skan error when I try with Pool()
             
             
-            if self.cfg.multi_gpu:
+            # if self.cfg.multi_gpu:
                 
-                # for k in batch.keys():
-                #     temp = [None] * self.workd_size
-                #     dist.all_gather(temp, batch[k])
-                #     batch[k] = torch.stack([item for sublist in temp for item in sublist])
+            #     # for k in batch.keys():
+            #     #     temp = [None] * self.workd_size
+            #     #     dist.all_gather(temp, batch[k])
+            #     #     batch[k] = torch.stack([item for sublist in temp for item in sublist])
                 
-                # Gather the list of dictionaries from all ranks
-                seg = [None] * self.world_size  # Placeholder for gathered objects
-                dist.all_gather_object(seg, batch["seg"].cuda(0))
+            #     # Gather the list of dictionaries from all ranks
+            #     seg = [None] * self.world_size  # Placeholder for gathered objects
+            #     dist.all_gather_object(seg, batch["seg"].cuda(0))
 
-                # Flatten the list of lists into a single list
-                batch["seg"] = torch.cat(seg,dim=0)
+            #     # Flatten the list of lists into a single list
+            #     batch["seg"] = torch.cat(seg,dim=0)
                 
-                # Gather the list of dictionaries from all ranks
-                crossfield = [None] * self.world_size  # Placeholder for gathered objects
-                dist.all_gather_object(crossfield, batch["crossfield"].cuda(0))
+            #     # Gather the list of dictionaries from all ranks
+            #     crossfield = [None] * self.world_size  # Placeholder for gathered objects
+            #     dist.all_gather_object(crossfield, batch["crossfield"].cuda(0))
 
-                # Flatten the list of lists into a single list
-                batch["crossfield"] = torch.cat(crossfield,dim=0)
+            #     # Flatten the list of lists into a single list
+            #     batch["crossfield"] = torch.cat(crossfield,dim=0)
                 
-                # self.logger.debug(f"Seg is now of shape {batch['seg'].shape}")
+            #     # self.logger.debug(f"Seg is now of shape {batch['seg'].shape}")
                 
             
-            if self.local_rank == 0:
-                # --- Polygonize
-                try:
-                    batch["polygons"], batch["polygon_probs"] = polygonize.polygonize(
-                        self.cfg.model.polygonization, batch["seg"],
-                        crossfield_batch=batch.get("crossfield", None),
-                        pool=pool)
-                except Exception as e:
-                    raise e
-                    self.logger.error(f"Polygonization failed: {e}")
-                    self.logger.error("Skipping this batch...")
-                    continue
+            # if self.local_rank == 0:
+            #     # --- Polygonize
+            try:
+                batch["polygons"], batch["polygon_probs"] = polygonize.polygonize(
+                    self.cfg.model.polygonization, batch["seg"],
+                    crossfield_batch=batch.get("crossfield", None),
+                    pool=pool)
+            except Exception as e:
+                raise e
+                self.logger.error(f"Polygonization failed: {e}")
+                self.logger.error("Skipping this batch...")
+                continue
 
-                batch = batch_to_cpu(batch)
-                sample_list = split_batch(batch,batch_size=batch_size)
-                
-                for sample in sample_list:
-                    annotations = save_utils.poly_coco(sample["polygons"], sample["polygon_probs"], sample["image_id"])
-                    annotations_list.append(annotations)  # annotations could be a dict, or a list
+            batch = batch_to_cpu(batch)
+            sample_list = split_batch(batch,batch_size=batch_size)
+            
+            for sample in sample_list:
+                annotations = save_utils.poly_coco(sample["polygons"], sample["polygon_probs"], sample["image_id"])
+                annotations_list.append(annotations)  # annotations could be a dict, or a list
                     
-            # else:
-            #     self.logger.info(f"Rank {self.local_rank} waiting until polygonization is done...")
-            if self.cfg.multi_gpu:
-                dist.barrier()
+        # else:
+        #     self.logger.info(f"Rank {self.local_rank} waiting until polygonization is done...")
+        if self.cfg.multi_gpu:
+            dist.barrier()
             
 
         if len(annotations_list):
