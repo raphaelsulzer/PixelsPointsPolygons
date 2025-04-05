@@ -15,7 +15,6 @@
                 "log_to_wandb=false",
                 "multi_gpu=false",
                 "checkpoint=null",
-                "run_type.logging=DEBUG",
                 "experiment_name=debug",
                 // "model=ffl",
                 // "use_lidar=true",
@@ -41,8 +40,8 @@
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
-                "checkpoint=validation_best",
-                "experiment_name=inria_trained",
+                // "checkpoint=validation_best",
+                // "experiment_name=inria_trained",
                 // "checkpoint_file=/data/rsulzer/ffl_outputs/checkpoint.best_val.epoch_000234.tar"
             ],
             "justMyCode": false

@@ -15,7 +15,6 @@ import torch.distributed as dist
 import matplotlib.pyplot as plt
 
 from collections import defaultdict
-from torch import optim
 from transformers import  get_cosine_schedule_with_warmup
 
 from ..misc import get_lr, plot_ffl, MetricLogger
@@ -37,50 +36,30 @@ class FFLTrainer(Trainer):
         # Get optimizer
         # self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
 
-        self.optimizer = optim.Adam(self.model.parameters(),lr=self.cfg.model.learning_rate,eps=1e-8)
+        self.optimizer = torch.optim.Adam(self.model.parameters(),lr=self.cfg.model.learning_rate,eps=1e-8)
         # Get scheduler
         # num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
         num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
         self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
         self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
-        self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, self.cfg.model.gamma)
+        # self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, self.cfg.model.gamma)
+        num_warmup_steps = 0
+        self.lr_scheduler = get_cosine_schedule_with_warmup(
+            self.optimizer,
+            num_training_steps=num_training_steps,
+            num_warmup_steps=num_warmup_steps
+        )
 
     
     def setup_loss_fn_dict(self):
-        
         self.loss_func = build_combined_loss(self.cfg).cuda()
-        
-
-    def setup_loss_norms(self, dl, total_batches):
-        self.loss_func.reset_norm()
-        
-        self.logger.info("Init loss norms...")
-        t = self.progress_bar(dl)  # Initialise
-
-        batch_i = 0
-        while batch_i < total_batches:
-            for batch in dl:
-                # Update loss norms
-                batch = batch_to_cuda(batch)
-                pred, batch = self.model(batch)
-                self.loss_func.update_norm(pred, batch, batch["image"].shape[0])
-                if t is not None:
-                    t.update(1)
-                batch_i += 1
-                if not batch_i < total_batches:
-                    break
-
-        # Now sync loss norms across GPUs:
-        if self.cfg.multi_gpu:
-            self.loss_func.sync(self.world_size)
-        
 
     def visualization(self, loader, epoch, coco=None, show=False, num_images=2):
         
         self.model.eval()
         
         from ..misc.coco_conversions import coco_anns_to_shapely_polys
-        from ..misc.debug_visualisations import plot_image, plot_mask, plot_crossfield, plot_shapely_polygons
+        from ..misc.debug_visualisations import plot_image, plot_mask, plot_crossfield, plot_shapely_polygons, plot_point_cloud
         from lydorn_utils.math_utils import compute_crossfield_uv
         import numpy as np
 
@@ -99,14 +78,21 @@ class FFLTrainer(Trainer):
                     break
                 coco_anns[ann["image_id"]].append(ann)
         
+        if self.cfg.use_lidar:
+            lidar_batches = torch.nested.unbind(batch["lidar"], dim=0)
+
         for i in range(num_images):
         
             fig, ax = plt.subplots(1,2,figsize=(8, 4), dpi=150)
             ax = ax.flatten()
 
-            plot_image(batch["image"][i], ax=ax[0])
-            plot_image(batch["image"][i], ax=ax[1])
-            
+            if self.cfg.use_images:
+                plot_image(batch["image"][i], ax=ax[0])
+                plot_image(batch["image"][i], ax=ax[1])
+            if self.cfg.use_lidar:
+                plot_point_cloud(lidar_batches[i], ax=ax[0])
+                plot_point_cloud(lidar_batches[i], ax=ax[1])
+                
             mask_color = [1,1,0,0.3]
             plot_mask(batch["gt_polygons_image"][i][0], ax=ax[0], color=mask_color)
             plot_mask(pred["seg"][i].squeeze()>0.5, ax=ax[1], color=mask_color)
@@ -189,7 +175,7 @@ class FFLTrainer(Trainer):
             self.optimizer.step()
             self.lr_scheduler.step()
             lr = get_lr(self.optimizer)
-            loader.set_postfix(train_loss=loss_meter.meters["total_loss"].global_avg, lr=f"{lr:.5f}")
+            loader.set_postfix(train_loss=loss_meter.meters["total_loss"].global_avg, lr=f"{lr:.7f}")
             iter_idx += 1
         
         for k,v in loss_meter.meters.items():
@@ -285,7 +271,9 @@ class FFLTrainer(Trainer):
 
                 self.logger.info("Predict validation set with latest model...")
                 coco_predictions = predictor.predict_from_loader(self.model,self.val_loader)
-                coco_predictions = coco_predictions['asm.tol_1']
+                # coco_predictions = coco_predictions['asm.tol_1']
+                coco_predictions = coco_predictions.values()[0]
+                self.logger.info(f"Evaluate {coco_predictions.keys()[0]} polygonization...")
                 
                 self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
 

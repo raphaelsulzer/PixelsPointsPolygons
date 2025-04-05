@@ -5,6 +5,8 @@ import torch.nn as nn
 from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 
 from .unet_resnet import UNetResNetBackbone
+from ..pointpillars import PointPillarsWithoutHead
+
 
 def get_out_channels(module):
     if hasattr(module, "out_channels"):
@@ -19,35 +21,48 @@ def get_out_channels(module):
     # If we get out of the loop but out_channels is None, then the prev child of the parent module will be checked, etc.
     return out_channels
 
+
+
+    
+
+
+
 class EncoderDecoder(torch.nn.Module):
     def __init__(self, cfg, encoder):
         """
 
         :param config:
         :param backbone: A _SimpleSegmentationModel network, its output features will be used to compute seg and framefield.
-        :param train_transform: transform applied to the inputs when self.training is True
-        :param eval_transform: transform applied to the inputs when self.training is False
         """
         super().__init__()
-        assert cfg.model.compute_seg or cfg.model.compute_crossfield, \
+        assert cfg.model.encoder.compute_seg or cfg.model.encoder.compute_crossfield, \
             "Model has to compute at least one of those:\n" \
             "\t- segmentation\n" \
             "\t- cross-field"
-        assert isinstance(encoder, _SimpleSegmentationModel), \
-            "backbone should be an instance of _SimpleSegmentationModel"
+        if cfg.use_images and not cfg.use_lidar:
+            assert isinstance(encoder, _SimpleSegmentationModel), \
+                "backbone should be an instance of _SimpleSegmentationModel"
+        elif cfg.use_lidar and not cfg.use_images:
+            assert isinstance(encoder, PointPillarsWithoutHead), \
+                "backbone should be an instance of PointPillarsWithoutHead"
+        elif cfg.use_images and cfg.use_lidar:
+            assert isinstance(encoder, torch.nn.Module), \
+                "backbone should be an instance of torch.nn.Module"
+        else:
+            raise ValueError("At least one of use_image or use_lidar must be True")
+        
         self.cfg = cfg
         self.backbone = encoder
-        # self.train_transform = train_transform
-        # self.eval_transform = eval_transform
 
-        backbone_out_features = get_out_channels(self.backbone)
+        # backbone_out_features = get_out_channels(self.backbone)
+        backbone_out_features = self.cfg.model.encoder.out_feature_channels
 
         # --- Add other modules if activated in config:
         seg_channels = 0
-        if self.cfg.model.compute_seg:
-            seg_channels = self.cfg.model.seg_params.compute_vertex\
-                           + self.cfg.model.seg_params.compute_edge\
-                           + self.cfg.model.seg_params.compute_interior
+        if self.cfg.model.encoder.compute_seg:
+            seg_channels = self.cfg.model.encoder.seg.compute_vertex\
+                           + self.cfg.model.encoder.seg.compute_edge\
+                           + self.cfg.model.encoder.seg.compute_interior
             self.seg_module = torch.nn.Sequential(
                 torch.nn.Conv2d(backbone_out_features, backbone_out_features, 3, padding=1),
                 torch.nn.BatchNorm2d(backbone_out_features),
@@ -55,7 +70,7 @@ class EncoderDecoder(torch.nn.Module):
                 torch.nn.Conv2d(backbone_out_features, seg_channels, 1),
                 torch.nn.Sigmoid(),)
 
-        if self.cfg.model.compute_crossfield:
+        if self.cfg.model.encoder.compute_crossfield:
             crossfield_channels = 4
             self.crossfield_module = torch.nn.Sequential(
                 torch.nn.Conv2d(backbone_out_features + seg_channels, backbone_out_features, 3, padding=1),
@@ -72,14 +87,14 @@ class EncoderDecoder(torch.nn.Module):
         # --- Extract features for every pixel of the image with a U-Net --- #
         backbone_features = self.backbone(image)["out"]
 
-        if self.cfg.model.compute_seg:
+        if self.cfg.model.encoder.compute_seg:
             # --- Output a segmentation of the image --- #
             seg = self.seg_module(backbone_features)
             seg_to_cat = seg.clone().detach()
             backbone_features = torch.cat([backbone_features, seg_to_cat], dim=1)  # Add seg to image features
             outputs["seg"] = seg
 
-        if self.cfg.model.compute_crossfield:
+        if self.cfg.model.encoder.compute_crossfield:
             # --- Output a cross-field of the image --- #
             crossfield = 2 * self.crossfield_module(backbone_features)  # Outputs c_0, c_2 values in [-2, 2]
             outputs["crossfield"] = crossfield
@@ -88,23 +103,14 @@ class EncoderDecoder(torch.nn.Module):
 
     # @profile
     def forward(self, xb):
-        # print("\n### --- PolyRefine.forward(xb) --- ####")
-        ### put the transforms in the dataloader
-        # if self.training:
-        #     if self.train_transform is not None:
-        #         xb = self.train_transform(xb)
-        # else:
-        #     if self.eval_transform is not None:
-        #         xb = self.eval_transform(xb)
-
-        final_outputs = self.inference(xb["image"])
-
-        # # Save image
-        # image_seg_display = plot_utils.get_tensorboard_image_seg_display(image_display, final_outputs["seg"],
-        #                                                                  crossfield=final_outputs["crossfield"])
-        # image_seg_display = image_seg_display[1].cpu().detach().numpy().transpose(1, 2, 0)
-        # skimage.io.imsave(f"out_final.png", image_seg_display)
-
+        if self.cfg.use_images and not self.cfg.use_lidar:
+            final_outputs = self.inference(xb["image"])
+        elif self.cfg.use_lidar and not self.cfg.use_images:
+            final_outputs = self.inference(xb["lidar"])
+        elif self.cfg.use_images and self.cfg.use_lidar:
+            raise NotImplementedError("MultiEncoderDecoder not implemented yet")
+        else:
+            raise ValueError("At least one of use_image or use_lidar must be True")
         return final_outputs, xb
 
 
@@ -116,12 +122,12 @@ class FFLModel:
         self.cfg = cfg
                 
         if self.cfg.use_images and self.cfg.use_lidar:
-            model = MultiEncoderDecoder(self.cfg)
+            encoder = MultiEncoderDecoder(self.cfg)
         elif self.cfg.use_images:
             encoder = UNetResNetBackbone(self.cfg)
             encoder = _SimpleSegmentationModel(encoder, classifier=torch.nn.Identity())
         elif self.cfg.use_lidar: 
-            model = LiDAREncoderDecoder(self.cfg)
+            encoder = PointPillarsWithoutHead(self.cfg)
         else:
             raise ValueError("At least one of use_image or use_lidar must be True")
         
