@@ -162,7 +162,7 @@ class FFLTrainer(Trainer):
             # if self.cfg.debug_vis:
             #     plot_ffl(batch)
 
-            batch = batch_to_cuda(batch)
+            batch = batch_to_cuda(batch, device=self.cfg.device)
             pred, batch = self.model(batch)
             loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch, normalize=False)
                 
