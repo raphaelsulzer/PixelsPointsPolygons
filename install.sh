@@ -89,9 +89,9 @@ pip install -e .
 
 echo "________________ Install Pytorch_Lydorn and Lydorn_Utils for FFL _______________"
 cd ./ffl_submodules/lydorn_utils
-pip install .
+pip install -e .
 cd ../pytorch_lydorn
-pip install .
+pip install -e .
 cd ../..
 
 ### take this out of the script because it doesn't work on the front end of g5k and probably jz too, because cuda is not properly installed there
