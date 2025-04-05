@@ -1,5 +1,5 @@
 name: debug
-batch_size: 4
+batch_size: 16
 train_subset: 128
 val_subset: null
 logging: DEBUG

@@ -23,13 +23,13 @@ dataset:
   val_subset: ${..run_type.val_subset}
 num_workers: ${.run_type.num_workers}
 
-use_lidar: true
-use_images: false
+use_lidar: false
+use_images: true
 
 debug_vis: false
 
 checkpoint: latest
-checkpoint_file: null # override for loading a specific checkpoint file
+checkpoint_file: null # override for loading a specific checkpoint file not in the output_dir
 # checkpoint_file : /data/rsulzer/ffl_outputs/checkpoint.best_val.epoch_000234.tar
 
 
