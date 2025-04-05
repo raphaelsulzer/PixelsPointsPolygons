@@ -79,7 +79,7 @@ class FFLTrainer(Trainer):
                 coco_anns[ann["image_id"]].append(ann)
         
         if self.cfg.use_lidar:
-            lidar_batches = torch.nested.unbind(batch["lidar"], dim=0)
+            lidar_batches = torch.unbind(batch["lidar"], dim=0)
 
         for i in range(num_images):
         
@@ -93,7 +93,7 @@ class FFLTrainer(Trainer):
                 plot_point_cloud(lidar_batches[i], ax=ax[0])
                 plot_point_cloud(lidar_batches[i], ax=ax[1])
                 
-            mask_color = [1,1,0,0.3]
+            mask_color = [1,0,1,0.3]
             plot_mask(batch["gt_polygons_image"][i][0], ax=ax[0], color=mask_color)
             plot_mask(pred["seg"][i].squeeze()>0.5, ax=ax[1], color=mask_color)
             
