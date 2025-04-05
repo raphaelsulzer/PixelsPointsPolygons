@@ -24,7 +24,9 @@ from functools import partial
 import torch
 import torch_scatter
 
-from frame_field_learning import polygonize_utils, plot_utils, frame_field_utils, save_utils
+from . import polygonize_utils
+
+from ...models.ffl import frame_field_utils
 
 from torch_lydorn.torch.nn.functionnal import bilinear_interpolate
 from torch_lydorn.torchvision.transforms import Paths, Skeleton, TensorSkeleton, skeletons_to_tensorskeleton, tensorskeleton_to_skeletons
@@ -366,6 +368,8 @@ class TensorSkeletonOptimizer:
 
         # Save endpoints that are tips so that they can be reset after each step (tips are not meant to be moved)
         self.is_tip = self.tensorskeleton.degrees == 1
+        # RS: clamping the length of tensorskeleton because I had a case where it was longer then self.tensorskeleton.pos
+        self.is_tip = self.is_tip[:len(self.tensorskeleton.pos)]
         self.tip_pos = self.tensorskeleton.pos[self.is_tip]
 
         # Require grads for graph.pos: this is what is optimized
@@ -410,16 +414,10 @@ class TensorSkeletonOptimizer:
         return loss.item(), losses_dict
 
     def optimize(self) -> TensorSkeleton:
-        if DEBUG:
-            optim_iter = tqdm(range(self.config["loss_params"]["coefs"]["step_thresholds"][-1]), desc="Gradient descent", leave=True)
-            for iter_num in optim_iter:
-                loss, losses_dict = self.step(iter_num)
-                optim_iter.set_postfix(loss=loss, **losses_dict)
-        else:
-            for iter_num in range(self.config["loss_params"]["coefs"]["step_thresholds"][-1]):
-                loss, losses_dict = self.step(iter_num)
-        # for iter_num in range(self.config["loss_params"]["coefs"]["step_thresholds"][-1]):
-        #     loss, losses_dict = self.step(iter_num)
+
+        for iter_num in range(self.config["loss_params"]["coefs"]["step_thresholds"][-1]):
+            loss, losses_dict = self.step(iter_num)
+
         return self.tensorskeleton
 
 
@@ -466,7 +464,7 @@ def shapely_postprocess(polylines, np_indicator, tolerance, config):
 
         # Find polygons:
         polygons = shapely.ops.polygonize(multi_line_string)
-        polygons = list(polygons.geoms)
+        polygons = list(polygons)
 
         # debug_print("Remove small polygons")
 
@@ -538,16 +536,16 @@ def get_skeleton(np_edge_mask, config):
 
     skeleton = Skeleton()
     if 0 < skeleton_image.sum():
-        # skan does not work in some cases (paths of 2 pixels or less, etc) which raises a ValueError, in witch case we continue with an empty skeleton.
+        # skan does not work in some cases (paths of 2 pixels or less, etc) which raises a ValueError, in which case we continue with an empty skeleton.
 
         try:
-            skeleton = skan.Skeleton(skeleton_image, keep_images=False, junction_mode=skan.csr.JunctionModes.Centroid)
+            skeleton = skan.Skeleton(skeleton_image, keep_images=False)
 
-            polylines_coords = skeleton_to_polylines(skeleton)
-            plt.imshow(skeleton_image)
-            for polyline_coords in polylines_coords:
-                plt.plot(polyline_coords[:, 1], polyline_coords[:, 0])
-            plt.show()
+            # polylines_coords = skeleton_to_polylines(skeleton)
+            # plt.imshow(skeleton_image)
+            # for polyline_coords in polylines_coords:
+            #     plt.plot(polyline_coords[:, 1], polyline_coords[:, 0])
+            # plt.show()
 
             # skan.skeleton sometimes returns skeleton.coordinates.shape[0] != skeleton.degrees.shape[0] or
             # skeleton.coordinates.shape[0] != skeleton.paths.indices.max() + 1
@@ -728,24 +726,7 @@ class PolygonizerASM:
         crossfield_batch = crossfield_batch.to(self.config["device"])
 
         # --- Get initial polylines
-        # tic = time.time()
         skeletons_batch = compute_skeletons(seg_batch, self.config, self.spatial_gradient, pool=self.pool)
-        # toc = time.time()
-        # debug_print(f"Init polylines: {toc - tic}s")
-
-        # # --- Compute distance transform
-        # tic = time.time()
-        #
-        # np_int_mask_batch = int_mask_batch.cpu().numpy()
-        # np_dist_batch = np.empty(np_int_mask_batch.shape)
-        # for batch_i in range(np_int_mask_batch.shape[0]):
-        #     dist_1 = cv.distanceTransform(np_int_mask_batch[batch_i].astype(np.uint8), distanceType=cv.DIST_L2, maskSize=cv.DIST_MASK_5, dstType=cv.CV_64F)
-        #     dist_2 = cv.distanceTransform(1 - np_int_mask_batch[batch_i].astype(np.uint8), distanceType=cv.DIST_L2, maskSize=cv.DIST_MASK_5, dstType=cv.CV_64F)
-        #     np_dist_batch[0] = dist_1 + dist_2
-        # dist_batch = torch.from_numpy(np_dist_batch)
-        #
-        # toc = time.time()
-        # print(f"Distance transform: {toc - tic}s")
 
         # --- Optimize skeleton:
         tensorskeleton = skeletons_to_tensorskeleton(skeletons_batch, device=self.config["device"])
@@ -759,75 +740,16 @@ class PolygonizerASM:
 
         int_prob_batch = seg_batch[:, 0, :, :]
         # dist_batch = dist_batch.to(config["device"])
+        
         tensorskeleton_optimizer = TensorSkeletonOptimizer(self.config, tensorskeleton, int_prob_batch,
                                                            crossfield_batch)
 
-        if DEBUG:
-            # Animation of optimization
-            import matplotlib.pyplot as plt
-            import matplotlib.animation as animation
-
-            fig, ax = plt.subplots(figsize=(10, 10))
-            ax.autoscale(False)
-            ax.axis('equal')
-            ax.axis('off')
-            plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Plot without margins
-
-            image = int_prob_batch.cpu().numpy()[0]
-            ax.imshow(image, cmap=plt.cm.gray)
-
-            out_skeletons_batch = tensorskeleton_to_skeletons(tensorskeleton)
-            polylines_batch = [skeleton_to_polylines(skeleton) for skeleton in out_skeletons_batch]
-            out_polylines = [shapely.geometry.LineString(polyline[:, ::-1]) for polyline in polylines_batch[0]]
-            artists = plot_utils.plot_geometries(ax, out_polylines, draw_vertices=True, linewidths=1)
-
-            optim_pbar = tqdm(desc="Gradient descent", leave=True, total=self.config["loss_params"]["coefs"]["step_thresholds"][-1])
-
-            def init():  # only required for blitting to give a clean slate.
-                for artist, polyline in zip(artists, polylines_batch[0]):
-                    artist.set_xdata([np.nan] * polyline.shape[0])
-                    artist.set_ydata([np.nan] * polyline.shape[0])
-                return artists
-
-            def animate(i):
-                loss, losses_dict = tensorskeleton_optimizer.step(i)
-                optim_pbar.update(int(2 * i / self.config["loss_params"]["coefs"]["step_thresholds"][-1]))
-                optim_pbar.set_postfix(loss=loss, **losses_dict)
-                out_skeletons_batch = tensorskeleton_to_skeletons(tensorskeleton)
-                polylines_batch = [skeleton_to_polylines(skeleton) for skeleton in out_skeletons_batch]
-                for artist, polyline in zip(artists, polylines_batch[0]):
-                    artist.set_xdata(polyline[:, 1])
-                    artist.set_ydata(polyline[:, 0])
-                return artists
-
-            ani = animation.FuncAnimation(
-                fig, animate, init_func=init, interval=0, blit=True, frames=self.config["loss_params"]["coefs"]["step_thresholds"][-1], repeat=False)
-
-            # To save the animation, use e.g.
-            #
-            # ani.save("movie.mp4")
-            #
-            # or
-            #
-            # writer = animation.FFMpegWriter(
-            #     fps=15, metadata=dict(artist='Me'), bitrate=1800)
-            # ani.save("movie.mp4", writer=writer)
-
-            plt.show()
-        else:
-            tensorskeleton = tensorskeleton_optimizer.optimize()
+        tensorskeleton = tensorskeleton_optimizer.optimize()
 
         out_skeletons_batch = tensorskeleton_to_skeletons(tensorskeleton)
 
         # --- Convert the skeleton representation into polylines
         polylines_batch = [skeleton_to_polylines(skeleton) for skeleton in out_skeletons_batch]
-
-        # toc = time.time()
-        #debug_print(f"Optimize skeleton: {toc - tic}s")
-
-        # --- Post-process:
-        # debug_print("Post-process")
-        # tic = time.time()
 
         np_crossfield_batch = np.transpose(crossfield_batch.cpu().numpy(), (0, 2, 3, 1))
         np_int_prob_batch = int_prob_batch.cpu().numpy()
@@ -840,33 +762,6 @@ class PolygonizerASM:
                                        np_crossfield_batch)
         polygons_batch, probs_batch = zip(*polygons_probs_batch)
 
-        # toc = time.time()
-        #debug_print(f"Post-process: {toc - tic}s")
-
-        toc_end = time.time()
-        #debug_print(f"Total: {toc_end - tic_start}s")
-
-        if DEBUG:
-            # --- display results
-            import matplotlib.pyplot as plt
-            image = np_int_prob_batch[0]
-            polygons = polygons_batch[0]
-            out_polylines = [shapely.geometry.LineString(polyline[:, ::-1]) for polyline in polylines_batch[0]]
-
-            fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(16, 16), sharex=True, sharey=True)
-            ax = axes.ravel()
-
-            ax[0].imshow(image, cmap=plt.cm.gray)
-            plot_utils.plot_geometries(ax[0], out_polylines, draw_vertices=True, linewidths=1)
-            ax[0].axis('off')
-            ax[0].set_title('original', fontsize=20)
-
-            # ax[1].imshow(skeleton, cmap=plt.cm.gray)
-            # ax[1].axis('off')
-            # ax[1].set_title('skeleton', fontsize=20)
-
-            fig.tight_layout()
-            plt.show()
 
         return polygons_batch, probs_batch
 
@@ -877,7 +772,7 @@ def polygonize(seg_batch, crossfield_batch, config, pool=None, pre_computed=None
 
 
 def main():
-    from frame_field_learning import inference
+    from . import inference
     import os
 
     def save_gt_poly(raw_pred_filepath, name):

@@ -179,7 +179,7 @@ def poly_coco(polygons: list, polygon_probs: list, image_id: int):
                 "category_id": 100,  # Building
                 "bbox": list(bbox),
                 "segmentation": segmentation,
-                "score": score,
+                "score": 1.0, # not using this
                 "image_id": image_id}
             annotations.append(annotation)
         return annotations

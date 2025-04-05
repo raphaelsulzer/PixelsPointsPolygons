@@ -35,7 +35,9 @@ dependencies = [
     # only for FFL preprocessing
     "kornia",
     "skan",
-    "jsmin"
+    "jsmin",
+    # ffl asm polygonization
+    "torch-scatter"
 ]
 
 

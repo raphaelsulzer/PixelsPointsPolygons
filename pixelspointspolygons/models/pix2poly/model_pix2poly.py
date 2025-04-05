@@ -5,9 +5,10 @@ from torch import nn
 from torch.nn import functional as F
 from timm.models.layers import trunc_normal_
 
-from ...misc import create_mask
-
 from ..pointpillars import PointPillarsWithoutHead
+
+from .utils import create_mask
+
 
 # Borrowed from https://github.com/magicleap/SuperGluePretrainedNetwork/blob/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/superglue.py#L143
 def log_sinkhorn_iterations(Z: torch.Tensor, log_mu: torch.Tensor, log_nu: torch.Tensor, iters: int) -> torch.Tensor:

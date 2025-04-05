@@ -12,18 +12,16 @@ import shutil
 import torch
 
 import torch.distributed as dist
+import matplotlib.pyplot as plt
 
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch import nn
-from torch import optim
+from collections import defaultdict
 from transformers import  get_cosine_schedule_with_warmup
-from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 
-from ..misc import get_lr, plot_ffl, seed_everything, MetricLogger
-from ..models.ffl import *
+from ..misc import get_lr, plot_ffl, MetricLogger
 from ..models.ffl.losses import build_combined_loss
 from ..models.ffl.local_utils import batch_to_cuda
 from ..models.ffl.measures import iou as compute_iou
+from ..models.ffl.model_ffl import FFLModel
 from ..predict.ffl.predictor_ffl import FFLPredictor as Predictor
 from ..eval import Evaluator
 
@@ -31,211 +29,158 @@ from .trainer import Trainer
 
 class FFLTrainer(Trainer):
     
-    def to_device(self,data,device):
-        if isinstance(data,torch.Tensor):
-            return data.to(device)
-        if isinstance(data, dict):
-    #         import pdb; pdb.set_trace()
-            for key in data:
-                if isinstance(data[key],torch.Tensor):
-                    data[key] = data[key].to(device)
-            return data
-        if isinstance(data,list):
-            return [self.to_device(d,device) for d in data]
-
-    def to_single_device(self,data,device):
-        if isinstance(data, torch.Tensor):
-            return data.to(device)
-        if isinstance(data, dict):
-            for key in data:
-                if isinstance(data[key], torch.Tensor):
-                    data[key] = data[key].to(device)
-            return data
-        if isinstance(data, list):
-            return [self.to_device(d, device) for d in data]
-    
     def setup_model(self):
-        
-        if self.cfg.use_images and self.cfg.use_lidar:
-            model = MultiEncoderDecoder(self.cfg)
-        elif self.cfg.use_images:
-            encoder = UNetResNetBackbone(self.cfg)
-            encoder = _SimpleSegmentationModel(encoder, classifier=torch.nn.Identity())
-        elif self.cfg.use_lidar: 
-            model = LiDAREncoderDecoder(self.cfg)
-        else:
-            raise ValueError("At least one of use_image or use_lidar must be True")
-        
-        model = EncoderDecoder(
-            encoder=encoder,
-            cfg=self.cfg
-        )
-                
-        model.to(self.cfg.device)
-        
-        if self.is_ddp:
-            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model = DDP(model, device_ids=[self.local_rank])
-        
-        self.model = model
-
+        self.model = FFLModel(self.cfg, self.local_rank)
         
     def setup_optimizer(self):
         # Get optimizer
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
+        # self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
 
+        self.optimizer = torch.optim.Adam(self.model.parameters(),lr=self.cfg.model.learning_rate,eps=1e-8)
         # Get scheduler
         # num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
         num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
         self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
         self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
-        # num_warmup_steps = int(0.05 * num_training_steps)
+        # self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, self.cfg.model.gamma)
         num_warmup_steps = 0
         self.lr_scheduler = get_cosine_schedule_with_warmup(
             self.optimizer,
             num_training_steps=num_training_steps,
             num_warmup_steps=num_warmup_steps
         )
+
     
     def setup_loss_fn_dict(self):
-        
         self.loss_func = build_combined_loss(self.cfg).cuda()
-        
-    def average_across_gpus(self, meter):
-        
-        if not self.is_ddp:
-            return meter.global_avg
-        
-        tensor = torch.tensor([meter.global_avg], device=self.device)
-        dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
-        tensor /= self.world_size
-        return tensor.item()
 
-    def compute_loss_norms(self, dl, total_batches):
-        self.loss_func.reset_norm()
+    def visualization(self, loader, epoch, coco=None, show=False, num_images=2):
         
-        self.logger.info("Init loss norms...")
-        t = self.progress_bar(dl)  # Initialise
+        self.model.eval()
+        
+        from ..misc.coco_conversions import coco_anns_to_shapely_polys
+        from ..misc.debug_visualisations import plot_image, plot_mask, plot_crossfield, plot_shapely_polygons, plot_point_cloud
+        from lydorn_utils.math_utils import compute_crossfield_uv
+        import numpy as np
 
-        batch_i = 0
-        while batch_i < total_batches:
-            for batch in dl:
-                # Update loss norms
-                batch = batch_to_cuda(batch)
-                pred, batch = self.model(batch)
-                self.loss_func.update_norm(pred, batch, batch["image"].shape[0])
-                if t is not None:
-                    t.update(1)
-                batch_i += 1
-                if not batch_i < total_batches:
+        batch = next(iter(loader))
+        batch = batch_to_cuda(batch)
+        pred, batch = self.model(batch)
+        
+        outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
+        os.makedirs(outpath, exist_ok=True)
+        self.logger.info(f"Save visualizations to {outpath}")
+        
+        coco_anns = defaultdict(list)
+        if coco is not None:
+            for ann in coco:
+                if ann["image_id"] >= num_images: 
                     break
-
-        # Now sync loss norms across GPUs:
-        if self.cfg.multi_gpu:
-            self.loss_func.sync(self.world_size)
+                coco_anns[ann["image_id"]].append(ann)
         
+        if self.cfg.use_lidar:
+            lidar_batches = torch.unbind(batch["lidar"], dim=0)
+
+        for i in range(num_images):
+        
+            fig, ax = plt.subplots(1,2,figsize=(8, 4), dpi=150)
+            ax = ax.flatten()
+
+            if self.cfg.use_images:
+                plot_image(batch["image"][i], ax=ax[0])
+                plot_image(batch["image"][i], ax=ax[1])
+            if self.cfg.use_lidar:
+                plot_point_cloud(lidar_batches[i], ax=ax[0])
+                plot_point_cloud(lidar_batches[i], ax=ax[1])
+                
+            mask_color = [1,0,1,0.6]
+            plot_mask(batch["gt_polygons_image"][i][0], ax=ax[0], color=mask_color)
+            plot_mask(pred["seg"][i].squeeze()>0.5, ax=ax[1], color=mask_color)
+            
+            plot_crossfield(batch["gt_crossfield_angle"][i].squeeze(), ax=ax[0])
+            pred_crossfield = compute_crossfield_uv(pred["crossfield"][i].permute(1,2,0).detach().cpu().numpy())
+            pred_crossfield0 = np.arctan2(pred_crossfield[0].imag, pred_crossfield[0].real)
+            plot_crossfield(pred_crossfield0, ax=ax[1])
+            ## plot the orthogonal linefield (i.e. the full crossfield)
+            # pred_crossfield1 = np.arctan2(pred_crossfield[1].imag, pred_crossfield[1].real)
+            # plot_crossfield(pred_crossfield1, ax=ax[1])
+            
+            polygons = coco_anns[i]
+            if len(polygons):
+                polygons = coco_anns_to_shapely_polys(polygons)
+                plot_shapely_polygons(polygons, ax=ax[1],pointcolor=[1,1,0],edgecolor=[1,0,1])
+
+            ax[0].set_title("GT_"+batch["name"][i])
+            ax[1].set_title("PRED_"+batch["name"][i])
+            
+            plt.tight_layout()
+            outfile = os.path.join(outpath, f"{batch['name'][i]}.png")
+            self.logger.debug(f"Save visualization to {outfile}")
+            plt.savefig(outfile)
+            if show:
+                plt.show(block=True)
+            if self.cfg.log_to_wandb:
+                wandb.log({f"{epoch}: {batch['name'][i]}": wandb.Image(fig)})            
+            plt.close(fig)
+            
     def valid_one_epoch(self, epoch):
 
         self.logger.info(f"Validate epoch {epoch}...")
-        
         self.model.eval()
-
         loss_meter = MetricLogger(" val_")
-
         loader = self.progress_bar(self.val_loader)
-
-        
         with torch.no_grad():
-            for batch_dict in loader:
+            for batch in loader:
                 
-                batch_dict = batch_to_cuda(batch_dict)
-                
-                pred, batch = self.model(batch_dict)
-                loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch)
-            
-                with torch.no_grad():
-                    # Compute IoUs at different thresholds
-                    if "seg" in pred:
-                        y_pred = pred["seg"][:, 0, ...]
-                        y_true = batch["gt_polygons_image"][:, 0, ...]
-                        iou_thresholds = [0.1, 0.25, 0.5, 0.75, 0.9]
-                        for iou_threshold in iou_thresholds:
-                            iou = compute_iou(y_pred.reshape(y_pred.shape[0], -1), y_true.reshape(y_true.shape[0], -1), threshold=iou_threshold)
-                            mean_iou = torch.mean(iou)
-                            loss_dict[f"IoU_{iou_threshold}"] = mean_iou
-                        
-                    loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
-                    loss_reduced = loss.item()
-                    loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
+                batch = batch_to_cuda(batch)
+                pred, batch = self.model(batch)
+                loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch, normalize=False)
 
-        self.logger.debug(f"Validation loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
-        
+                loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
+                loss_reduced = loss.item()
+                loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
+                loader.set_postfix(val_loss=loss_meter.meters["total_loss"].global_avg)
+
         for k,v in loss_meter.meters.items():
+            self.logger.debug(f"Validation {k}: {v.global_avg:.3f}")
             loss_dict[k] = self.average_across_gpus(v)
-        
         self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict
 
-
-
+    
     def train_one_epoch(self, epoch, iter_idx):
         
         self.logger.info(f"Train epoch {epoch}...")
-        
         self.model.train()
-
         loss_meter = MetricLogger(" train_")
-
         loader = self.progress_bar(self.train_loader)
-
-        self.loss_func.reset_norm()
-        for batch_dict in loader:
+        for batch in loader:
                         
-            # ### debug vis
-            if self.cfg.debug_vis:
-                plot_ffl(batch_dict)
+            # # ### debug vis
+            # if self.cfg.debug_vis:
+            #     plot_ffl(batch)
 
-            batch_dict = batch_to_cuda(batch_dict)
-            
-            pred, batch = self.model(batch_dict)
-            loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch)
+            batch = batch_to_cuda(batch)
+            pred, batch = self.model(batch)
+            loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch, normalize=False)
                 
-            with torch.no_grad():
-                # Compute IoUs at different thresholds
-                if "seg" in pred:
-                    y_pred = pred["seg"][:, 0, ...]
-                    y_true = batch["gt_polygons_image"][:, 0, ...]
-                    iou_thresholds = [0.1, 0.25, 0.5, 0.75, 0.9]
-                    for iou_threshold in iou_thresholds:
-                        iou = compute_iou(y_pred.reshape(y_pred.shape[0], -1), y_true.reshape(y_true.shape[0], -1), threshold=iou_threshold)
-                        mean_iou = torch.mean(iou)
-                        loss_dict[f"IoU_{iou_threshold}"] = mean_iou
-                
+            with torch.no_grad():                
                 loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
                 loss_reduced = loss.item()
                 loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
             
-
             self.optimizer.zero_grad(set_to_none=True)
             loss.backward()
             self.optimizer.step()
-
             self.lr_scheduler.step()
-
             lr = get_lr(self.optimizer)
-
-            loader.set_postfix(train_loss=loss_meter.meters["total_loss"].global_avg, lr=f"{lr:.5f}")
-
+            loader.set_postfix(train_loss=loss_meter.meters["total_loss"].global_avg, lr=f"{lr:.7f}")
             iter_idx += 1
-
-            
-        
-        self.logger.debug(f"Train loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
         
         for k,v in loss_meter.meters.items():
+            self.logger.debug(f"Train {k}: {v.global_avg:.3f}")
             loss_dict[k] = self.average_across_gpus(v)
-        
         self.logger.info(f"Train loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict, iter_idx
@@ -243,35 +188,22 @@ class FFLTrainer(Trainer):
 
     def train_val_loop(self):
 
-        if self.cfg.checkpoint is not None:
+        if self.cfg.checkpoint is not None or self.cfg.checkpoint_file is not None:
             self.load_checkpoint()
-            
-        if self.cfg.log_to_wandb and self.local_rank == 0:
-            self.setup_wandb()
-
-        predictor = Predictor(self.cfg,local_rank=self.local_rank,world_size=self.world_size)
-
-        ## init loss norms
-        self.model.train()  # Important for batchnorm and dropout, even in computing loss norms
-        
-        ## compute loss norms for loss weighting
-        if self.cfg.run_type.name == "release":
-            with torch.no_grad():
-                loss_norm_batches_min = self.cfg.model.loss.multiloss.normalization_params.min_samples // (2 * self.cfg.model.batch_size) + 1
-                loss_norm_batches_max = self.cfg.model.loss.multiloss.normalization_params.max_samples // (2 * self.cfg.model.batch_size) + 1
-                loss_norm_batches = max(loss_norm_batches_min, min(loss_norm_batches_max, len(self.train_loader)))
-                self.compute_loss_norms(self.train_loader, loss_norm_batches)
 
         best_loss = float('inf')
-
         iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
         epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
 
+        predictor = Predictor(self.cfg,local_rank=self.local_rank,world_size=self.world_size)
         if self.local_rank == 0:
             evaluator = Evaluator(self.cfg)
         else:
             evaluator = None
         
+        if self.cfg.log_to_wandb and self.local_rank == 0:
+            self.setup_wandb()
+            
         for epoch in self.progress_bar(epoch_iterator):
             
             ############################################
@@ -288,6 +220,8 @@ class FFLTrainer(Trainer):
                 dist.barrier()
             
             if self.local_rank == 0:
+                with torch.no_grad():
+                    self.visualization(self.train_loader,epoch,show=self.cfg.debug_vis)
                 wandb_dict ={}
                 wandb_dict['epoch'] = epoch
                 for k, v in train_loss_dict.items():
@@ -328,8 +262,12 @@ class FFLTrainer(Trainer):
 
                 self.logger.info("Predict validation set with latest model...")
                 coco_predictions = predictor.predict_from_loader(self.model,self.val_loader)
-                coco_predictions = coco_predictions['acm.tol_0.125']
+                # coco_predictions = coco_predictions['asm.tol_1']
+                poly_method, coco_predictions = next(iter(coco_predictions.items()))
+                self.logger.info(f"Evaluate {poly_method} polygonization...")
                 
+                self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
+
                 self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
                 
                 if self.cfg.multi_gpu:
@@ -382,17 +320,4 @@ class FFLTrainer(Trainer):
                     self.logger.debug(f"{k}: {v}")
                 if self.local_rank == 0:
                     wandb.log(wandb_dict)
-
-    
-
-
-    def train(self):
-        seed_everything(42)
-        if self.is_ddp:
-            self.setup_ddp()
-        self.setup_model()
-        self.setup_dataloader()
-        self.setup_optimizer()
-        self.setup_loss_fn_dict()
-        self.train_val_loop()
-        self.cleanup()
+        

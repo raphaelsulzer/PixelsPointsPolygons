@@ -1,7 +1,11 @@
 import torch
+
 import numpy as np
+
+from shapely.geometry import Polygon
 from skimage.measure import label, regionprops
 from pycocotools import mask as coco_mask
+
 
 def get_bbox_from_coco_seg(poly):
     """
@@ -55,3 +59,20 @@ def generate_coco_mask(mask, img_id):
             sample_ann.append(ann_per_building)
 
     return sample_ann
+
+
+def coco_anns_to_shapely_polys(coco_anns):
+
+    polygons = []
+    for ann in coco_anns:
+        if not len(ann.get('segmentation')):
+            print(f"Strange annotation without segmentation in image {img_id}")
+            continue
+        poly = np.array(ann.get('segmentation')[0])
+        poly = poly.reshape(int(len(poly) / 2), 2)
+        
+        # xmin, ymin, w, h = ann.get('bbox')
+        # bbox_poly = Polygon([(xmin, ymin), (xmin + w, ymin), (xmin + w, ymin + h), (xmin, ymin + h)])
+        
+        polygons.append(Polygon(poly))
+    return polygons
