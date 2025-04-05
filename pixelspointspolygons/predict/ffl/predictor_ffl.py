@@ -82,17 +82,17 @@ class FFLPredictor(Predictor):
                 
                 # Gather the list of dictionaries from all ranks
                 seg = [None] * self.world_size  # Placeholder for gathered objects
-                dist.all_gather_object(seg, batch["seg"])
+                dist.all_gather_object(seg, batch["seg"].cuda(0))
 
                 # Flatten the list of lists into a single list
-                batch["seg"] = torch.stack([item for sublist in seg for item in sublist])
+                batch["seg"] = torch.stack(seg)
                 
                 # Gather the list of dictionaries from all ranks
                 crossfield = [None] * self.world_size  # Placeholder for gathered objects
-                dist.all_gather_object(crossfield, batch["crossfield"])
+                dist.all_gather_object(crossfield, batch["crossfield"].cuda(0))
 
                 # Flatten the list of lists into a single list
-                batch["crossfield"] = torch.stack([item for sublist in crossfield for item in sublist])
+                batch["crossfield"] = torch.stack(crossfield)
                 
             
             if self.local_rank == 0:
