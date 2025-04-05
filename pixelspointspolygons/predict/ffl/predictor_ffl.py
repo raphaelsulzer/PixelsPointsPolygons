@@ -74,16 +74,12 @@ class FFLPredictor(Predictor):
             
             
             if self.cfg.multi_gpu:
+                """make a single batch from the DDP batch"""
+                for k in batch.keys():
+                    temp = [None] * self.workd_size
+                    dist.all_gather(temp, batch[k])
+                    batch[k] = torch.stack([item for sublist in temp for item in sublist])
                 
-                # Gather the list of dictionaries from all ranks
-                seg = [None] * self.world_size  # Placeholder for gathered objects
-                dist.all_gather_object(seg, batch["seg"])
-
-                # Flatten the list of lists into a single list
-                batch["seg"] = [item for sublist in seg for item in sublist]
-                
-                
-            
             if self.local_rank == 0:
                 # --- Polygonize
                 try:
