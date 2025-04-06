@@ -12,6 +12,8 @@ import shutil
 import torch
 
 import torch.distributed as dist
+import matplotlib
+matplotlib.use('Agg')  # Use non-GUI backend
 import matplotlib.pyplot as plt
 
 from collections import defaultdict
@@ -161,11 +163,7 @@ class FFLTrainer(Trainer):
         loss_meter = MetricLogger(" train_")
         loader = self.progress_bar(self.train_loader)
         for batch in loader:
-                        
-            # # ### debug vis
-            # if self.cfg.debug_vis:
-            #     plot_ffl(batch)
-
+            
             batch = batch_to_cuda(batch, device=self.cfg.device)
             pred, batch = self.model(batch)
             loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch, normalize=False)
