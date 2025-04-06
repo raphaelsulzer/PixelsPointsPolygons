@@ -344,7 +344,7 @@ class SegLoss(Loss):
         if self.cfg.model.loss.seg.type == "float":
             pass
         elif self.cfg.model.loss.seg.type == "bool":
-            gt_seg = (gt_seg > 0.97).to(torch.float32)
+            gt_seg = (gt_seg > 0.98).to(torch.float32)
         else:
             raise NotImplementedError("cfg.model.loss.seg.type has to be either float or bool")
         

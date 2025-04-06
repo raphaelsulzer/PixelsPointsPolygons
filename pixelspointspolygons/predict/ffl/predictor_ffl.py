@@ -72,32 +72,6 @@ class FFLPredictor(Predictor):
                 # pool = Pool(processes=num_workers) if num_workers > 0 else None
                 pool = None # there is some skan error when I try with Pool()
             
-            
-            # if self.cfg.multi_gpu:
-                
-            #     # for k in batch.keys():
-            #     #     temp = [None] * self.workd_size
-            #     #     dist.all_gather(temp, batch[k])
-            #     #     batch[k] = torch.stack([item for sublist in temp for item in sublist])
-                
-            #     # Gather the list of dictionaries from all ranks
-            #     seg = [None] * self.world_size  # Placeholder for gathered objects
-            #     dist.all_gather_object(seg, batch["seg"].cuda(0))
-
-            #     # Flatten the list of lists into a single list
-            #     batch["seg"] = torch.cat(seg,dim=0)
-                
-            #     # Gather the list of dictionaries from all ranks
-            #     crossfield = [None] * self.world_size  # Placeholder for gathered objects
-            #     dist.all_gather_object(crossfield, batch["crossfield"].cuda(0))
-
-            #     # Flatten the list of lists into a single list
-            #     batch["crossfield"] = torch.cat(crossfield,dim=0)
-                
-            #     # self.logger.debug(f"Seg is now of shape {batch['seg'].shape}")
-                
-            
-            # if self.local_rank == 0:
             #     # --- Polygonize
             try:
                 batch["polygons"], batch["polygon_probs"] = polygonize.polygonize(
@@ -128,8 +102,6 @@ class FFLPredictor(Predictor):
 
             # Flatten the list of lists into a single list
             annotations_list = [item for sublist in temp for item in sublist]
-
-        
 
         if len(annotations_list):
             annotations = list_of_dicts_to_dict_of_lists(annotations_list)

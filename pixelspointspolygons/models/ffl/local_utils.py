@@ -92,7 +92,7 @@ def batch_to_cuda(batch,device):
         if hasattr(item, "cuda"):
             batch[key] = item.to(device, non_blocking=True)
         else:
-            print(f"Non tensor in batch to cuda {key}. This is not allowed in DDP")
+            print(f"Non tensor in batch to cuda named {key}. This is not allowed in DDP")
     return batch
 
 

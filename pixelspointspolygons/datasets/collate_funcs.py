@@ -13,8 +13,8 @@ def collate_fn_ffl(batch, cfg):
     if cfg.use_images:
         assert (len(batch_dict["image"]) > 0), "Image batch is empty"
         batch_dict["image"] = torch.stack(batch_dict["image"])
-    # else:
-    #     batch_dict["image"] = None
+    else:
+        del batch_dict["image"]
     
     if cfg.use_lidar:
         assert (len(batch_dict["lidar"]) > 0), "LiDAR batch is empty"

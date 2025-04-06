@@ -59,7 +59,7 @@ loss:
   multi:
     epoch_thresholds: [0, 5, 10]  # From 0 to 5: gradually go from coefs[0] to coefs[1] for list coefs
     weights:
-      seg: 10
+      seg: 4
       crossfield_align: 1
       crossfield_align90: 0.2
       crossfield_smooth: 0.005
@@ -69,12 +69,12 @@ loss:
   seg:
     bce_coef: 1.0
     dice_coef: 0.2
-    use_freq: true # Frequency weights per pixel class, e.g. weight building interior higher
-    use_dist: true  # Dist weights as in the original U-Net paper
+    use_freq: false # Frequency weights per pixel class, e.g. weight building interior higher
+    use_dist: false  # Dist weights as in the original U-Net paper
     use_size: false  # Size weights increasing importance of smaller buildings
     w0: 50  # From original U-Net paper: distance weight to increase loss between objects
     sigma: 10  # From original U-Net paper: distance weight to increase loss between objects
-    type: float # or bool
+    type: bool # or bool
 
 
 # training

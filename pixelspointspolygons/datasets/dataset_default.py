@@ -286,9 +286,6 @@ class DefaultDataset(Dataset):
                                                                                                augmentation_replay=augmentations["replay"])
             ffl_data["gt_crossfield_angle"] = ffl_data["gt_crossfield_angle"][None,...]
             
-            # if self.split == "train":
-            #     ffl_data["augmentation_replay"] = augmentations["replay"]["transforms"][0]['params']['group_element']
-            
         ffl_data["class_freq"] = torch.from_numpy(self.stats["class_freq"])
         
         
