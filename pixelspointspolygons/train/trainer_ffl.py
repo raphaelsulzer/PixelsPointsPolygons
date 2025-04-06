@@ -126,7 +126,7 @@ class FFLTrainer(Trainer):
             plt.savefig(outfile)
             if show:
                 plt.show(block=True)
-            if self.cfg.log_to_wandb:
+            if self.cfg.log_to_wandb and self.local_rank == 0:
                 wandb.log({f"{epoch}: {names[i]}": wandb.Image(fig)})            
             plt.close(fig)
             
