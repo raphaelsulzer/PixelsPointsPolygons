@@ -315,9 +315,8 @@ class FFLTrainer(Trainer):
             if self.is_ddp:
                 dist.barrier()
 
-            if self.cfg.log_to_wandb:
+            if self.cfg.log_to_wandb and self.local_rank == 0:
                 for k,v in wandb_dict.items():
                     self.logger.debug(f"{k}: {v}")
-                if self.local_rank == 0:
-                    wandb.log(wandb_dict)
+                wandb.log(wandb_dict)
         
