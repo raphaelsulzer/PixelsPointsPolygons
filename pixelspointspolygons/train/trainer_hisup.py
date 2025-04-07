@@ -18,8 +18,8 @@ from torch import nn
 from torch import optim
 from transformers import get_cosine_schedule_with_warmup
 
-from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, seed_everything, MetricLogger
-from ..models.hisup import *
+from ..misc import get_lr, get_tile_names_from_dataloader, plot_hisup, MetricLogger
+from ..models.hisup import HiSupModel
 from ..eval import Evaluator
 from ..misc.coco_conversions import generate_coco_ann
 
@@ -63,23 +63,7 @@ class HiSupTrainer(Trainer):
             return [self.to_device(d, device) for d in data]
     
     def setup_model(self):
-        
-        if self.cfg.use_images and self.cfg.use_lidar:
-            model = MultiEncoderDecoder(self.cfg)
-        elif self.cfg.use_images:
-            model = ImageEncoderDecoder(self.cfg)
-        elif self.cfg.use_lidar: 
-            model = LiDAREncoderDecoder(self.cfg)
-        else:
-            raise ValueError("At least one of use_image or use_lidar must be True")
-        
-        model.to(self.cfg.device)
-        
-        if self.is_ddp:
-            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model = DDP(model, device_ids=[self.local_rank])
-        
-        self.model = model
+        self.model = HiSupModel(self.cfg, self.local_rank)
 
 
     def setup_optimizer(self):

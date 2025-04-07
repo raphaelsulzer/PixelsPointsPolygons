@@ -27,7 +27,7 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         
         # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
         point_cloud_range = [0, 0, 0, 
-                             cfg.model.encoder.in_width, cfg.model.encoder.in_height, cfg.model.lidar_encoder.z_max]
+                             cfg.model.lidar_encoder.in_width, cfg.model.lidar_encoder.in_height, cfg.model.lidar_encoder.in_voxel_size.z]
         voxel_size = list(cfg.model.lidar_encoder.in_voxel_size.values())
         
         
@@ -42,11 +42,11 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         }
         voxel_encoder={
             'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
-            'feat_channels': [64,cfg.model.lidar_encoder.out_feature_channels],
+            'feat_channels': [64,cfg.model.lidar_encoder.out_feature_dim],
             'voxel_size': voxel_size
         }
         scatter={
-            "in_channels" : cfg.model.lidar_encoder.out_feature_channels, 
+            "in_channels" : cfg.model.lidar_encoder.out_feature_dim, 
             "output_shape" : output_shape
         }
         augment={
@@ -63,7 +63,6 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
                  augment=augment)
         
         self.cfg = cfg
-        self.batch_size = self.cfg.model.batch_size
 
         # remove unsused modules from PointPillars
         del self.backbone
@@ -86,13 +85,27 @@ class PointPillarsWithoutHead(ml3d.models.PointPillars):
         batch_size = x_lidar.shape[0] # WARNING: do not use self.cfg.model.batch_size here, because it can be wrong for truncated batches at the end of the loader in drop_last=False, e.g. in validation and testing
         x = self.middle_encoder(voxel_features, coors, batch_size)
 
-        if self.cfg.model.name == "pix2poly":
+        # TODO: there is an unnessary opertation when combining this with Vit:
+        # self.middle_encoder already has the correct format for the VisionTransformer, but the last operation
+        # is batch_canvas = batch_canvas.view(batch_size, self.in_channels, self.ny, self.nx)
+        # which I just undo below whith x = x.flatten(2).transpose(1, 2)
+
+        # if self.cfg.model.name == "pix2poly":
+        #     # flatten patches, NCHW -> NLC. Needed to pass directly to next layer of VisionTransformer (self.vit)
+        #     x = x.flatten(2).transpose(1, 2)  # NCHW -> NLC
+        # elif self.cfg.model.name == "hisup":
+        #     pass
+        # elif self.cfg.model.name == "ffl":
+        #     x = {"out" : x}
+        # else:
+        #     raise NotImplementedError(f"Model {self.cfg.model.name} not implemented")
+        
+        if self.cfg.model.lidar_encoder.name == "pointpillars_vit":
             # flatten patches, NCHW -> NLC. Needed to pass directly to next layer of VisionTransformer (self.vit)
-            x = x.flatten(2).transpose(1, 2)  # NCHW -> NLC
-        elif self.cfg.model.name == "hisup":
+            x = x.flatten(2).transpose(1, 2)
+        elif self.cfg.model.lidar_encoder.name == "pointpillars":
             pass
-        elif self.cfg.model.name == "ffl":
-            x = {"out" : x}
         else:
-            raise NotImplementedError(f"Model {self.cfg.model.name} not implemented")
+            raise NotImplementedError(f"Model {self.cfg.model.lidar_encoder.name} not implemented")        
+        
         return x
