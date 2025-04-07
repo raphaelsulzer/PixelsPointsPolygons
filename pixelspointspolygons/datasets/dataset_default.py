@@ -213,7 +213,7 @@ class DefaultDataset(Dataset):
         img_id = self.tile_ids[index]
         img_info = self.coco.loadImgs(img_id)[0]
         ann_ids = self.coco.getAnnIds(imgIds=img_info['id'])
-        annotations = self.coco.loadAnns(ann_ids)  # annotations of all instances in an image.
+        # annotations = self.coco.loadAnns(ann_ids)  # annotations of all instances in an image.
 
         # load image
         if self.use_images:
@@ -231,7 +231,7 @@ class DefaultDataset(Dataset):
         else:
             lidar = None
             
-        
+        ### TODO: integrate the FFL GT into the standard COCO annotations file in ppp_dataset code
         # get ffl_pt file
         ffl_pt_file = os.path.join(self.dataset_dir,img_info["ffl_pt_path"])
         if not os.path.isfile(ffl_pt_file):
@@ -438,7 +438,7 @@ class DefaultDataset(Dataset):
             augmentations = self.transform(image=image, masks=[mask], keypoints=corner_coords)
                         
             if self.use_lidar:
-                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar, img_info['id'])
+                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar)
             
             image = augmentations['image']
             corner_coords = np.flip(augmentations['keypoints'],axis=-1)
@@ -452,41 +452,20 @@ class DefaultDataset(Dataset):
                 annotations[k] = torch.from_numpy(v)
 
         return image, lidar, annotations, torch.tensor([img_info['id']])
-    
-    
-    def plot_hisup_poly(self, polygon, convex_index):
-        import matplotlib.pyplot as plt
-        
-        fig, ax = plt.subplots()
-        ax.plot(*zip(*np.vstack([polygon, polygon[0]])), linewidth=2.0)
-        
-        convex_concave_color = []
-        for j in range(len(polygon)):
-            if convex_index[j] == 0:
-                convex_concave_color.append('green')
-            elif convex_index[j] == 1:
-                convex_concave_color.append('red')
-            else:
-                convex_concave_color.append('blue')
-        
-        # Draw polygon vertices
-        ax.scatter(polygon[:, 0], polygon[:, 1], color=convex_concave_color, zorder=3, s=3)
-        
-        ax.set_aspect('equal')
-        plt.show(block=True)
 
 
     def resize_hisup_annotations(self,ann):
         
-        sx = self.cfg.model.encoder.output_width / ann['width']
-        sy = self.cfg.model.encoder.output_height / ann['height']
+        sx = self.cfg.model.encoder.out_feature_width / ann['width']
+        sy = self.cfg.model.encoder.out_feature_height / ann['height']
         ann['junc_ori'] = ann['junctions'].copy()
-        ann['junctions'][:, 0] = np.clip(ann['junctions'][:, 0] * sx, 0, self.cfg.model.encoder.output_width - 1e-4)
-        ann['junctions'][:, 1] = np.clip(ann['junctions'][:, 1] * sy, 0, self.cfg.model.encoder.output_height - 1e-4)
-        ann['width'] = self.cfg.model.encoder.output_width
-        ann['height'] = self.cfg.model.encoder.output_height
+        ann['junctions'][:, 0] = np.clip(ann['junctions'][:, 0] * sx, 0, self.cfg.model.encoder.out_feature_width - 1e-4)
+        ann['junctions'][:, 1] = np.clip(ann['junctions'][:, 1] * sy, 0, self.cfg.model.encoder.out_feature_height - 1e-4)
+        ann['width'] = self.cfg.model.encoder.out_feature_width
+        ann['height'] = self.cfg.model.encoder.out_feature_height
         ann['mask_ori'] = ann['mask'].clone()
-        ann['mask'] = cv2.resize(np.array(ann['mask']).astype(np.uint8), (int(self.cfg.model.encoder.output_width), int(self.cfg.model.encoder.output_height)))
+        ann['mask'] = cv2.resize(np.array(ann['mask']).astype(np.uint8), (int(self.cfg.model.encoder.out_feature_width), int(self.cfg.model.encoder.out_feature_height)))
+    
     
     def make_hisup_annotations(self, corner_coords, corner_poly_ids, height, width):
 

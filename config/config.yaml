@@ -1,14 +1,11 @@
 defaults:
-  - model: ffl   # Default model
-  - dataset: lidarpoly   # Default dataset
-  - run_type: release   # Default run_type
+  - model: hisup
+  - dataset: lidarpoly
+  - run_type: release
   - host: gin
   - _self_
 
-# experiment_name: images_only
-# experiment_name: debug
-# experiment_name: inria_D4_aug
-experiment_name: ffl_D4_noLossNorm
+experiment_name: debug
 group_name: v2_${.model.name}
 multi_gpu: false
 device: cuda

@@ -14,10 +14,8 @@ from ..pointpillars import PointPillarsWithoutHead
 
 from .hrnet48v2 import MultitaskHead
 from .hrnet48v2 import HighResolutionNet as HRNet48v2
-from .hrnet48v2 import BN_MOMENTUM, blocks_dict, conv3x3
 from .afm_module.afm_op import afm
 from .polygon import get_pred_junctions, generate_polygon
-from .bn_helper import BatchNorm2d
 
 def cross_entropy_loss_for_junction(logits, positive):
     nlogp = -F.log_softmax(logits, dim=1)
@@ -67,8 +65,8 @@ class ECA(nn.Module):
 
 class AnnotationEncoder:
     def __init__(self, cfg):
-        self.target_h = cfg.model.encoder.input_height
-        self.target_w = cfg.model.encoder.input_width
+        self.target_h = cfg.model.encoder.in_height
+        self.target_w = cfg.model.encoder.in_width
 
     def __call__(self, annotations):
         targets = []
@@ -131,10 +129,10 @@ class EncoderDecoder(nn.Module):
 
         self.annotation_encoder = AnnotationEncoder(cfg)
 
-        self.pred_height = cfg.model.encoder.output_height
-        self.pred_width = cfg.model.encoder.output_width
-        self.origin_height = cfg.model.encoder.input_height
-        self.origin_width = cfg.model.encoder.input_width
+        self.pred_height = cfg.model.encoder.out_feature_height
+        self.pred_width = cfg.model.encoder.out_feature_width
+        self.origin_height = cfg.model.encoder.in_height
+        self.origin_width = cfg.model.encoder.in_width
 
         dim_in = cfg.model.encoder.out_feature_channels
         self.mask_head = self._make_conv(dim_in, dim_in, dim_in)

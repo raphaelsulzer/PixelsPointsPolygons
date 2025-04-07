@@ -1,4 +1,8 @@
 name: hisup
+
+defaults:
+    - lidar_encoder: pointpillars
+
 encoder:
     type: HRNet48v2
     pretrained: True
@@ -10,14 +14,27 @@ encoder:
     
     out_feature_size: 128
     out_feature_height: ${.out_feature_size}
-    out__featurewidth: ${.out_feature_size}
+    out_feature_width: ${.out_feature_size}
     
     out_feature_channels: 256
 
+lidar_encoder:
+    # in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56
+    # in fact, one voxel is always 0.25m x 0.25m, so the standard voxel size is 2m x 2m
+    in_voxel_size:
+        x: 8
+        y: 8
 
-fusion: patch_concat # or feature_concat
+    max_num_points_per_voxel: 128 # this should be something around points_per_tile / num_voxels_per_tile, however, I find that half of that value is enough
 
-# optimization
+    max_num_voxels: # (in_image_size / in_voxel_size)**2
+        train: 4096
+        test: 4096
+
+    out_feature_width: ${..encoder.out_feature_width}
+    out_feature_height: ${..encoder.out_feature_height}
+
+    out_feature_channels: 64
 
 # training
 batch_size: 16
@@ -33,30 +50,6 @@ loss_weights:
     loss_mask: 1.0
     loss_afm : 0.1
     loss_remask : 1.0
-
-
-defaults:
-    - lidar_encoder: pointpillars
-
-
-lidar_encoder:
-    # in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56
-    # in fact, one voxel is always 0.25m x 0.25m, so the standard voxel size is 2m x 2m
-    in_voxel_size:
-        x: 8
-        y: 8
-
-    max_num_points_per_voxel: 128 # this should be something around points_per_tile / num_voxels_per_tile, however, I find that half of that value is enough
-
-    max_num_voxels: # here: (512/8)**2
-        train: 4096 # 256**2
-        test: 4096 # 256**2
-
-    out_width: ${.encoder.out_width}
-    out_height: ${.encoder.out_height}
-
-    out_feature_channels: ${.encoder.out_feature_channels}
-
 
 augmentations:
     - D4
