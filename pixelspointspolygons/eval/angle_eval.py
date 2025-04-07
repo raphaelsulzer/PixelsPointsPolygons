@@ -65,10 +65,10 @@ class ContourEval:
 
         if pool is None:
             measures_list = []
-            for args in tqdm(args_list, desc="Contour metrics"):
+            for args in tqdm(args_list, desc="Compute MTA"):
                 measures_list.append(compute_contour_metrics(args))
         else:
-            measures_list = list(tqdm(pool.imap(compute_contour_metrics, args_list), desc="Contour metrics", total=len(args_list)))
+            measures_list = list(tqdm(pool.imap(compute_contour_metrics, args_list), desc="Compute MTA", total=len(args_list)))
         
         measures_list = [measure for measures in measures_list for measure in measures]  # Flatten list
         # half_tangent_cosine_similarities_list, edge_distances_list = zip(*measures_list)

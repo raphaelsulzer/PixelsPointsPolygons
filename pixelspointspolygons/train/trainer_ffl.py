@@ -11,6 +11,7 @@ import json
 import shutil
 import torch
 
+
 import torch.distributed as dist
 import matplotlib
 matplotlib.use('Agg')  # Use non-GUI backend
@@ -202,6 +203,7 @@ class FFLTrainer(Trainer):
         if self.local_rank == 0:
             # predictor = Predictor(self.cfg)
             evaluator = Evaluator(self.cfg)
+            evaluator.load_gt()
         else:
             # predictor = None
             evaluator = None
@@ -302,7 +304,8 @@ class FFLTrainer(Trainer):
 
                     evaluator.load_predictions(prediction_outfile)
                     val_metrics_dict = evaluator.evaluate()
-
+                    evaluator.print_dict_results(val_metrics_dict)
+                    
                     for metric, value in val_metrics_dict.items():
                         wandb_dict[f"val_{metric}"] = value
                         

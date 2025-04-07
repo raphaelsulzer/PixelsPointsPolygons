@@ -11,8 +11,8 @@ def main(cfg):
     print(OmegaConf.to_yaml(cfg))
     
     ee = Evaluator(cfg)
-    ee.load_predictions()
-    ee.evaluate()
+    # ee.evaluate_all()    
+    ee.to_latex(csv_file=cfg.eval.eval_file)
     
 
 if __name__ == "__main__":

@@ -281,6 +281,7 @@ class Pix2PolyTrainer(Trainer):
 
         if self.local_rank == 0:
             evaluator = Evaluator(self.cfg)
+            evaluator.load_gt()
         else:
             evaluator = None
         
@@ -376,6 +377,7 @@ class Pix2PolyTrainer(Trainer):
 
                     evaluator.load_predictions(prediction_outfile)
                     val_metrics_dict = evaluator.evaluate()
+                    evaluator.print_dict_results(val_metrics_dict)
 
                     for metric, value in val_metrics_dict.items():
                         wandb_dict[f"val_{metric}"] = value
