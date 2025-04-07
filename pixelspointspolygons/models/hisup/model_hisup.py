@@ -374,11 +374,6 @@ class PointPillarViT(nn.Module):
         x = self.proj(x)
         
         return x
-        
-        
-        
-        
-        
 
 
 class MultiEncoderDecoder(HiSupEncoderDecoder):

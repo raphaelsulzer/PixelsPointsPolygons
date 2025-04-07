@@ -1,5 +1,7 @@
 name: lidarpoly
-path: ${host.data_root}/${.name}/${model.name}
+size: 224
+# path: ${host.data_root}/${.name}/${model.name}
+path: ${host.data_root}/${.name}/${.size}
 annotations:
   train: ${..path}/annotations_train.json
   val: ${..path}/annotations_val.json

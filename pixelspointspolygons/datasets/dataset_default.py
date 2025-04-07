@@ -456,15 +456,15 @@ class DefaultDataset(Dataset):
 
     def resize_hisup_annotations(self,ann):
         
-        sx = self.cfg.model.encoder.out_feature_width / ann['width']
-        sy = self.cfg.model.encoder.out_feature_height / ann['height']
+        sx = self.cfg.model.decoder.in_feature_width / ann['width']
+        sy = self.cfg.model.decoder.in_feature_height / ann['height']
         ann['junc_ori'] = ann['junctions'].copy()
-        ann['junctions'][:, 0] = np.clip(ann['junctions'][:, 0] * sx, 0, self.cfg.model.encoder.out_feature_width - 1e-4)
-        ann['junctions'][:, 1] = np.clip(ann['junctions'][:, 1] * sy, 0, self.cfg.model.encoder.out_feature_height - 1e-4)
-        ann['width'] = self.cfg.model.encoder.out_feature_width
-        ann['height'] = self.cfg.model.encoder.out_feature_height
+        ann['junctions'][:, 0] = np.clip(ann['junctions'][:, 0] * sx, 0, self.cfg.model.decoder.in_feature_width - 1e-4)
+        ann['junctions'][:, 1] = np.clip(ann['junctions'][:, 1] * sy, 0, self.cfg.model.decoder.in_feature_height - 1e-4)
+        ann['width'] = self.cfg.model.decoder.in_feature_width
+        ann['height'] = self.cfg.model.decoder.in_feature_height
         ann['mask_ori'] = ann['mask'].clone()
-        ann['mask'] = cv2.resize(np.array(ann['mask']).astype(np.uint8), (int(self.cfg.model.encoder.out_feature_width), int(self.cfg.model.encoder.out_feature_height)))
+        ann['mask'] = cv2.resize(np.array(ann['mask']).astype(np.uint8), (int(self.cfg.model.decoder.in_feature_width), int(self.cfg.model.decoder.in_feature_height)))
     
     
     def make_hisup_annotations(self, corner_coords, corner_poly_ids, height, width):
