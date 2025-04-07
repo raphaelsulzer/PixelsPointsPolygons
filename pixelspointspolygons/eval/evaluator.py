@@ -2,11 +2,15 @@ import logging
 import os
 import tqdm
 import sys
+import json
+
 import pandas as pd
+import numpy as np
 
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from copy import deepcopy
+from tqdm import tqdm
 
 from ..misc import suppress_stdout, make_logger
 
@@ -14,6 +18,11 @@ from .angle_eval import compute_max_angle_error
 from .cIoU import compute_IoU_cIoU
 from .polis import compute_polis
 from .topdig_metrics import compute_mask_metrics
+
+# Format the DataFrame to display only two digits after the comma
+pd.options.display.float_format = "{:.2f}".format
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', 500)
 
 class Evaluator:
     
@@ -24,11 +33,7 @@ class Evaluator:
         self.gt_file = cfg.eval.gt_file
         self.pred_file = cfg.eval.pred_file
         
-        
-        
-        with suppress_stdout():
-            self.cocoGt = COCO(cfg.eval.gt_file)
-        # self.cocoDt = self.cocoGt.loadRes(self.eval.pred_file)
+        self.cocoGt = None
         self.cocoDt = None
         
         self.verbosity = getattr(logging, cfg.run_type.logging.upper(), logging.INFO)
@@ -49,6 +54,19 @@ class Evaluator:
                       leave=True)
     
         return pbar
+    
+    def load_gt(self, gt_file=None):
+        
+        if gt_file is None:
+            gt_file = self.gt_file
+        else:
+            if not os.path.isfile(gt_file):
+                raise FileExistsError(f"File {gt_file} does not exist.")
+            self.gt_file = gt_file
+        
+        self.logger.info(f"Loading ground truth from {gt_file}")
+        with suppress_stdout():
+            self.cocoGt = COCO(self.gt_file)
     
     def load_predictions(self, pred_file=None):
         
@@ -129,6 +147,55 @@ class Evaluator:
         return cocoEval.stats
 
 
+    def compute_coco_stats(self):
+        
+        
+        # Load the COCO ground truth and prediction files
+        with open(self.gt_file, 'r') as f:
+            gt_data = json.load(f)
+        gt_annotations = gt_data["annotations"]
+        gt_num_images = len(gt_data["images"])
+        
+        with open(self.pred_file, 'r') as f:
+            pred_annotations = json.load(f)
+
+        # Helper function to count polygons and vertices in a COCO dataset
+        def count_polygons_and_vertices(annotations):
+            num_polygons = 0
+            num_vertices = 0
+            num_images = set()
+            num_images_with_polygons = set()
+            
+            for annotation in tqdm(annotations,desc="Compute stats"):
+                if 'segmentation' in annotation:
+                    if isinstance(annotation['segmentation'], list):
+                        num_polygons += 1
+                        num_vertices += sum(len(seg) // 2 for seg in annotation['segmentation'])
+                        num_images_with_polygons.add(annotation['image_id'])
+                num_images.add(annotation['image_id'])
+            return num_polygons, num_vertices, len(num_images_with_polygons)
+
+        # Extracting ground truth and prediction data
+        gt_num_polygons, gt_num_vertices, gt_num_images_with_polygons = count_polygons_and_vertices(gt_annotations)
+        pred_num_polygons, pred_num_vertices, pred_num_images_with_polygons = count_polygons_and_vertices(pred_annotations)
+
+
+        # Prepare the result dictionary
+        result = {
+            "#images": gt_num_images,
+            "GT #images w/ polys": gt_num_images_with_polygons,
+            "Pred #images w/ polys": pred_num_images_with_polygons,
+            # "Pred #images": pred_num_images,
+            "GT #polygons": gt_num_polygons,
+            "Pred #polygons": pred_num_polygons,
+            "GT #vertices": gt_num_vertices,
+            "Pred #vertices": pred_num_vertices
+        }
+
+        return result        
+        
+        
+
     def print_info(self):
         
         self.logger.info(f"Dataset info for {self.cocoGt.dataset['info']}...")
@@ -171,24 +238,214 @@ class Evaluator:
                 res_dict.update(self.compute_boundary_coco_metrics())
             if "coco" in self.cfg.eval.modes:
                 res_dict.update(self.compute_coco_metrics())
+            if "stats" in self.cfg.eval.modes:
+                res_dict.update(self.compute_coco_stats())
         
         
         self.logger.info(f"Results for {self.pred_file}:")
         
+        
+        return res_dict
+            
+    def print_dict_results(self, res_dict):
         
         df = pd.DataFrame.from_dict(res_dict, orient='index').transpose()
         
         # Set the row name
         df.index = [self.cfg.experiment_name]
         
-        # Format the DataFrame to display only two digits after the comma
-        pd.options.display.float_format = "{:.2f}".format
-        pd.set_option('display.max_columns', None)
-        pd.set_option('display.width', 500)
-        # pd.set_option('display.max_colwidth', 50)
-        
         # Pretty print the DataFrame
         print(df)
         
-        return res_dict    
+        
+    def check_if_predictions_exist(self):
+        for model in self.cfg.eval.experiments:
             
+            for exp in model.experiment_name:
+                            
+                pred = "validation_best"
+                pred_file = os.path.join(self.cfg.host.data_root,f"{model.model}_outputs",self.cfg.dataset.name,exp,"predictions",f"{pred}.json")
+                if not os.path.isfile(pred_file):
+                    raise FileExistsError(f"{pred_file} does not exist!")
+
+        
+        return True
+    
+    def evaluate_all(self):
+        
+        self.logger.info("Evaluating all models...")
+        
+        # first quickly check if the prediction file exists
+        self.check_if_predictions_exist()
+        self.logger.debug("All prediction files exist.")
+        
+        res_dict = {}
+        
+        for model in self.cfg.eval.experiments:
+            
+            for exp in model.experiment_name:
+            
+                self.logger.info(f"Evaluate {model.model}/{exp}")
+                
+                pred = "validation_best"
+                pred_file = os.path.join(self.cfg.host.data_root,f"{model.model}_outputs",self.cfg.dataset.name,exp,"predictions",f"{pred}.json")
+                if not os.path.isfile(pred_file):
+                    raise FileExistsError(f"{pred_file} does not exist!")
+                
+                gt_file = os.path.join(self.cfg.host.data_root,self.cfg.dataset.name,model.model,"annotations_val.json")
+                if not os.path.isfile(gt_file):
+                    raise FileExistsError(f"{gt_file} does not exist!")
+                
+                self.load_gt(gt_file)
+                self.load_predictions(pred_file)
+                
+                res_dict[f"{model.model}/{exp}"]=self.evaluate()
+
+        
+        df = pd.DataFrame.from_dict(res_dict, orient='index')
+
+        # pd.concat(df_list, axis=0, ignore_index=False)
+        # Save the DataFrame to a CSV file
+        # output_dir = os.path.join(self.cfg.host.data_root, "eval_results")
+        
+        print("\n")
+        print(df)
+        print("\n")
+        
+        df.to_csv(self.cfg.eval.eval_file, index=True)
+        
+    
+    def format_model_and_modality(self, val):
+        """Extract model name and modality from string like 'modelX/somelongstring'"""
+        model_name = val.split('/')[0]
+        
+        
+        if 'both' in val.lower() or 'fusion' in val.lower():
+            cellcolor = 'magenta!10'
+            modality = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Both}'
+        elif 'lidar' in val.lower():
+            cellcolor = 'green!10'
+            modality = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{LiDAR}'
+        elif 'image' in val.lower():
+            cellcolor = 'yellow!10'
+            modality = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Image}'
+        else:
+            raise ValueError(f"Unknown modality name: {model_name}")
+        
+        if model_name == 'ffl':
+            model_name = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{FFL} \cite{ffl}'
+        elif model_name == 'hisup':
+            model_name = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{HiSup} \cite{hisup}'
+        elif model_name == 'pix2poly':
+            model_name = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Pix2Poly} \cite{pix2poly}'
+        else:
+            raise ValueError(f"Unknown model name: {model_name}")
+        
+
+        return model_name, modality
+    
+    def format_metric_name(self, names):
+        
+        temp = []
+        for name in names:
+            if name == 'IoU':
+                temp.append(r'\textbf{IoU} $\uparrow$')
+            elif name == 'C-IoU':
+                temp.append(r'\textbf{C-IoU} $\uparrow$')
+            elif name == 'POLIS':
+                temp.append(r'\textbf{POLIS} $\downarrow$')
+            elif name == 'MTA' or name == 'mta':
+                temp.append(r'\textbf{MTA [$^\circ$]} $\downarrow$')
+            elif name == 'Boundary IoU':
+                temp.append(r'\textbf{Boundary IoU} $\uparrow$')
+            elif name == 'NR':
+                temp.append(r'\textbf{NR=1}')
+            else:
+                temp.append(name)
+        return temp
+    
+    
+    def get_first_and_second_best(self, col, col_vals):
+        
+        if col in ['IoU', 'C-IoU', 'Boundary IoU', 'NR']:
+            best_val = col_vals.max()
+            second__best_val = col_vals.nlargest(2).iloc[-1] if len(col_vals.unique()) > 1 else None
+        elif col in ['POLIS', 'MTA']:
+            best_val = col_vals.min()
+            second__best_val = col_vals.nsmallest(2).iloc[-1] if len(col_vals.unique()) > 1 else None
+        else:
+            raise ValueError(f"Unknown metric: {col}")
+        
+        return best_val, second__best_val
+    
+    
+    def to_latex(self,df=None,csv_file=None,caption="Patch prediction",label="tab:patch"):
+        
+        caption = r"\textbf{Quantitative results of patch prediction on our dataset}. We compare the baseline models trained and tested on different modalities. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
+        
+        self.logger.info("Converting DataFrame to LaTeX format...")
+        
+        if csv_file is not None:
+            df = pd.read_csv(csv_file)
+        elif df is None:
+            raise ValueError("Either df or csv_file must be provided.")
+        else:
+            raise ValueError("Either df or csv_file must be provided.")
+
+        lines = []
+        lines.append(r'\begin{table}[H]')
+        lines.append(r'\centering')
+
+        # Build header: 2 extra columns for model + modality
+        cols = self.format_metric_name(df.columns)
+        cols = [r'\textbf{Method}', r'\textbf{Modality}'] + cols
+        align = 'll'+ 'H' + ('c' * (len(cols)-1))
+
+        lines.append(r'\begin{tabular}{' + align + '}')
+        lines.append(r'\toprule')
+        lines.append(' & '.join(cols) + r' \\')
+
+        model_name = ""
+        for _, row in df.iterrows():
+            model, modality = self.format_model_and_modality(row.iloc[0])
+            formatted_row = [model, modality]
+
+            if model_name != row.iloc[0].split('/')[0]:
+                model_name = row.iloc[0].split('/')[0]
+                lines.append(r'\midrule')
+
+            for col in df.columns:
+                val = row[col]
+                if isinstance(val, (int, float, np.number)):
+                    try:
+                        col_vals = pd.to_numeric(df[col], errors='coerce')
+                        is_numeric_col = col_vals.notna().all()
+                    except:
+                        is_numeric_col = False
+
+                    if is_numeric_col:
+                        best_val, second__best_val = self.get_first_and_second_best(col,col_vals)
+
+                        val_str = f'{val:.3g}'
+                        if val == best_val:
+                            val_str = r'\cellcolor{blue!25} ' + val_str
+                        elif val == second__best_val:
+                            val_str = r'\cellcolor{blue!10} ' + val_str
+                    else:
+                        val_str = str(val)
+                else:
+                    val_str = r'\detokenize{' + str(val) + '}'
+
+                formatted_row.append(val_str)
+
+            lines.append(' & '.join(formatted_row) + r' \\')
+
+        lines.append(r'\bottomrule')
+        lines.append(r'\end{tabular}')
+        if caption:
+            lines.append(r'\caption{' + caption + '}')
+        if label:
+            lines.append(r'\label{' + label + '}')
+        lines.append(r'\end{table}')
+        print('\n'.join(lines))
+        

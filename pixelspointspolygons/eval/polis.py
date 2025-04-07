@@ -128,7 +128,7 @@ class PolisEval():
         polis_tot = 0
 
         num_valid_imgs = 0
-        for imgId in tqdm(self.imgIds, disable=self.pbar_disable):
+        for imgId in tqdm(self.imgIds, disable=self.pbar_disable,desc="Compute POLIS"):
             img_polis_avg = self.evaluateImg(imgId)
 
             if img_polis_avg == 0:
