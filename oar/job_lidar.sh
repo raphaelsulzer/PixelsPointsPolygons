@@ -4,7 +4,7 @@
 #OAR -l host=1/gpu=2,walltime=16
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
 #OAR -O oar/runs/lidar.out
-#OAR -E oar/runs/lidar.err 
+#OAR -E oar/runs/lidar.out 
 
 # display some information about attributed resources
 hostname 
