@@ -84,8 +84,8 @@ class DefaultDataset(Dataset):
             
             points = points.astype(np.float32)
             
-            if not len(points) > 3:
-                self.logger.warning(f"Lidar file {lidar_file_name} only has {len(points)} points.")
+            # if not len(points) > 3:
+            #     self.logger.warning(f"Lidar file {lidar_file_name} only has {len(points)} points.")
 
         else:
             raise FileExistsError(f"Lidar file {lidar_file_name} missing.")
