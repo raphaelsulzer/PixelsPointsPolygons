@@ -1,25 +1,16 @@
 name: hisup
 
 defaults:
-    - lidar_encoder: pointpillars_vit
+    - lidar_encoder: pointpillars_vit 
+    - image_encoder: hrnet
 
-encoder:
-    type: HRNet48v2
-    pretrained: True
-    checkpoint_file: ${...host.data_root}/hrnetv2_w48_imagenet_pretrained.pth
-
-    in_size: 512
-    in_height: ${.in_size}
-    in_width: ${.in_size}
-    
-    out_feature_size: 128
-    out_feature_height: ${.out_feature_size}
-    out_feature_width: ${.out_feature_size}
-    
-    out_feature_dim: 256
-
+encoder: ${.lidar_encoder}
 
 decoder:
+    in_feature_size: 128
+    in_feature_width: ${.in_feature_size}
+    in_feature_height: ${.in_feature_size}
+    
     in_feature_dim: 256
 
 # training
