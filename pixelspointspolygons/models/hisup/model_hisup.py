@@ -1,6 +1,7 @@
 import torch
 import cv2
 import os
+import timm
 
 import torch.nn.functional as F
 from copy import deepcopy
@@ -9,10 +10,11 @@ from math import log
 from torch import nn
 from torch.utils.data.dataloader import default_collate
 from skimage.measure import label, regionprops
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 from ..pointpillars import PointPillarsWithoutHead
+from ..multitask_head import MultitaskHead
 
-from .hrnet48v2 import MultitaskHead
 from .hrnet48v2 import HighResolutionNet as HRNet48v2
 from .afm_module.afm_op import afm
 from .polygon import get_pred_junctions, generate_polygon
@@ -123,18 +125,22 @@ class AnnotationEncoder:
     
     
 
-class EncoderDecoder(nn.Module):
-    def __init__(self, cfg):
+class HiSupEncoderDecoder(nn.Module):
+    def __init__(self, cfg, encoder):
         super().__init__()
+        
+        self.cfg = cfg
 
         self.annotation_encoder = AnnotationEncoder(cfg)
 
+        self.encoder = encoder
+        
         self.pred_height = cfg.model.encoder.out_feature_height
         self.pred_width = cfg.model.encoder.out_feature_width
         self.origin_height = cfg.model.encoder.in_height
         self.origin_width = cfg.model.encoder.in_width
 
-        dim_in = cfg.model.encoder.out_feature_channels
+        dim_in = cfg.model.decoder.in_feature_dim
         self.mask_head = self._make_conv(dim_in, dim_in, dim_in)
         self.jloc_head = self._make_conv(dim_in, dim_in, dim_in)
         self.afm_head = self._make_conv(dim_in, dim_in, dim_in)
@@ -182,11 +188,26 @@ class EncoderDecoder(nn.Module):
         }
         return loss_dict
     
-
-    def forward_common(self,images_or_points,annotations=None):
-        targets, _ = self.annotation_encoder(annotations)
-        features = self.backbone(images_or_points)
-        outputs = self.backbone.head(features)
+    def forward(self, x_images, x_points, y):
+        if self.training:
+            return self.forward_train(x_images, x_points, y=y)
+        else:
+            return self.forward_val(x_images, x_points, y=y)
+    
+    
+    def forward_common(self,x_images,x_lidar,y=None):
+        
+        targets, _ = self.annotation_encoder(y)
+        if self.cfg.use_images and not self.cfg.use_lidar:
+            features = self.encoder(x_images)
+        elif not self.cfg.use_images and self.cfg.use_lidar:
+            features = self.encoder(x_lidar)
+        elif self.cfg.use_images and self.cfg.use_lidar:
+            features = self.encoder(x_images, x_lidar)
+        else:
+            raise ValueError("At least one of use_image or use_lidar must be True")
+        
+        outputs = self.encoder.head(features)
 
         mask_feature = self.mask_head(features)
         jloc_feature = self.jloc_head(features)
@@ -205,9 +226,9 @@ class EncoderDecoder(nn.Module):
         return targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred
 
     
-    def forward_val(self, images_or_points, annotations):
+    def forward_val(self, x_images, x_lidar, y):
         
-        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images_or_points,annotations)
+        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(x_images, x_lidar, y)
 
         ### loss:
         loss_dict = self.init_loss_dict()
@@ -264,9 +285,9 @@ class EncoderDecoder(nn.Module):
         return output, loss_dict
 
 
-    def forward_train(self, images_or_points, annotations = None):
+    def forward_train(self, x_images, x_lidar, y = None):
 
-        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images_or_points,annotations)
+        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(x_images,x_lidar,y)
         
         loss_dict = self.init_loss_dict()
         if targets is not None:
@@ -279,9 +300,9 @@ class EncoderDecoder(nn.Module):
         return loss_dict
 
 
-class ImageEncoderDecoder(EncoderDecoder):
+class HRNet(torch.nn.Module):
     def __init__(self, cfg):
-        super().__init__(cfg)
+        super().__init__()
 
         head_size = [[2]]
         num_class = sum(sum(head_size, []))
@@ -290,6 +311,7 @@ class ImageEncoderDecoder(EncoderDecoder):
                         head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
                         num_class = num_class)
         
+        ## load pretrained backbone weights
         if not cfg.host.name == "jeanzay":
             checkpoint_file = hf_hub_download(
                 repo_id="rsi/PixelsPointsPolygons",
@@ -300,60 +322,66 @@ class ImageEncoderDecoder(EncoderDecoder):
             checkpoint_file = cfg.model.encoder.checkpoint_file
         if not os.path.isfile(checkpoint_file):
             raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
+        
         self.backbone.init_weights(pretrained=checkpoint_file)
-        self.backbone_name = cfg.model.encoder.type
+        
+        self.name = cfg.model.encoder.type
+        self.head = self.backbone.head
 
     
-    def forward(self, images, points, annotations = None):
-        if self.training:
-            return self.forward_train(images, annotations=annotations)
-        else:
-            # return self.forward_test(images, annotations=annotations)
-            return self.forward_val(images, annotations=annotations)
-
-
-
-class LiDAREncoderDecoder(EncoderDecoder):
-    def __init__(self, cfg):
-        super().__init__(cfg)
-
-        head_size = [[2]]
-        num_class = sum(sum(head_size, []))
-
-        self.backbone = HRNet48v2(cfg,
-                        head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
-                        num_class = num_class)
+    def forward(self, images):
         
-        if not cfg.host.name == "jeanzay":
-            checkpoint_file = hf_hub_download(
-                repo_id="rsi/PixelsPointsPolygons",
-                filename="hrnetv2_w48_imagenet_pretrained.pth",
-                use_auth_token=True  # This is needed for private repos
-            )
-        else:
-            checkpoint_file = cfg.model.encoder.checkpoint_file
-        if not os.path.isfile(checkpoint_file):
-            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
-        self.backbone.init_weights(pretrained=checkpoint_file)
-        self.backbone_name = cfg.model.encoder.type
-        
-        # make a point pillars that get's to this shape: torch.Size([16, 64, 256, 256])
-        # now just replace the first conv of HRNet
-        
-        self.backbone.conv1 = PointPillarsWithoutHead(cfg)        
+        return self.backbone(images)
 
 
-    def forward(self, images, points, annotations = None):
-        if self.training:
-            return self.forward_train(points, annotations=annotations)
-        else:
-            # return self.forward_test(images, annotations=annotations)
-            return self.forward_val(points, annotations=annotations)
+
+class PointPillarViT(nn.Module):
+    
+    def __init__(self, cfg) -> None:
+        super().__init__()
+        self.cfg = cfg
+        self.point_pillars = PointPillarsWithoutHead(cfg)
+        
+        self.vision_transformer = timm.create_model(
+            model_name=cfg.model.lidar_encoder.type,
+            num_classes=0,
+            global_pool='',
+            pretrained=cfg.model.encoder.pretrained
+        )
+        # replace VisionTransformer patch embedding with LiDAR encoder
+        self.vision_transformer.patch_embed = self.point_pillars
+                                
+        self.proj = nn.Sequential(
+            nn.Upsample(size=128, mode='bilinear', align_corners=False),
+            nn.Conv2d(self.cfg.model.lidar_encoder.patch_embed_dim, self.cfg.model.decoder.in_feature_dim, kernel_size=3, padding=1),
+            nn.BatchNorm2d(self.cfg.model.decoder.in_feature_dim),
+            nn.ReLU(inplace=True)
+        )
+        
+        self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+
+
+    def forward(self, points):
+        
+        x = self.vision_transformer(points)
+        
+        x = x[:, 1:,:] # drop CLS token
+        
+        B, N, C = x.shape
+        H = W = int(N ** 0.5)
+        x = x.permute(0, 2, 1).view(B, C, H, W)
+        
+        x = self.proj(x)
+        
+        return x
+        
+        
+        
         
         
 
 
-class MultiEncoderDecoder(EncoderDecoder):
+class MultiEncoderDecoder(HiSupEncoderDecoder):
     def __init__(self, cfg):
         super().__init__(cfg)
 
@@ -512,3 +540,36 @@ class MultiEncoderDecoder(EncoderDecoder):
             loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())
 
         return loss_dict
+
+
+
+
+
+
+class HiSupModel(torch.nn.Module):
+    
+    def __new__(self, cfg, local_rank):
+        
+        self.cfg = cfg
+                
+        if self.cfg.use_images and self.cfg.use_lidar:
+            encoder = MultiEncoderDecoder(self.cfg)
+        elif self.cfg.use_images:
+            encoder = HRNet(self.cfg)
+        elif self.cfg.use_lidar: 
+            encoder = PointPillarViT(self.cfg)
+        else:
+            raise ValueError("At least one of use_image or use_lidar must be True")
+        
+        model = HiSupEncoderDecoder(
+            encoder=encoder,
+            cfg=self.cfg
+        )
+        
+        model.to(self.cfg.device)
+        
+        if self.cfg.multi_gpu:
+            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            model = DDP(model, device_ids=[local_rank], find_unused_parameters=True)
+    
+        return model

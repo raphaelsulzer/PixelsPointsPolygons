@@ -1,4 +1,16 @@
 name: pix2poly
+
+defaults:
+    - lidar_encoder: pointpillars
+
+tokenizer: 
+    num_bins: ${..encoder.input_size}
+    shuffle_tokens: false
+    n_vertices: 192
+    max_len: null
+    pad_idx: null
+    generation_steps: null
+
 encoder:
     type: vit_small_patch${.patch_size}_${.input_size}.dino
     pretrained: True
@@ -13,13 +25,25 @@ encoder:
 
     out_dim: 256
 
-tokenizer: 
-    num_bins: ${..encoder.input_size}
-    shuffle_tokens: false
-    n_vertices: 192
-    max_len: null
-    pad_idx: null
-    generation_steps: null
+lidar_encoder:
+    type: vit_small_patch${.patch_size}_${.input_size}.dino
+    pretrained: True
+
+    # in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56
+    in_voxel_size: 
+        x: 8 
+        y: 8
+
+    max_num_points_per_voxel: 128 # this should be something around points_per_tile (~200k) / num_voxels_per_tile (here: 784), however, I find that half of that val is enough
+
+    max_num_voxels: # here: (224/8)**2
+        train: 784 # (${.encoder.input_size} // ${.encoder.patch_size})**2
+        test: 784 # (${.encoder.input_size} // ${.encoder.patch_size})**2
+
+    out_width: 28 # ${model.encoder.input_width} // ${model.encoder.patch_size}
+    out_height: 28 # ${model.encoder.input_height} // ${model.encoder.patch_size}
+
+    out_embed_dim: ${..encoder.patch_embed_dim}
 
 fusion: patch_concat # or feature_concat
 
@@ -38,28 +62,12 @@ learning_rate: 4e-4
 weight_decay: 1e-4
 
 
-defaults:
-    - lidar_encoder: pointpillars
+
 
 # the following values are adapted such that the PointPillars layer can be used as a drop in for the 
 # patch_embed layer of the vision transformer - vit_small_patch8_224_dino (specified in cfg.model.encoder)
 
-lidar_encoder:
-    # in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56
-    in_voxel_size: 
-        x: 8 
-        y: 8
 
-    max_num_points_per_voxel: 128 # this should be something around points_per_tile (~200k) / num_voxels_per_tile (here: 784), however, I find that half of that val is enough
-
-    max_num_voxels: # here: (224/8)**2
-        train: 784 # (${.encoder.input_size} // ${.encoder.patch_size})**2
-        test: 784 # (${.encoder.input_size} // ${.encoder.patch_size})**2
-
-    out_width: 28 # ${model.encoder.input_width} // ${model.encoder.patch_size}
-    out_height: 28 # ${model.encoder.input_height} // ${model.encoder.patch_size}
-
-    out_embed_dim: ${..encoder.patch_embed_dim}
 
 augmentations:
     - D4
