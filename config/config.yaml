@@ -1,38 +1,45 @@
 defaults:
+  - encoder: hrnet
   - model: hisup
   - dataset: lidarpoly
   - run_type: release
   - host: gin
   - _self_
+hydra:
+  run:
+    dir: ${...output_dir}
+
+output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.experiment_name}
+checkpoint: null
+checkpoint_file: null # override for loading a specific checkpoint file not in the output_dir
 
 experiment_name: debug
 group_name: v2_${.model.name}
 multi_gpu: false
 device: cuda
 log_to_wandb: ${.run_type.log_to_wandb}
-
-output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.experiment_name}
-
-model:
-  batch_size: ${..run_type.batch_size}
-
+num_workers: ${.run_type.num_workers}
+debug_vis: false
+update_pbar_every: ${.host.update_pbar_every}
 
 dataset:
   train_subset: ${..run_type.train_subset}
   val_subset: ${..run_type.val_subset}
-  size: ${..model.encoder.in_size}
+  size: ${..encoder.in_size}
 
-num_workers: ${.run_type.num_workers}
+model:
+  batch_size: ${..run_type.batch_size}
 
-use_lidar: true
-use_images: false
+use_lidar: ${.encoder.use_lidar}
+use_images: ${.encoder.use_images}
 
-debug_vis: false
+# use_lidar: ${if:${..model.lidar_encoder}, true, false}
+# use_images: ${if:${..model.image_encoder}, true, false}
 
-checkpoint: null
-checkpoint_file: null # override for loading a specific checkpoint file not in the output_dir
-# checkpoint_file : /data/rsulzer/ffl_outputs/checkpoint.best_val.epoch_000234.tar
-
+save_best: true
+save_latest: true
+save_every: 10
+val_every: 1
 
 eval:
   gt_file: ${..dataset.annotations.val}
@@ -60,15 +67,8 @@ eval:
       - fusion_simple_bs4x32
   eval_file: ${..host.data_root}/metrics.csv
 
-save_best: true
-save_latest: true
-save_every: 10
-val_every: 1
 
-hydra:
-  run:
-    dir: ${...output_dir}
 
-update_pbar_every: ${.host.update_pbar_every}
+
 
 
