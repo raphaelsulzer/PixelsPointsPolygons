@@ -54,8 +54,7 @@ class Trainer:
         self.is_ddp = self.cfg.multi_gpu
         
         import matplotlib
-        if not self.cfg.debug_vis:
-            matplotlib.use('Agg')  # Use non-GUI backend
+        matplotlib.use('Agg')  # Use non-GUI backend
         
         
     def progress_bar(self,item):
@@ -170,9 +169,15 @@ class Trainer:
             model_state_dict = {k.replace(".module.", "."): v for k, v in checkpoint["model"].items()}      
         else:
             model_state_dict = checkpoint["model"]  
+        
+        # model_state_dict = {k.replace("pillar_", "encoder.backbone.pillar_"): v for k, v in checkpoint["model"].items()} 
+        # model_state_dict = {k.replace("encoder.backbone.pillar_head", "encoder.backbone.head"): v for k, v in model_state_dict.items()} 
+        # model_state_dict = {k.replace("image_backbone.", "encoder.backbone."): v for k, v in model_state_dict.items()}
+        # model_state_dict = {k.replace("encoder.backbone.head", "encoder.head"): v for k, v in model_state_dict.items()} 
+
         self.model.load_state_dict(model_state_dict)
-        self.optimizer.load_state_dict(checkpoint["optimizer"])
-        self.lr_scheduler.load_state_dict(checkpoint.get("scheduler",checkpoint.get("lr_scheduler")))
+        # self.optimizer.load_state_dict(checkpoint["optimizer"])
+        # self.lr_scheduler.load_state_dict(checkpoint.get("scheduler",checkpoint.get("lr_scheduler")))
         if "loss_func" in checkpoint:
             self.loss_func.load_state_dict(checkpoint["loss_func"])
         

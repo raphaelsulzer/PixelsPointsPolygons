@@ -33,7 +33,7 @@ class Pix2PolyPredictor(Predictor):
         return torch.from_numpy(polygons_mask)
     
     
-    def predict_from_loader(self, model, tokenizer, loader):
+    def predict_dataset(self, model, tokenizer, loader):
         
         if isinstance(loader.dataset, torch.utils.data.Subset):
             self.logger.warning("You are predicting only a subset of the dataset. Your coco evaluation will not be very useful.")
@@ -111,7 +111,7 @@ class Pix2PolyPredictor(Predictor):
 
         with torch.no_grad():
             t0 = time.time()
-            coco_predictions = self.predict_from_loader(model,tokenizer,val_loader)
+            coco_predictions = self.predict_dataset(model,tokenizer,val_loader)
 
         prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", f"{self.cfg.checkpoint}.json")
         with open(prediction_outfile, "w") as fp:

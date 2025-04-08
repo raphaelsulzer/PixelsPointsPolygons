@@ -50,7 +50,7 @@ class Predictor:
     
         return pbar
     
-    def load_checkpoint(self, model):
+    def load_checkpoint(self):
         
         ## get the file
         if self.cfg.checkpoint_file is not None:
@@ -85,11 +85,14 @@ class Predictor:
         
         ## load the model weights
         if not self.cfg.multi_gpu:
-            single_gpu_state_dict = {k.replace(".module.", "."): v for k, v in checkpoint["model"].items()}      
+            model_state_dict = {k.replace(".module.", "."): v for k, v in checkpoint["model"].items()}      
         else:
-            single_gpu_state_dict = checkpoint["model"]  
-        model.load_state_dict(single_gpu_state_dict)
-        epoch = checkpoint['epoch']
+            model_state_dict = checkpoint["model"]  
+            
+        model_state_dict = {k.replace("image_backbone.", "encoder.backbone."): v for k, v in model_state_dict.items()}
+        
+        self.model.load_state_dict(model_state_dict)
+        epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))
         
         self.logger.info(f"Model loaded from epoch: {epoch}")
         

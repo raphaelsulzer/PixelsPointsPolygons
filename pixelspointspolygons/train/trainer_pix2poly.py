@@ -265,7 +265,7 @@ class Pix2PolyTrainer(Trainer):
 
     def train_val_loop(self):
 
-        if self.cfg.checkpoint is not None:
+        if self.cfg.checkpoint is not None or self.cfg.checkpoint_file is not None:
             self.load_checkpoint()
             
         if self.cfg.log_to_wandb and self.local_rank == 0:
@@ -340,7 +340,7 @@ class Pix2PolyTrainer(Trainer):
                 if (epoch + 1) % self.cfg.val_every == 0:
 
                     self.logger.info("Predict validation set with latest model...")
-                    coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)
+                    coco_predictions = predictor.predict_dataset(self.model,self.tokenizer,self.val_loader)
                     
                     
                     self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")

@@ -1,6 +1,6 @@
 defaults:
-  # - encoder: hrnet
-  - encoder: pointpillars
+  - encoder: hrnet
+  # - encoder: pointpillars
   - model: hisup
   - dataset: lidarpoly
   - run_type: release
@@ -12,7 +12,9 @@ hydra:
 
 output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.experiment_name}
 checkpoint: null
-checkpoint_file: null # override for loading a specific checkpoint file not in the output_dir
+# checkpoint_file: null # override for loading a specific checkpoint file not in the output_dir
+# checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly_hisup_ori/v1_lidar_LROnP/model_best.pth
+checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly_hisup_ori/v1_image_only_bs8/model_best.pth
 
 experiment_name: debug
 group_name: v2_${.model.name}
