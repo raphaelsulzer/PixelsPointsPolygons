@@ -5,7 +5,7 @@ from torch import nn
 from torch.nn import functional as F
 from timm.models.layers import trunc_normal_
 
-from ..pointpillars import PointPillarsWithoutHead
+from ..pointpillars_encoder import PointPillarsEncoder
 
 from .utils import create_mask
 
@@ -91,7 +91,7 @@ class LiDAREncoder(nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.cfg = cfg
-        self.point_pillars = PointPillarsWithoutHead(cfg)        
+        self.point_pillars = PointPillarsEncoder(cfg)        
         self.vision_transformer = timm.create_model(
             model_name=cfg.model.encoder.type,
             num_classes=0,
@@ -136,7 +136,7 @@ class FeatureFusionLayer(nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.cfg = cfg
-        self.point_pillars = PointPillarsWithoutHead(cfg)        
+        self.point_pillars = PointPillarsEncoder(cfg)        
         self.vit_patch_embed = timm.create_model(
             model_name=cfg.model.encoder.type,
             num_classes=0,
@@ -161,7 +161,7 @@ class PatchFusionLayer(nn.Module):
     def __init__(self, cfg) -> None:
         super().__init__()
         self.cfg = cfg
-        self.point_pillars = PointPillarsWithoutHead(cfg)        
+        self.point_pillars = PointPillarsEncoder(cfg)        
         self.vit_patch_embed = timm.create_model(
             model_name=cfg.model.encoder.type,
             num_classes=0,

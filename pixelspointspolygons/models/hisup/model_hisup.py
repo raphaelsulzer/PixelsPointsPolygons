@@ -1,7 +1,6 @@
 import torch
 import cv2
 import os
-import timm
 
 import torch.nn.functional as F
 from copy import deepcopy
@@ -12,7 +11,7 @@ from torch.utils.data.dataloader import default_collate
 from skimage.measure import label, regionprops
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from ..pointpillars import PointPillarsWithoutHead
+from ..pointpillars import PointPillarsNoHead
 from ..multitask_head import MultitaskHead
 
 from .hrnet48v2 import HighResolutionNet as HRNet48v2
@@ -125,7 +124,7 @@ class AnnotationEncoder:
     
     
 
-class HiSupEncoderDecoder(nn.Module):
+class EncoderDecoder(nn.Module):
     def __init__(self, cfg, encoder):
         super().__init__()
         
@@ -300,7 +299,7 @@ class HiSupEncoderDecoder(nn.Module):
         return loss_dict
 
 
-class HRNet(torch.nn.Module):
+class ImageEncoder(torch.nn.Module):
     def __init__(self, cfg):
         super().__init__()
 
@@ -335,48 +334,22 @@ class HRNet(torch.nn.Module):
 
 
 
-class PointPillarViT(nn.Module):
+class LiDAREncoder(nn.Module):
     
     def __init__(self, cfg) -> None:
         super().__init__()
         self.cfg = cfg
-        self.point_pillars = PointPillarsWithoutHead(cfg)
-        
-        self.vision_transformer = timm.create_model(
-            model_name=cfg.model.lidar_encoder.type,
-            num_classes=0,
-            global_pool='',
-            pretrained=cfg.model.encoder.pretrained
-        )
-        # replace VisionTransformer patch embedding with LiDAR encoder
-        self.vision_transformer.patch_embed = self.point_pillars
-                                
-        self.proj = nn.Sequential(
-            nn.Upsample(size=128, mode='bilinear', align_corners=False),
-            nn.Conv2d(self.cfg.model.lidar_encoder.patch_embed_dim, self.cfg.model.decoder.in_feature_dim, kernel_size=3, padding=1),
-            nn.BatchNorm2d(self.cfg.model.decoder.in_feature_dim),
-            nn.ReLU(inplace=True)
-        )
-        
+
+        self.backbone = PointPillarsNoHead(cfg)                                
         self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
 
 
-    def forward(self, points):
+    def forward(self, x_lidar):
         
-        x = self.vision_transformer(points)
-        
-        x = x[:, 1:,:] # drop CLS token
-        
-        B, N, C = x.shape
-        H = W = int(N ** 0.5)
-        x = x.permute(0, 2, 1).view(B, C, H, W)
-        
-        x = self.proj(x)
-        
-        return x
+        return self.backbone(x_lidar)
 
 
-class MultiEncoderDecoder(HiSupEncoderDecoder):
+class MultiEncoder(nn.Module):
     def __init__(self, cfg):
         super().__init__(cfg)
 
@@ -405,7 +378,7 @@ class MultiEncoderDecoder(HiSupEncoderDecoder):
         # ### turns out it doesn't even fit into 50GB VRAM
         # # replace the first conv layer
         self.pixel_embed = deepcopy(self.backbone.conv1)
-        self.point_embed = PointPillarsWithoutHead(cfg)
+        self.point_embed = PointPillarsEncoder(cfg)
         self.backbone.conv1 = nn.Identity()
         # self.backbone.bn1 = BatchNorm2d(128, momentum=BN_MOMENTUM)
 
@@ -523,8 +496,6 @@ class MultiEncoderDecoder(HiSupEncoderDecoder):
 
         targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images, points,annotations)
         
-        # TODO: I need to add an image and annotation resize to the hisup dataloader
-        # check again in the hisup code what is resized when
         
         loss_dict = self.init_loss_dict()
         if targets is not None:
@@ -548,15 +519,15 @@ class HiSupModel(torch.nn.Module):
         self.cfg = cfg
                 
         if self.cfg.use_images and self.cfg.use_lidar:
-            encoder = MultiEncoderDecoder(self.cfg)
+            encoder = MultiEncoder(self.cfg)
         elif self.cfg.use_images:
-            encoder = HRNet(self.cfg)
+            encoder = ImageEncoder(self.cfg)
         elif self.cfg.use_lidar: 
-            encoder = PointPillarViT(self.cfg)
+            encoder = LiDAREncoder(self.cfg)
         else:
             raise ValueError("At least one of use_image or use_lidar must be True")
         
-        model = HiSupEncoderDecoder(
+        model = EncoderDecoder(
             encoder=encoder,
             cfg=self.cfg
         )

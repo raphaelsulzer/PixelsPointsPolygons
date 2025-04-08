@@ -1,14 +1,27 @@
 name: pointpillars
-max_num_points_per_voxel: null # this should be something around points_per_tile / num_voxels_per_tile
-z_max: 100 # all pointclouds will be scaled to [0, lidar_height]
-in_voxel_size:
-  x: 8
-  y: 8
-  z: ${..z_max}
 
-# specify this in the detector model
-lidar_encoder.max_num_voxels:
-    train: null 
-    test: null
-out_voxel_width: null
-out_voxel_hight: null
+#############################
+####### Point Pillars #######
+#############################
+
+in_size: 512
+in_height: ${.in_size}
+in_width: ${.in_size}
+
+# in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56, or 512/128
+in_voxel_size: 
+    x: 2 # i.e. 2m
+    y: 2 # i.e. 2m
+    z: 100
+
+max_num_points_per_voxel: 4 # this should be something around points_per_tile (~200k) / num_voxels_per_tile (here: 784), however, I find that half of that val is enough
+
+max_num_voxels: # here: (224/8)**2
+    train: 64000 # (${.encoder.in_size} // ${.encoder.patch_size})**2
+    test: 64000 # (${.encoder.in_size} // ${.encoder.patch_size})**2
+
+out_feature_dim: 384
+
+out_feature_size: 256
+out_feature_width: ${.out_feature_size} # ${model.encoder.in_width} // ${model.encoder.patch_size}
+out_feature_height: ${.out_feature_size} # ${model.encoder.in_height} // ${model.encoder.patch_size}
