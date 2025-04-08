@@ -26,18 +26,18 @@ class PointPillarsNoHead(ml3d.models.PointPillars):
         
         # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
         point_cloud_range = [0, 0, 0, 
-                             cfg.model.lidar_encoder.in_width, cfg.model.lidar_encoder.in_height, cfg.model.lidar_encoder.in_voxel_size.z]
-        voxel_size = list(cfg.model.lidar_encoder.in_voxel_size.values())
+                             cfg.encoder.in_width, cfg.encoder.in_height, cfg.encoder.in_voxel_size.z]
+        voxel_size = list(cfg.encoder.in_voxel_size.values())
         
         
-        output_shape = [cfg.model.lidar_encoder.out_feature_width, cfg.model.lidar_encoder.out_feature_height]
+        output_shape = [cfg.encoder.out_feature_width, cfg.encoder.out_feature_height]
         
         # max_voxels = [(cfg.encoder.input_size // cfg.encoder.patch_size)**2] * 2
         
         voxelize={
-            'max_num_points': cfg.model.lidar_encoder.max_num_points_per_voxel,
+            'max_num_points': cfg.encoder.max_num_points_per_voxel,
             'voxel_size': voxel_size,
-            'max_voxels': [cfg.model.lidar_encoder.max_num_voxels.train, cfg.model.lidar_encoder.max_num_voxels.test], 
+            'max_voxels': [cfg.encoder.max_num_voxels.train, cfg.encoder.max_num_voxels.test], 
         }
         voxel_encoder={
             'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
@@ -79,9 +79,9 @@ class PointPillarsNoHead(ml3d.models.PointPillars):
         # print(f"x_lidar dtype {x_lidar.dtype}")
         # print(f"x_lidar device {x_lidar.device}")
         voxels, num_points, coors = self.voxelize(x_lidar)
-        voxel_features = self.voxel_encoder(voxels, num_points, coors)
+        x = self.voxel_encoder(voxels, num_points, coors)
         batch_size = x_lidar.shape[0] # WARNING: do not use self.cfg.model.batch_size here, because it can be wrong for truncated batches at the end of the loader in drop_last=False, e.g. in validation and testing
-        x = self.middle_encoder(voxel_features, coors, batch_size)
+        x = self.middle_encoder(x, coors, batch_size)
         
         x = self.backbone(x)
         x = self.neck(x)

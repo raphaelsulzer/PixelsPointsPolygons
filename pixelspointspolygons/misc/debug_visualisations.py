@@ -17,7 +17,8 @@ def plot_point_cloud(point_cloud, ax=None, show=False, alpha=0.15):
     # Normalize Z-values for colormap
     z_min, z_max = point_cloud[:, 2].min(), point_cloud[:, 2].max()
     norm = plt.Normalize(vmin=z_min, vmax=z_max)
-    cmap = plt.cm.turbo  # 'turbo' colormap
+    # cmap = plt.cm.turbo  # 'turbo' colormap
+    cmap = plt.cm.grey  # 'turbo' colormap
 
     # Plot point cloud below polygons
     ax.scatter(point_cloud[:, 0], point_cloud[:, 1], 

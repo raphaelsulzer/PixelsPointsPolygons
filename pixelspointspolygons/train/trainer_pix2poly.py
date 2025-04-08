@@ -138,36 +138,35 @@ class Pix2PolyTrainer(Trainer):
 
         loader = self.progress_bar(self.val_loader)
 
-        with torch.no_grad():
-            for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
-                
-                batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
-                
-                if self.cfg.use_images:
-                    x_image = x_image.to(self.cfg.device, non_blocking=True)
-                if self.cfg.use_lidar:
-                    x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)    
-                
-                y_sequence = y_sequence.to(self.cfg.device, non_blocking=True)
-                y_perm = y_perm.to(self.cfg.device, non_blocking=True)
+        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
+            
+            batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
+            
+            if self.cfg.use_images:
+                x_image = x_image.to(self.cfg.device, non_blocking=True)
+            if self.cfg.use_lidar:
+                x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)    
+            
+            y_sequence = y_sequence.to(self.cfg.device, non_blocking=True)
+            y_perm = y_perm.to(self.cfg.device, non_blocking=True)
 
-                y_input = y_sequence[:, :-1]
-                y_expected = y_sequence[:, 1:]
+            y_input = y_sequence[:, :-1]
+            y_expected = y_sequence[:, 1:]
 
-                preds, perm_mat = self.model(x_image, x_lidar, y_input)
+            preds, perm_mat = self.model(x_image, x_lidar, y_input)
 
 
-                vertex_loss_weight = self.cfg.model.vertex_loss_weight
-                perm_loss_weight = self.cfg.model.perm_loss_weight
-                
-                vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
-                perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
+            vertex_loss_weight = self.cfg.model.vertex_loss_weight
+            perm_loss_weight = self.cfg.model.perm_loss_weight
+            
+            vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
+            perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
 
-                loss = vertex_loss + perm_loss
+            loss = vertex_loss + perm_loss
 
-                loss_meter.update(loss.item(), batch_size)
-                vertex_loss_meter.update(vertex_loss.item(), batch_size)
-                perm_loss_meter.update(perm_loss.item(), batch_size)
+            loss_meter.update(loss.item(), batch_size)
+            vertex_loss_meter.update(vertex_loss.item(), batch_size)
+            perm_loss_meter.update(perm_loss.item(), batch_size)
 
 
         self.logger.debug(f"Validation loss: {loss_meter.avg:.3f}")
@@ -300,100 +299,101 @@ class Pix2PolyTrainer(Trainer):
             if self.is_ddp:
                 dist.barrier()
             
-            if self.local_rank == 0:
-                wandb_dict ={}
-                wandb_dict['epoch'] = epoch
-                for k, v in train_loss_dict.items():
-                    wandb_dict[f"train_{k}"] = v
-                wandb_dict['lr'] = get_lr(self.optimizer)
-
-
-            ############################################
-            ################ Validation ################
-            ############################################
-            val_loss_dict = self.valid_one_epoch()
-            if self.local_rank == 0:
-                for k, v in val_loss_dict.items():
-                    wandb_dict[f"val_{k}"] = v
-
-                validation_best = False
-                # Save best validation loss epoch.
-                if val_loss_dict['total_loss'] < best_loss and self.cfg.save_best:
-                    validation_best = True
-                    best_loss = val_loss_dict['total_loss']
-                    checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "validation_best.pth")
-                    self.save_checkpoint(checkpoint_file, epoch=epoch)
-
-                # Save latest checkpoint every epoch.
-                if self.cfg.save_latest:
-                    checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "latest.pth")
-                    self.save_checkpoint(checkpoint_file, epoch=epoch)
-
-
-                if (epoch + 1) % self.cfg.save_every == 0:
-                    checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
-                    self.save_checkpoint(checkpoint_file, epoch=epoch)
-
-            #############################################
-            ############## COCO Evaluation ##############
-            #############################################
-            if (epoch + 1) % self.cfg.val_every == 0:
-
-                self.logger.info("Predict validation set with latest model...")
-                coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)
-                
-                
-                self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
-                
-                if self.cfg.multi_gpu:
-                    
-                    # Gather the list of dictionaries from all ranks
-                    gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects
-                    dist.all_gather_object(gathered_predictions, coco_predictions)
-
-                    # Flatten the list of lists into a single list
-                    coco_predictions = [item for sublist in gathered_predictions for item in sublist]
-                    
-                
-                if not len(coco_predictions):
-                    self.logger.info("No polygons predicted. Skipping coco evaluation...")
-                    continue
-                    
+            with torch.no_grad:
                 if self.local_rank == 0:
-                    self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 
-                    self.logger.info(f"Run coco evaluation on rank {self.local_rank}...")
+                    wandb_dict ={}
+                    wandb_dict['epoch'] = epoch
+                    for k, v in train_loss_dict.items():
+                        wandb_dict[f"train_{k}"] = v
+                    wandb_dict['lr'] = get_lr(self.optimizer)
 
-                    wandb_dict[f"val_num_polygons"] = len(coco_predictions)
 
-                    prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", f"epoch_{epoch}.json")
-                    os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
-                    with open(prediction_outfile, "w") as fp:
-                        fp.write(json.dumps(coco_predictions))
-                    self.logger.info(f"Saved predictions to {prediction_outfile}")
-                    if validation_best:
-                        best_prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", "validation_best.json")
-                        shutil.copyfile(prediction_outfile, best_prediction_outfile)
-                        self.logger.info(f"Copied predictions to {best_prediction_outfile}")
-
-                    evaluator.load_predictions(prediction_outfile)
-                    val_metrics_dict = evaluator.evaluate()
-                    evaluator.print_dict_results(val_metrics_dict)
-
-                    for metric, value in val_metrics_dict.items():
-                        wandb_dict[f"val_{metric}"] = value
-                    
-                else:
-                    self.logger.info("Rank {self.rank} waiting until coco evaluation is done...")
-
-            self.logger.info("Validation finished...\n")
-                
-            # Sync all processes before next epoch
-            if self.is_ddp:
-                dist.barrier()
-
-            if self.cfg.log_to_wandb:
+                ############################################
+                ################ Validation ################
+                ############################################
+                val_loss_dict = self.valid_one_epoch()
                 if self.local_rank == 0:
-                    wandb.log(wandb_dict)
+                    for k, v in val_loss_dict.items():
+                        wandb_dict[f"val_{k}"] = v
 
-    
+                    validation_best = False
+                    # Save best validation loss epoch.
+                    if val_loss_dict['total_loss'] < best_loss and self.cfg.save_best:
+                        validation_best = True
+                        best_loss = val_loss_dict['total_loss']
+                        checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "validation_best.pth")
+                        self.save_checkpoint(checkpoint_file, epoch=epoch)
+
+                    # Save latest checkpoint every epoch.
+                    if self.cfg.save_latest:
+                        checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "latest.pth")
+                        self.save_checkpoint(checkpoint_file, epoch=epoch)
+
+
+                    if (epoch + 1) % self.cfg.save_every == 0:
+                        checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
+                        self.save_checkpoint(checkpoint_file, epoch=epoch)
+
+                #############################################
+                ############## COCO Evaluation ##############
+                #############################################
+                if (epoch + 1) % self.cfg.val_every == 0:
+
+                    self.logger.info("Predict validation set with latest model...")
+                    coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)
+                    
+                    
+                    self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
+                    
+                    if self.cfg.multi_gpu:
+                        
+                        # Gather the list of dictionaries from all ranks
+                        gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects
+                        dist.all_gather_object(gathered_predictions, coco_predictions)
+
+                        # Flatten the list of lists into a single list
+                        coco_predictions = [item for sublist in gathered_predictions for item in sublist]
+                        
+                    
+                    if not len(coco_predictions):
+                        self.logger.info("No polygons predicted. Skipping coco evaluation...")
+                        continue
+                        
+                    if self.local_rank == 0:
+                        self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 
+                        self.logger.info(f"Run coco evaluation on rank {self.local_rank}...")
+
+                        wandb_dict[f"val_num_polygons"] = len(coco_predictions)
+
+                        prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", f"epoch_{epoch}.json")
+                        os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
+                        with open(prediction_outfile, "w") as fp:
+                            fp.write(json.dumps(coco_predictions))
+                        self.logger.info(f"Saved predictions to {prediction_outfile}")
+                        if validation_best:
+                            best_prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", "validation_best.json")
+                            shutil.copyfile(prediction_outfile, best_prediction_outfile)
+                            self.logger.info(f"Copied predictions to {best_prediction_outfile}")
+
+                        evaluator.load_predictions(prediction_outfile)
+                        val_metrics_dict = evaluator.evaluate()
+                        evaluator.print_dict_results(val_metrics_dict)
+
+                        for metric, value in val_metrics_dict.items():
+                            wandb_dict[f"val_{metric}"] = value
+                        
+                    else:
+                        self.logger.info("Rank {self.rank} waiting until coco evaluation is done...")
+
+                self.logger.info("Validation finished...\n")
+                    
+                # Sync all processes before next epoch
+                if self.is_ddp:
+                    dist.barrier()
+
+                if self.cfg.log_to_wandb:
+                    if self.local_rank == 0:
+                        wandb.log(wandb_dict)
+
+        
 

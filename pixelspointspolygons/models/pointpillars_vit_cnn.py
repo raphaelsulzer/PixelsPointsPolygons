@@ -13,7 +13,7 @@ class LiDAREncoder(nn.Module):
                                 
         self.proj = nn.Sequential(
             nn.Upsample(size=128, mode='bilinear', align_corners=False),
-            nn.Conv2d(self.cfg.model.lidar_encoder.patch_embed_dim, self.cfg.model.decoder.in_feature_dim, kernel_size=3, padding=1),
+            nn.Conv2d(self.cfg.encoder.patch_embed_dim, self.cfg.model.decoder.in_feature_dim, kernel_size=3, padding=1),
             nn.BatchNorm2d(self.cfg.model.decoder.in_feature_dim),
             nn.ReLU(inplace=True)
         )

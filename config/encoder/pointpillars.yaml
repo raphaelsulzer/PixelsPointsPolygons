@@ -3,6 +3,8 @@ name: pointpillars
 use_images: false
 use_lidar: true
 
+checkpoint_file: ${..host.data_root}/backbones/pointpillars_v1_lidar_LROnP.pth
+
 #############################
 ####### Point Pillars #######
 #############################

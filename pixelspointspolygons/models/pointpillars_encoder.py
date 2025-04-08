@@ -30,26 +30,26 @@ class PointPillarsEncoder(ml3d.models.PointPillars):
         
         # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
         point_cloud_range = [0, 0, 0, 
-                             cfg.model.lidar_encoder.in_width, cfg.model.lidar_encoder.in_height, cfg.model.lidar_encoder.in_voxel_size.z]
-        voxel_size = list(cfg.model.lidar_encoder.in_voxel_size.values())
+                             cfg.encoder.in_width, cfg.encoder.in_height, cfg.encoder.in_voxel_size.z]
+        voxel_size = list(cfg.encoder.in_voxel_size.values())
         
         
-        output_shape = [cfg.model.lidar_encoder.out_feature_width, cfg.model.lidar_encoder.out_feature_height]
+        output_shape = [cfg.encoder.out_feature_width, cfg.encoder.out_feature_height]
         
         # max_voxels = [(cfg.encoder.input_size // cfg.encoder.patch_size)**2] * 2
         
         voxelize={
-            'max_num_points': cfg.model.lidar_encoder.max_num_points_per_voxel,
+            'max_num_points': cfg.encoder.max_num_points_per_voxel,
             'voxel_size': voxel_size,
-            'max_voxels': [cfg.model.lidar_encoder.max_num_voxels.train, cfg.model.lidar_encoder.max_num_voxels.test], 
+            'max_voxels': [cfg.encoder.max_num_voxels.train, cfg.encoder.max_num_voxels.test], 
         }
         voxel_encoder={
             'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
-            'feat_channels': [64,cfg.model.lidar_encoder.out_feature_dim],
+            'feat_channels': [64,cfg.encoder.out_feature_dim],
             'voxel_size': voxel_size
         }
         scatter={
-            "in_channels" : cfg.model.lidar_encoder.out_feature_dim, 
+            "in_channels" : cfg.encoder.out_feature_dim, 
             "output_shape" : output_shape
         }
         augment={
@@ -103,12 +103,12 @@ class PointPillarsEncoder(ml3d.models.PointPillars):
         # else:
         #     raise NotImplementedError(f"Model {self.cfg.model.name} not implemented")
         
-        if self.cfg.model.lidar_encoder.name == "pointpillars_vit":
+        if self.cfg.encoder.name == "pointpillars_vit":
             # flatten patches, NCHW -> NLC. Needed to pass directly to next layer of VisionTransformer (self.vit)
             x = x.flatten(2).transpose(1, 2)
-        elif self.cfg.model.lidar_encoder.name == "pointpillars":
+        elif self.cfg.encoder.name == "pointpillars":
             pass
         else:
-            raise NotImplementedError(f"Model {self.cfg.model.lidar_encoder.name} not implemented")        
+            raise NotImplementedError(f"Model {self.cfg.encoder.name} not implemented")        
         
         return x
