@@ -1,6 +1,7 @@
 import torch
 import cv2
 import os
+import logging
 
 import torch.nn.functional as F
 from copy import deepcopy
@@ -11,6 +12,8 @@ from torch.utils.data.dataloader import default_collate
 from skimage.measure import label, regionprops
 from torch.nn.parallel import DistributedDataParallel as DDP
 
+from ...misc import make_logger
+from ..pointpillars_ori import PointPillarsEncoder
 from ..pointpillars import PointPillarsNoHead
 from ..multitask_head import MultitaskHead
 
@@ -206,7 +209,7 @@ class EncoderDecoder(nn.Module):
         else:
             raise ValueError("At least one of use_image or use_lidar must be True")
         
-        outputs = self.encoder.head(features)
+        outputs = self.encoder.backbone.head(features)
 
         mask_feature = self.mask_head(features)
         jloc_feature = self.jloc_head(features)
@@ -300,7 +303,7 @@ class EncoderDecoder(nn.Module):
 
 
 class ImageEncoder(torch.nn.Module):
-    def __init__(self, cfg):
+    def __init__(self, cfg, local_rank=0):
         super().__init__()
 
         head_size = [[2]]
@@ -322,6 +325,8 @@ class ImageEncoder(torch.nn.Module):
         if not os.path.isfile(checkpoint_file):
             raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
         
+        self.logger.debug(f"Load image backbone checkpoint from {checkpoint_file}")
+
         self.backbone.init_weights(pretrained=checkpoint_file)
         
         self.name = cfg.encoder.type
@@ -336,12 +341,31 @@ class ImageEncoder(torch.nn.Module):
 
 class LiDAREncoder(nn.Module):
     
-    def __init__(self, cfg) -> None:
+    def __init__(self, cfg, local_rank=0) -> None:
         super().__init__()
         self.cfg = cfg
+        
+        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
+        if verbosity == logging.INFO and local_rank != 0:
+            verbosity = logging.WARNING
+        self.verbosity = verbosity
+        self.logger = make_logger(f"LiDAR Encoder (rank {local_rank})",level=verbosity)
 
-        self.backbone = PointPillarsNoHead(cfg)                                
-        self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+        # self.backbone = PointPillarsNoHead(cfg)                                
+        # self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+        self.backbone = PointPillarsEncoder(cfg)
+        
+        ## load pretrained backbone weights
+        if cfg.encoder.checkpoint_file is not None:
+            checkpoint_file = cfg.encoder.checkpoint_file
+            if not os.path.isfile(checkpoint_file):
+                raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
+            
+            self.logger.debug(f"Load LiDAR backbone checkpoint from {checkpoint_file}")
+            self.backbone.init_weights(pretrained=checkpoint_file)
+
+        else:
+            self.logger.debug(f"No checkpoint file provided for LiDAR backbone.")
 
 
     def forward(self, x_lidar):
@@ -350,7 +374,7 @@ class LiDAREncoder(nn.Module):
 
 
 class MultiEncoder(nn.Module):
-    def __init__(self, cfg):
+    def __init__(self, cfg, local_rank=0):
         super().__init__(cfg)
 
         head_size = [[2]]
@@ -370,6 +394,9 @@ class MultiEncoder(nn.Module):
             checkpoint_file = cfg.encoder.checkpoint_file
         if not os.path.isfile(checkpoint_file):
             raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
+        
+        self.logger.debug(f"Load image backbone checkpoint from {checkpoint_file}")
+        
         self.backbone.init_weights(pretrained=checkpoint_file)
         self.backbone_name = cfg.encoder.type
         
@@ -519,11 +546,11 @@ class HiSupModel(torch.nn.Module):
         self.cfg = cfg
                 
         if self.cfg.use_images and self.cfg.use_lidar:
-            encoder = MultiEncoder(self.cfg)
+            encoder = MultiEncoder(self.cfg,local_rank)
         elif self.cfg.use_images:
-            encoder = ImageEncoder(self.cfg)
+            encoder = ImageEncoder(self.cfg,local_rank)
         elif self.cfg.use_lidar: 
-            encoder = LiDAREncoder(self.cfg)
+            encoder = LiDAREncoder(self.cfg,local_rank)
         else:
             raise ValueError("At least one of use_image or use_lidar must be True")
         

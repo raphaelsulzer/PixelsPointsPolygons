@@ -1,7 +1,7 @@
 name: ffl
 
 defaults:
-    - lidar_encoder: pointpillars
+    - encoder: unetresnet101
     - polygonization: asm_acm
 
 encoder:
@@ -29,25 +29,6 @@ encoder:
         compute_interior: True
         compute_edge: False
         compute_vertex: False
-
-lidar_encoder:
-    # in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56
-    # in fact, one voxel is always 0.25m x 0.25m, so the standard voxel size is 2m x 2m
-    in_voxel_size:
-        x: 8
-        y: 8
-
-    max_num_points_per_voxel: 128 # this should be something around points_per_tile / num_voxels_per_tile, however, I find that half of that value is enough
-
-    max_num_voxels: # (in_image_size / in_voxel_size)**2
-        train: 4096
-        test: 4096
-
-    out_feature_width: ${..encoder.out_feature_width}
-    out_feature_height: ${..encoder.out_feature_height}
-
-    out_feature_channels: ${..encoder.out_feature_channels}
-
 
 augmentations:
     - D4

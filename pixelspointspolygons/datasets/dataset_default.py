@@ -6,7 +6,6 @@ import torch
 import numpy as np
 from PIL import Image
 
-from skimage import io
 from sklearn.preprocessing import MinMaxScaler
 from pycocotools.coco import COCO
 from shapely.geometry import Polygon
@@ -54,7 +53,7 @@ class DefaultDataset(Dataset):
         self.tile_ids = images_id.copy()
         self.num_samples = len(self.tile_ids)
 
-        self.logger.debug(f"Loaded {len(self.coco.anns.items())} annotations from {len(self.coco.imgs.items())} from {self.ann_file}")
+        self.logger.debug(f"Loaded {len(self.coco.anns.items())} annotations from {len(self.coco.imgs.items())} images from {self.ann_file}")
 
         self.use_lidar = cfg.use_lidar
         self.use_images = cfg.use_images
@@ -79,7 +78,7 @@ class DefaultDataset(Dataset):
             points[:, 1] = img_info['height'] - points[:, 1]
 
             # scale z vals to [0,100]
-            scaler = MinMaxScaler(feature_range=(0,self.cfg.lidar_encoder.in_voxel_size.z))
+            scaler = MinMaxScaler(feature_range=(0,self.cfg.encoder.in_voxel_size.z))
             points[:, -1] = scaler.fit_transform(points[:, -1].reshape(-1, 1)).squeeze()
             
             points = points.astype(np.float32)

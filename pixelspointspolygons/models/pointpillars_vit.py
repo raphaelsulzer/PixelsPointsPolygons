@@ -31,7 +31,7 @@ class PointPillarsViT(ml3d.models.PointPillars):
         self.point_pillars_encoder = PointPillarsEncoder(cfg)
                 
         self.vision_transformer = timm.create_model(
-            model_name=cfg.model.lidar_encoder.type,
+            model_name=cfg.encoder.type,
             num_classes=0,
             global_pool='',
             pretrained=cfg.encoder.pretrained

@@ -53,6 +53,10 @@ class Trainer:
         
         self.is_ddp = self.cfg.multi_gpu
         
+        import matplotlib
+        if not self.cfg.debug_vis:
+            matplotlib.use('Agg')  # Use non-GUI backend
+        
         
     def progress_bar(self,item):
         

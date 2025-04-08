@@ -1,5 +1,6 @@
 defaults:
-  - encoder: hrnet
+  # - encoder: hrnet
+  - encoder: pointpillars
   - model: hisup
   - dataset: lidarpoly
   - run_type: release
@@ -19,7 +20,7 @@ multi_gpu: false
 device: cuda
 log_to_wandb: ${.run_type.log_to_wandb}
 num_workers: ${.run_type.num_workers}
-debug_vis: false
+debug_vis: true
 update_pbar_every: ${.host.update_pbar_every}
 
 dataset:
@@ -32,9 +33,6 @@ model:
 
 use_lidar: ${.encoder.use_lidar}
 use_images: ${.encoder.use_images}
-
-# use_lidar: ${if:${..model.lidar_encoder}, true, false}
-# use_images: ${if:${..model.image_encoder}, true, false}
 
 save_best: true
 save_latest: true
@@ -51,7 +49,7 @@ eval:
     # - polis
     # - mta
     # - stats
-    # - topdig
+    - topdig
   experiments:
     - model: ffl
       experiment_name: 
