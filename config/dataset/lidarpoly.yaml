@@ -1,5 +1,5 @@
 name: lidarpoly
-size: 224
+size: null
 # path: ${host.data_root}/${.name}/${model.name}
 path: ${host.data_root}/${.name}/${.size}
 annotations:

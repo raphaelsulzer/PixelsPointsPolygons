@@ -5,7 +5,7 @@ import torch.nn as nn
 from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 
 from .unet_resnet import UNetResNetBackbone
-from ..pointpillars import PointPillarsWithoutHead
+from ..pointpillars_encoder import PointPillarsEncoder
 
 
 def get_out_channels(module):
@@ -20,11 +20,6 @@ def get_out_channels(module):
         i += 1
     # If we get out of the loop but out_channels is None, then the prev child of the parent module will be checked, etc.
     return out_channels
-
-
-
-    
-
 
 
 class EncoderDecoder(torch.nn.Module):
@@ -43,8 +38,8 @@ class EncoderDecoder(torch.nn.Module):
             assert isinstance(encoder, _SimpleSegmentationModel), \
                 "backbone should be an instance of _SimpleSegmentationModel"
         elif cfg.use_lidar and not cfg.use_images:
-            assert isinstance(encoder, PointPillarsWithoutHead), \
-                "backbone should be an instance of PointPillarsWithoutHead"
+            assert isinstance(encoder, PointPillarsEncoder), \
+                "backbone should be an instance of PointPillarsEncoder"
         elif cfg.use_images and cfg.use_lidar:
             assert isinstance(encoder, torch.nn.Module), \
                 "backbone should be an instance of torch.nn.Module"
@@ -130,7 +125,7 @@ class FFLModel(torch.nn.Module):
             encoder = UNetResNetBackbone(self.cfg)
             encoder = _SimpleSegmentationModel(encoder, classifier=torch.nn.Identity())
         elif self.cfg.use_lidar: 
-            encoder = PointPillarsWithoutHead(self.cfg)
+            encoder = PointPillarsEncoder(self.cfg)
         else:
             raise ValueError("At least one of use_image or use_lidar must be True")
         

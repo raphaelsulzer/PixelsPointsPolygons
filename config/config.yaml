@@ -20,15 +20,12 @@ model:
 dataset:
   train_subset: ${..run_type.train_subset}
   val_subset: ${..run_type.val_subset}
+  size: ${..model.encoder.in_size}
 
 num_workers: ${.run_type.num_workers}
 
 use_lidar: true
 use_images: false
-
-
-
-
 
 debug_vis: false
 
