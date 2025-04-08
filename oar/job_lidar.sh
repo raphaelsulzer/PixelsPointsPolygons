@@ -20,5 +20,11 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
+# install pointpillars
+cd ../PointPillars
+python setup.py build_ext --inplace
+pip install .
+cd ../PixelsPointPolygons
+
 torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=lidar_pp_ori_bs2x12 checkpoint=null model.batch_size=12 encoder=pointpillars
 
