@@ -66,8 +66,8 @@ class ECA(nn.Module):
 
 class AnnotationEncoder:
     def __init__(self, cfg):
-        self.target_h = cfg.model.encoder.in_height
-        self.target_w = cfg.model.encoder.in_width
+        self.target_h = cfg.encoder.in_height
+        self.target_w = cfg.encoder.in_width
 
     def __call__(self, annotations):
         targets = []
@@ -134,10 +134,10 @@ class EncoderDecoder(nn.Module):
 
         self.encoder = encoder
         
-        self.pred_height = cfg.model.encoder.out_feature_height
-        self.pred_width = cfg.model.encoder.out_feature_width
-        self.origin_height = cfg.model.encoder.in_height
-        self.origin_width = cfg.model.encoder.in_width
+        self.pred_height = cfg.encoder.out_feature_height
+        self.pred_width = cfg.encoder.out_feature_width
+        self.origin_height = cfg.encoder.in_height
+        self.origin_width = cfg.encoder.in_width
 
         dim_in = cfg.model.decoder.in_feature_dim
         self.mask_head = self._make_conv(dim_in, dim_in, dim_in)
@@ -318,13 +318,13 @@ class ImageEncoder(torch.nn.Module):
                 use_auth_token=True  # This is needed for private repos
             )
         else:
-            checkpoint_file = cfg.model.encoder.checkpoint_file
+            checkpoint_file = cfg.encoder.checkpoint_file
         if not os.path.isfile(checkpoint_file):
             raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
         
         self.backbone.init_weights(pretrained=checkpoint_file)
         
-        self.name = cfg.model.encoder.type
+        self.name = cfg.encoder.type
         self.head = self.backbone.head
 
     
@@ -367,11 +367,11 @@ class MultiEncoder(nn.Module):
                 use_auth_token=True  # This is needed for private repos
             )
         else:
-            checkpoint_file = cfg.model.encoder.checkpoint_file
+            checkpoint_file = cfg.encoder.checkpoint_file
         if not os.path.isfile(checkpoint_file):
             raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
         self.backbone.init_weights(pretrained=checkpoint_file)
-        self.backbone_name = cfg.model.encoder.type
+        self.backbone_name = cfg.encoder.type
         
         
         # ### This version increases the encoder hidden dim to 128 to allow for [64,64] image + lidar features

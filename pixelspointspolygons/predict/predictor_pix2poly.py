@@ -94,8 +94,8 @@ class Pix2PolyPredictor(Predictor):
         tokenizer = Tokenizer(
             num_classes=1,
             num_bins=self.cfg.model.tokenizer.num_bins,
-            width=self.cfg.model.encoder.input_width,
-            height=self.cfg.model.encoder.input_height,
+            width=self.cfg.encoder.input_width,
+            height=self.cfg.encoder.input_height,
             max_len=self.cfg.model.tokenizer.max_len
         )
         

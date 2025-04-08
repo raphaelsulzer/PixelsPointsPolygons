@@ -5,7 +5,7 @@ decoder:
     in_feature_width: ${.in_feature_size}
     in_feature_height: ${.in_feature_size}
 
-    # in_feature_dim: ${..encoder.out_feature_dim} # 256
+    in_feature_dim: ${...encoder.out_feature_dim} # 256
 
 # training
 batch_size: 16

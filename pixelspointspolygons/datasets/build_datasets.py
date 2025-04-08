@@ -44,7 +44,7 @@ def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
     if "D4" in cfg.model.augmentations:
         transforms.append(A.D4(p=1.0))
     if "Resize" in cfg.model.augmentations:
-        transforms.append(A.Resize(height=cfg.model.encoder.in_height, width=cfg.model.encoder.in_width))
+        transforms.append(A.Resize(height=cfg.encoder.in_height, width=cfg.encoder.in_width))
     if "ColorJitter" in cfg.model.augmentations:
         transforms.append(A.ColorJitter())
     if "GaussNoise" in cfg.model.augmentations:
@@ -119,7 +119,7 @@ def get_val_loader_lidarpoly(cfg,tokenizer,logger=None):
     
     transforms = []
     if "Resize" in cfg.model.augmentations:
-        transforms.append(A.Resize(height=cfg.model.encoder.in_height, width=cfg.model.encoder.in_width))
+        transforms.append(A.Resize(height=cfg.encoder.in_height, width=cfg.encoder.in_width))
         
     transforms.append(A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0)) 
     transforms.append(ToTensorV2())
@@ -172,7 +172,7 @@ def get_train_loader_inria(cfg,tokenizer,logger=None):
     train_transforms = A.Compose(
         [
             A.Affine(rotate=[-360, 360], fit_output=True, p=0.8),  # scaled rotations are performed before resizing to ensure rotated and scaled images are correctly resized.
-            A.Resize(height=cfg.model.encoder.input_height, width=cfg.model.encoder.input_width),
+            A.Resize(height=cfg.encoder.input_height, width=cfg.encoder.input_width),
             A.RandomRotate90(p=1.),
             A.RandomBrightnessContrast(p=0.5),
             A.ColorJitter(),
@@ -219,7 +219,7 @@ def get_val_loader_inria(cfg,tokenizer,logger=None):
     
     val_transforms = A.Compose(
         [
-            A.Resize(height=cfg.model.encoder.input_height, width=cfg.model.encoder.input_width),
+            A.Resize(height=cfg.encoder.input_height, width=cfg.encoder.input_width),
             A.Normalize(
                 mean=[0.0, 0.0, 0.0],
                 std=[1.0, 1.0, 1.0],
