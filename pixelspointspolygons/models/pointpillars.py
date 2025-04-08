@@ -1,5 +1,4 @@
 import open3d.ml.torch as ml3d
-import torch
 
 class PointPillarsNoHead(ml3d.models.PointPillars):
     
@@ -33,7 +32,7 @@ class PointPillarsNoHead(ml3d.models.PointPillars):
         
         output_shape = [cfg.model.lidar_encoder.out_feature_width, cfg.model.lidar_encoder.out_feature_height]
         
-        # max_voxels = [(cfg.model.encoder.input_size // cfg.model.encoder.patch_size)**2] * 2
+        # max_voxels = [(cfg.encoder.input_size // cfg.encoder.patch_size)**2] * 2
         
         voxelize={
             'max_num_points': cfg.model.lidar_encoder.max_num_points_per_voxel,

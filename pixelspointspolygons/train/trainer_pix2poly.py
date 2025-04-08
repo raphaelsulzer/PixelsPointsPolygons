@@ -51,8 +51,8 @@ class Pix2PolyTrainer(Trainer):
     def setup_tokenizer(self):
         self.tokenizer = Tokenizer(num_classes=1,
             num_bins=self.cfg.model.tokenizer.num_bins,
-            width=self.cfg.model.encoder.input_width,
-            height=self.cfg.model.encoder.input_height,
+            width=self.cfg.encoder.input_width,
+            height=self.cfg.encoder.input_height,
             max_len=self.cfg.model.tokenizer.max_len
         )
     
@@ -61,7 +61,7 @@ class Pix2PolyTrainer(Trainer):
         self.cfg.model.tokenizer.pad_idx = self.tokenizer.PAD_code
         self.cfg.model.tokenizer.max_len = self.cfg.model.tokenizer.n_vertices*2+2
         self.cfg.model.tokenizer.generation_steps = self.cfg.model.tokenizer.n_vertices*2+1
-        self.cfg.model.encoder.num_patches = int((self.cfg.model.encoder.input_size // self.cfg.model.encoder.patch_size) ** 2)
+        self.cfg.encoder.num_patches = int((self.cfg.encoder.input_size // self.cfg.encoder.patch_size) ** 2)
     
     def setup_model(self):
         
@@ -79,8 +79,8 @@ class Pix2PolyTrainer(Trainer):
         
         decoder = Decoder(
             vocab_size=self.tokenizer.vocab_size,
-            encoder_len=self.cfg.model.encoder.num_patches,
-            dim=self.cfg.model.encoder.out_dim,
+            encoder_len=self.cfg.encoder.num_patches,
+            dim=self.cfg.encoder.out_dim,
             num_heads=8,
             num_layers=6,
             max_len=self.cfg.model.tokenizer.max_len,

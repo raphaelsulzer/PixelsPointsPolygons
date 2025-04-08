@@ -118,7 +118,7 @@ class DefaultDataset(Dataset):
             return torch.from_numpy(lidar)
         
         # translate to center so all the transformations are easily applied around the center
-        center = [self.cfg.model.encoder.in_width // 2, self.cfg.model.encoder.in_height // 2]
+        center = [self.cfg.encoder.in_width // 2, self.cfg.encoder.in_height // 2]
         lidar[:, :2] -= center
         
         group_element = d4_transform['params']['group_element']

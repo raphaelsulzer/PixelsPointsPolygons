@@ -34,7 +34,7 @@ class PointPillarsViT(ml3d.models.PointPillars):
             model_name=cfg.model.lidar_encoder.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.model.encoder.pretrained
+            pretrained=cfg.encoder.pretrained
         )
         # replace VisionTransformer patch embedding with LiDAR encoder
         self.vision_transformer.patch_embed = self.point_pillars_encoder

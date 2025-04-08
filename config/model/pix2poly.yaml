@@ -65,7 +65,7 @@ weight_decay: 1e-4
 
 
 # the following values are adapted such that the PointPillars layer can be used as a drop in for the 
-# patch_embed layer of the vision transformer - vit_small_patch8_224_dino (specified in cfg.model.encoder)
+# patch_embed layer of the vision transformer - vit_small_patch8_224_dino (specified in cfg.encoder)
 
 
 

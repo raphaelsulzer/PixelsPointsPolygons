@@ -93,15 +93,15 @@ class LiDAREncoder(nn.Module):
         self.cfg = cfg
         self.point_pillars = PointPillarsEncoder(cfg)        
         self.vision_transformer = timm.create_model(
-            model_name=cfg.model.encoder.type,
+            model_name=cfg.encoder.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.model.encoder.pretrained
+            pretrained=cfg.encoder.pretrained
         )
         # replace VisionTransformer patch embedding with LiDAR encoder
         self.vision_transformer.patch_embed = self.point_pillars
                         
-        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_dim)
 
 
     def forward(self, x_images=None, x_lidar=None):
@@ -119,12 +119,12 @@ class ImageEncoder(nn.Module):
         super().__init__()
         self.cfg = cfg
         self.model = timm.create_model(
-            model_name=cfg.model.encoder.type,
+            model_name=cfg.encoder.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.model.encoder.pretrained
+            pretrained=cfg.encoder.pretrained
         )
-        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_dim)
     
     def forward(self, x_images=None, x_lidar=None):
         
@@ -138,13 +138,13 @@ class FeatureFusionLayer(nn.Module):
         self.cfg = cfg
         self.point_pillars = PointPillarsEncoder(cfg)        
         self.vit_patch_embed = timm.create_model(
-            model_name=cfg.model.encoder.type,
+            model_name=cfg.encoder.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.model.encoder.pretrained
+            pretrained=cfg.encoder.pretrained
         ).patch_embed                
                 
-        self.fusion = nn.Linear(cfg.model.encoder.patch_embed_dim*2, cfg.model.encoder.patch_embed_dim)
+        self.fusion = nn.Linear(cfg.encoder.patch_embed_dim*2, cfg.encoder.patch_embed_dim)
 
         
     def forward(self, x_images, x_lidar):
@@ -163,10 +163,10 @@ class PatchFusionLayer(nn.Module):
         self.cfg = cfg
         self.point_pillars = PointPillarsEncoder(cfg)        
         self.vit_patch_embed = timm.create_model(
-            model_name=cfg.model.encoder.type,
+            model_name=cfg.encoder.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.model.encoder.pretrained
+            pretrained=cfg.encoder.pretrained
         ).patch_embed
 
         
@@ -186,21 +186,21 @@ class MultiEncoder(nn.Module):
         super().__init__()
         self.cfg = cfg
         self.multi_vision_transformer = timm.create_model(
-            model_name=cfg.model.encoder.type,
+            model_name=cfg.encoder.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.model.encoder.pretrained
+            pretrained=cfg.encoder.pretrained
         )
         # identity patch embedding, which is already done in fusion layer
         self.multi_vision_transformer.patch_embed = nn.Identity()
 
-        num_patches = (cfg.model.encoder.input_size // cfg.model.encoder.patch_size)**2
+        num_patches = (cfg.encoder.input_size // cfg.encoder.patch_size)**2
 
         if cfg.model.fusion == "patch_concat":
             self.fusion_layer1 = PatchFusionLayer(cfg)
             self.fusion_layer2 = nn.Linear(num_patches*2,num_patches)
             
-            modality_embed = nn.Embedding(2, cfg.model.encoder.patch_embed_dim)
+            modality_embed = nn.Embedding(2, cfg.encoder.patch_embed_dim)
 
             modality_ids = torch.cat([
                 torch.zeros((1, 1), dtype=torch.long),      # CLS
@@ -223,7 +223,7 @@ class MultiEncoder(nn.Module):
         else:
             raise ValueError(f"Invalid fusion layer type {cfg.model.fusion} specified. Choose from 'patch_concat' or 'feature_concat'")
             
-        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.model.encoder.out_dim)
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_dim)
 
 
     def forward_patch_concat(self, x_images, x_lidar):

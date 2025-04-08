@@ -89,18 +89,18 @@ class UNetResNetBackbone(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         
-        self.dropout_2d = cfg.model.encoder.dropout_2d
-        pretrained = 'DEFAULT' if cfg.model.encoder.pretrained else None
-        num_filters = cfg.model.encoder.num_filters
-        is_deconv = cfg.model.encoder.is_deconv
+        self.dropout_2d = cfg.encoder.dropout_2d
+        pretrained = 'DEFAULT' if cfg.encoder.pretrained else None
+        num_filters = cfg.encoder.num_filters
+        is_deconv = cfg.encoder.is_deconv
         
-        if cfg.model.encoder.depth == 34:
+        if cfg.encoder.depth == 34:
             self.encoder = torchvision.models.resnet34(weights=pretrained)
             bottom_channel_nr = 512
-        elif cfg.model.encoder.depth == 101:
+        elif cfg.encoder.depth == 101:
             self.encoder = torchvision.models.resnet101(weights=pretrained)
             bottom_channel_nr = 2048
-        elif cfg.model.encoder.depth == 152:
+        elif cfg.encoder.depth == 152:
             self.encoder = torchvision.models.resnet152(weights=pretrained)
             bottom_channel_nr = 2048
         else:
