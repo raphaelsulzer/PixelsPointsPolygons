@@ -90,7 +90,7 @@ class HiSupTrainer(Trainer):
         self.loss_reducer = LossReducer(self.cfg)
     
     
-    def visualization(self, loader, epoch, coco=None, show=False, num_images=2):
+    def visualization(self, loader, epoch, coco=None, num_images=2):
         
         self.model.eval()
         
@@ -128,8 +128,10 @@ class HiSupTrainer(Trainer):
             ax = ax.flatten()
 
             if self.cfg.use_images:
-                plot_image(x_image[i], ax=ax[0])
-                plot_image(x_image[i], ax=ax[1])
+                image = (x_image[i].permute(1, 2, 0).cpu().numpy()*np.array(self.cfg.dataset.image_std) + np.array(self.cfg.dataset.image_mean))
+                image = np.clip(image/255.0, 0, 1)
+                plot_image(image, ax=ax[0])
+                plot_image(image, ax=ax[1])
             if self.cfg.use_lidar:
                 plot_point_cloud(lidar_batches[i], ax=ax[0])
                 plot_point_cloud(lidar_batches[i], ax=ax[1])
@@ -149,8 +151,6 @@ class HiSupTrainer(Trainer):
             outfile = os.path.join(outpath, f"{names[i]}.png")
             self.logger.debug(f"Save visualization to {outfile}")
             plt.savefig(outfile)
-            if show:
-                plt.show(block=True)
             if self.cfg.log_to_wandb and self.local_rank == 0:
                 wandb.log({f"{epoch}: {names[i]}": wandb.Image(fig)})            
             plt.close(fig)
@@ -303,7 +303,7 @@ class HiSupTrainer(Trainer):
             with torch.no_grad():
 
                 if self.local_rank == 0:
-                    self.visualization(self.train_loader,epoch,show=self.cfg.debug_vis)
+                    self.visualization(self.train_loader,epoch)
                     wandb_dict ={}
                     wandb_dict['epoch'] = epoch
                     for k, v in train_loss_dict.items():
@@ -358,7 +358,7 @@ class HiSupTrainer(Trainer):
                     if not len(coco_predictions):
                         self.logger.info("No polygons predicted. Skipping coco evaluation...")
                     else:
-                        self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
+                        self.visualization(self.val_loader,epoch,coco=coco_predictions)
                         
                     if self.local_rank == 0 and len(coco_predictions):
                         self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 

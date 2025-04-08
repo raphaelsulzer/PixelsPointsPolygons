@@ -77,10 +77,10 @@ def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
         for t in transforms:
             logger.debug(f"Added transform {t} to training pipeline.")
     
-    mean = np.array([108.9177, 114.1638, 100.8611])/255
-    std = np.array([49.3129, 45.7661, 48.6514])/255
-    
-    transforms.append(A.Normalize(mean=mean, std=std, max_pixel_value=255.0)) 
+    # TODO:
+    # check what to do for ImageNet normalization for UNetResNet: https://pytorch.org/vision/stable/models.html
+    # and also this has to probably be removed for ViT. or check what is the correct way for that.
+    transforms.append(A.Normalize(mean=cfg.dataset.image_mean, std=cfg.dataset.image_std, max_pixel_value=1.0)) 
     transforms.append(ToTensorV2())
     
     train_transforms = A.ReplayCompose(transforms=transforms,
@@ -126,9 +126,7 @@ def get_val_loader_lidarpoly(cfg,tokenizer,logger=None):
     if "Resize" in cfg.model.augmentations:
         transforms.append(A.Resize(height=cfg.encoder.in_height, width=cfg.encoder.in_width))
     
-    mean = np.array([108.9177, 114.1638, 100.8611])/255.0
-    std = np.array([49.3129, 45.7661, 48.6514])/255.0
-    transforms.append(A.Normalize(mean=mean, std=std, max_pixel_value=255.0)) 
+    transforms.append(A.Normalize(mean=cfg.dataset.image_mean, std=cfg.dataset.image_std, max_pixel_value=1.0)) 
     transforms.append(ToTensorV2())
     
     val_transforms = A.ReplayCompose(transforms=transforms,

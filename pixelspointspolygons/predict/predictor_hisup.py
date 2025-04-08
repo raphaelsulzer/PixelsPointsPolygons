@@ -26,7 +26,56 @@ class HiSupPredictor(Predictor):
         # this code should be in the original HiSup repo in the INRIA predictions
         pass
     
+    def setup_model_and_load_checkpoint(self):
+        
+        self.model = HiSupModel(self.cfg, self.local_rank)
+        self.model.eval()
+        self.model.to(self.cfg.device)
+        self.load_checkpoint()
+    
+    def predict(self):
+        
+        self.setup_model_and_load_checkpoint()
+        
+        loader = self.get_val_loader()
+        
+        self.logger.info(f"Predicting on {len(loader)} batches...")
+        
+        loader = self.progress_bar(loader)
 
+        coco_predictions = []
+        
+        for x_image, x_lidar, y, tile_ids in loader:
+            
+            batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
+            
+            if self.cfg.use_images:
+                x_image = x_image.to(self.cfg.device, non_blocking=True)
+            if self.cfg.use_lidar:
+                x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+                
+            y=self.to_single_device(y,self.cfg.device)
+
+            polygon_output, loss_dict = self.model(x_image, x_lidar, y)
+
+            ## polygon stuff
+            polygon_output = self.to_single_device(polygon_output, 'cpu')
+            batch_scores = polygon_output['scores']
+            batch_polygons = polygon_output['polys_pred']
+
+            for b in range(batch_size):
+
+                scores = batch_scores[b]
+                polys = batch_polygons[b]
+
+                image_result = generate_coco_ann(polys, tile_ids[b], scores=scores)
+                if len(image_result) != 0:
+                    coco_predictions.extend(image_result)
+
+
+        return loss_dict, coco_predictions
+        
+    
     def predict_image(self,infile,outfile=None):
         
         if not os.path.isfile(infile):
@@ -35,10 +84,7 @@ class HiSupPredictor(Predictor):
         if outfile is None:
             outfile = infile.replace(".tif", "_hisup.png")
         
-        self.model = HiSupModel(self.cfg, self.local_rank)
-        self.model.eval()
-        self.model.to(self.cfg.device)
-        self.load_checkpoint()
+        self.setup_model_and_load_checkpoint()
         
         image_pil = np.array(Image.open(infile).convert("RGB"))
 

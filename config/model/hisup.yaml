@@ -24,6 +24,6 @@ loss_weights:
 
 augmentations:
     - D4
-    - Resize
-    - ColorJitter
-    - GaussNoise
+    # - Resize
+    # - ColorJitter
+    # - GaussNoise
