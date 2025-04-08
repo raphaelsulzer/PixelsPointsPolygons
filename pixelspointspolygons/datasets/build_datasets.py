@@ -1,4 +1,6 @@
 import albumentations as A
+import numpy as np
+
 from albumentations.pytorch import ToTensorV2
 from functools import partial
 
@@ -75,7 +77,10 @@ def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
         for t in transforms:
             logger.debug(f"Added transform {t} to training pipeline.")
     
-    transforms.append(A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0)) 
+    mean = np.array([108.9177, 114.1638, 100.8611])/255
+    std = np.array([49.3129, 45.7661, 48.6514])/255
+    
+    transforms.append(A.Normalize(mean=mean, std=std, max_pixel_value=255.0)) 
     transforms.append(ToTensorV2())
     
     train_transforms = A.ReplayCompose(transforms=transforms,
@@ -120,8 +125,10 @@ def get_val_loader_lidarpoly(cfg,tokenizer,logger=None):
     transforms = []
     if "Resize" in cfg.model.augmentations:
         transforms.append(A.Resize(height=cfg.encoder.in_height, width=cfg.encoder.in_width))
-        
-    transforms.append(A.Normalize(mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0], max_pixel_value=255.0)) 
+    
+    mean = np.array([108.9177, 114.1638, 100.8611])/255.0
+    std = np.array([49.3129, 45.7661, 48.6514])/255.0
+    transforms.append(A.Normalize(mean=mean, std=std, max_pixel_value=255.0)) 
     transforms.append(ToTensorV2())
     
     val_transforms = A.ReplayCompose(transforms=transforms,

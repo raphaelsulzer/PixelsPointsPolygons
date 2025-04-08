@@ -29,7 +29,10 @@ def main(cfg):
         predictor = Pix2PolyPredictor(cfg, local_rank, world_size)
     else:
         raise ValueError(f"Unknown model name: {cfg.model.name}")
-    predictor.predict()
+    
+    
+    infile = "/data/rsulzer/lidarpoly/512/images/val/image0_Switzerland_val.tif"
+    predictor.predict_image(infile)
     
         
 if __name__ == "__main__":

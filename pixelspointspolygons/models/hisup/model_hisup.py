@@ -199,7 +199,11 @@ class EncoderDecoder(nn.Module):
     
     def forward_common(self,x_images,x_lidar,y=None):
         
-        targets, _ = self.annotation_encoder(y)
+        if y is not None:
+            targets, _ = self.annotation_encoder(y)
+        else:
+            targets = None
+            
         if self.cfg.use_images and not self.cfg.use_lidar:
             features = self.encoder(x_images)
         elif not self.cfg.use_images and self.cfg.use_lidar:
@@ -207,7 +211,7 @@ class EncoderDecoder(nn.Module):
         elif self.cfg.use_images and self.cfg.use_lidar:
             features = self.encoder(x_images, x_lidar)
         else:
-            raise ValueError("At least one of use_image or use_lidar must be True")
+            raise ValueError("At least one of use_images or use_lidar must be True")
         
         outputs = self.encoder.backbone.head(features)
 
@@ -305,6 +309,13 @@ class EncoderDecoder(nn.Module):
 class ImageEncoder(torch.nn.Module):
     def __init__(self, cfg, local_rank=0):
         super().__init__()
+        
+        self.cfg = cfg
+        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
+        if verbosity == logging.INFO and local_rank != 0:
+            verbosity = logging.WARNING
+        self.verbosity = verbosity
+        self.logger = make_logger(f"Image Encoder (rank {local_rank})",level=verbosity)
 
         head_size = [[2]]
         num_class = sum(sum(head_size, []))
@@ -322,6 +333,7 @@ class ImageEncoder(torch.nn.Module):
             )
         else:
             checkpoint_file = cfg.encoder.checkpoint_file
+            
         if not os.path.isfile(checkpoint_file):
             raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
         
@@ -330,7 +342,7 @@ class ImageEncoder(torch.nn.Module):
         self.backbone.init_weights(pretrained=checkpoint_file)
         
         self.name = cfg.encoder.type
-        self.head = self.backbone.head
+        # self.head = self.backbone.head
 
     
     def forward(self, images):
@@ -418,13 +430,9 @@ class MultiEncoder(nn.Module):
         # block = blocks_dict[self.backbone.stage1_cfg['BLOCK']]
         # num_blocks = self.backbone.stage1_cfg['NUM_BLOCKS'][0]
         # self.backbone.layer1 = self.backbone._make_layer(block, 128, num_channels, num_blocks)
-
                 
         self.fusion = nn.Conv2d(in_channels=128, out_channels=64, kernel_size=1, stride=1, padding=0)
         
-        
-
-
     def forward(self, images, points, annotations = None):
         if self.training:
             return self.forward_train(images, points, annotations=annotations)

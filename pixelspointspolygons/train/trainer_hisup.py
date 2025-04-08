@@ -253,7 +253,7 @@ class HiSupTrainer(Trainer):
             iter_idx += 1
 
             # if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
-            #     break
+            # break
             
         
         self.logger.debug(f"Train loss: {loss_meter.meters['total_loss'].global_avg:.3f}")
@@ -268,7 +268,7 @@ class HiSupTrainer(Trainer):
 
     def train_val_loop(self):
 
-        if self.cfg.checkpoint is not None:
+        if self.cfg.checkpoint is not None or self.cfg.checkpoint_file is not None:
             self.load_checkpoint()
             
         if self.cfg.log_to_wandb and self.local_rank == 0:
