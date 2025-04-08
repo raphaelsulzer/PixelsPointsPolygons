@@ -1,17 +1,11 @@
 name: hisup
 
-defaults:
-    - lidar_encoder: pointpillars
-    - image_encoder: hrnet
-
-encoder: ${.lidar_encoder}
-
 decoder:
     in_feature_size: 128
     in_feature_width: ${.in_feature_size}
     in_feature_height: ${.in_feature_size}
-    
-    in_feature_dim: ${..encoder.out_feature_dim}
+
+    # in_feature_dim: ${..encoder.out_feature_dim} # 256
 
 # training
 batch_size: 16

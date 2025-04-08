@@ -1,5 +1,8 @@
 name: pointpillars
 
+use_images: false
+use_lidar: true
+
 #############################
 ####### Point Pillars #######
 #############################

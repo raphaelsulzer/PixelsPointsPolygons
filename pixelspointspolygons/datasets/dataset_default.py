@@ -66,7 +66,7 @@ class DefaultDataset(Dataset):
     def __len__(self):
         return self.num_samples
     
-    def load_lidar_points(self, lidar_file_name, img_info, z_scale=(0, 100)):
+    def load_lidar_points(self, lidar_file_name, img_info):
 
         if os.path.isfile(lidar_file_name):
             
@@ -79,7 +79,7 @@ class DefaultDataset(Dataset):
             points[:, 1] = img_info['height'] - points[:, 1]
 
             # scale z vals to [0,100]
-            scaler = MinMaxScaler(feature_range=z_scale)  # Change range as needed
+            scaler = MinMaxScaler(feature_range=(0,self.cfg.lidar_encoder.in_voxel_size.z))
             points[:, -1] = scaler.fit_transform(points[:, -1].reshape(-1, 1)).squeeze()
             
             points = points.astype(np.float32)
