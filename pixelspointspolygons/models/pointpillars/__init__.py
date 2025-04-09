@@ -1,3 +1,3 @@
-from .pointpillars_ori import PointPillarsEncoder
+from .pointpillars_o3d import PointPillarsEncoder
 from .pointpillars_vit import PointPillarsViT
 from .pointpillars_vit_cnn import PointPillarsViTCNN

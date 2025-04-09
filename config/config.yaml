@@ -49,10 +49,10 @@ eval:
   modes:
     # - coco
     - iou
-    - polis
+    # - polis
     # - mta
-    - stats
-    - topdig
+    # - stats
+    # - topdig
   experiments:
     - model: ffl
       experiment_name: 

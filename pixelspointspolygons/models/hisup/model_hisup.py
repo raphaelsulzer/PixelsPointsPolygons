@@ -213,7 +213,7 @@ class EncoderDecoder(nn.Module):
         else:
             raise ValueError("At least one of use_images or use_lidar must be True")
         
-        outputs = self.encoder.backbone.head(features)
+        outputs = self.encoder.head(features)
 
         mask_feature = self.mask_head(features)
         jloc_feature = self.jloc_head(features)

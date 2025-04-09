@@ -92,7 +92,7 @@ class Predictor:
         # model_state_dict = {k.replace("image_backbone.", "encoder.backbone."): v for k, v in model_state_dict.items()}
         # model_state_dict = {k.replace("pillar_", "encoder.backbone.pillar_"): v for k, v in model_state_dict.items()} 
         # model_state_dict = {k.replace("encoder.backbone.pillar_head", "encoder.backbone.head"): v for k, v in model_state_dict.items()} 
-        model_state_dict = {k.replace("encoder.backbone.", ""): v for k, v in model_state_dict.items()}
+        # model_state_dict = {k.replace("encoder.vision_transformer", "encoder.pp_vit.vision_transformer"): v for k, v in model_state_dict.items()}
 
         self.model.load_state_dict(model_state_dict)
         epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))

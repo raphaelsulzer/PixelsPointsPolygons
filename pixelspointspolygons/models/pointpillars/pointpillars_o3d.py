@@ -1,6 +1,9 @@
 import torch
+import logging
 
 import open3d.ml.torch as ml3d
+
+from ...misc.logger import make_logger
 
 class PointPillarsEncoder(ml3d.models.PointPillars):
     
@@ -21,36 +24,25 @@ class PointPillarsEncoder(ml3d.models.PointPillars):
         head: Config of anchor head module.
     """
 
-    def __init__(self,cfg):
+    def __init__(self, cfg, voxel_encoder, scatter, local_rank=0):
         
         self.cfg = cfg
 
-        # TODO: might be cleaner to simply replace the head with nn.Identity() instead of removing all the unused modules
+        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
+        self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
+        
         
         # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
         point_cloud_range = [0, 0, 0, 
                              cfg.encoder.in_width, cfg.encoder.in_height, cfg.encoder.in_voxel_size.z]
         voxel_size = list(cfg.encoder.in_voxel_size.values())
         
-        
-        output_shape = [cfg.encoder.out_feature_width, cfg.encoder.out_feature_height]
-        
-        # max_voxels = [(cfg.encoder.input_size // cfg.encoder.patch_size)**2] * 2
-        
         voxelize={
             'max_num_points': cfg.encoder.max_num_points_per_voxel,
             'voxel_size': voxel_size,
             'max_voxels': [cfg.encoder.max_num_voxels.train, cfg.encoder.max_num_voxels.test], 
         }
-        voxel_encoder={
-            'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
-            'feat_channels': [64,cfg.encoder.out_feature_dim],
-            'voxel_size': voxel_size
-        }
-        scatter={
-            "in_channels" : cfg.encoder.out_feature_dim, 
-            "output_shape" : output_shape
-        }
+        voxel_encoder["voxel_size"] = voxel_size 
         augment={
             "PointShuffle": True
         }
@@ -66,48 +58,31 @@ class PointPillarsEncoder(ml3d.models.PointPillars):
         
 
         # remove unsused modules from PointPillars
-        del self.backbone
-        del self.neck
+        # del self.backbone
+        # del self.neck
         del self.bbox_head
         del self.loss_cls
         del self.loss_bbox
         del self.loss_dir
         
         
-    def forward(self, x_lidar):
+    def forward(self, x_lidar, return_flattened=True):
         """Extract features from points."""
         
-        x_lidar = list(torch.unbind(x_lidar, dim=0))
-        # print(f"x_lidar shape {x_lidar.shape}")
-        # print(f"x_lidar dtype {x_lidar.dtype}")
-        # print(f"x_lidar device {x_lidar.device}")
+        # x_lidar = list(torch.unbind(x_lidar, dim=0))
         voxels, num_points, coors = self.voxelize(x_lidar)
         voxel_features = self.voxel_encoder(voxels, num_points, coors)
-        # batch_size = x_lidar.shape[0] # WARNING: do not use self.cfg.model.batch_size here, because it can be wrong for truncated batches at the end of the loader in drop_last=False, e.g. in validation and testing
-        batch_size = 16 # WARNING: do not use self.cfg.model.batch_size here, because it can be wrong for truncated batches at the end of the loader in drop_last=False, e.g. in validation and testing
+        batch_size = x_lidar.shape[0] # WARNING: do not use self.cfg.model.batch_size here, because it can be wrong for truncated batches at the end of the loader in drop_last=False, e.g. in validation and testing
         x = self.middle_encoder(voxel_features, coors, batch_size)
-
+        
+        ## flatten patches, NCHW -> NLC. Needed to pass directly to next layer of VisionTransformer (self.vit)
+        
         # TODO: there is an unnessary opertation when combining this with Vit:
         # self.middle_encoder already has the correct format for the VisionTransformer, but the last operation
         # is batch_canvas = batch_canvas.view(batch_size, self.in_channels, self.ny, self.nx)
         # which I just undo below whith x = x.flatten(2).transpose(1, 2)
-
-        # if self.cfg.model.name == "pix2poly":
-        #     # flatten patches, NCHW -> NLC. Needed to pass directly to next layer of VisionTransformer (self.vit)
-        #     x = x.flatten(2).transpose(1, 2)  # NCHW -> NLC
-        # elif self.cfg.model.name == "hisup":
-        #     pass
-        # elif self.cfg.model.name == "ffl":
-        #     x = {"out" : x}
-        # else:
-        #     raise NotImplementedError(f"Model {self.cfg.model.name} not implemented")
         
-        if self.cfg.encoder.name == "pointpillars_vit":
-            # flatten patches, NCHW -> NLC. Needed to pass directly to next layer of VisionTransformer (self.vit)
-            x = x.flatten(2).transpose(1, 2)
-        elif self.cfg.encoder.name == "pointpillars":
-            pass
+        if return_flattened:
+            return x.flatten(2).transpose(1, 2)
         else:
-            raise NotImplementedError(f"Model {self.cfg.encoder.name} not implemented")        
-        
-        return x
+            return x
