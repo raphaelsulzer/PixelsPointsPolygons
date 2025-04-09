@@ -29,7 +29,7 @@ def main(cfg):
         predictor = Pix2PolyPredictor(cfg, local_rank, world_size)
     else:
         raise ValueError(f"Unknown model name: {cfg.model.name}")
-    predictor.predict()
+    predictor.predict_dataset()
     
         
 if __name__ == "__main__":

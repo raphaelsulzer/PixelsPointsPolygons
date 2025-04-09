@@ -31,9 +31,10 @@ def main(cfg):
         raise ValueError(f"Unknown model name: {cfg.model.name}")
     
     
-    infile = "/data/rsulzer/lidarpoly/512/images/val/image0_Switzerland_val.tif"
-    predictor.predict_image(infile)
+    img_infile = "/data/rsulzer/lidarpoly/512/images/val/image0_Switzerland_val.tif"
+    lidar_infile = "/data/rsulzer/lidarpoly/512/lidar/val/lidar0_Switzerland_val.copc.laz"
+    predictor.predict_file(lidar_infile=lidar_infile)
     
-        
+    
 if __name__ == "__main__":
     main()

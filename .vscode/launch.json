@@ -48,10 +48,10 @@
             "justMyCode": false
         },
         {
-            "name": "predict_image",
+            "name": "predict_demo",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/scripts/predict_image.py",
+            "program": "${workspaceFolder}/scripts/predict_demo.py",
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",

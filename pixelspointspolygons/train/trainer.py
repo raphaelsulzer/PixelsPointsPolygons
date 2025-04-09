@@ -170,7 +170,7 @@ class Trainer:
         else:
             model_state_dict = checkpoint["model"]  
         
-        # model_state_dict = {k.replace("pillar_", "encoder.backbone.pillar_"): v for k, v in checkpoint["model"].items()} 
+        model_state_dict = {k.replace("pillar_", "encoder.backbone.pillar_"): v for k, v in checkpoint["model"].items()} 
         # model_state_dict = {k.replace("encoder.backbone.pillar_head", "encoder.backbone.head"): v for k, v in model_state_dict.items()} 
         model_state_dict = {k.replace("image_backbone.", "encoder.backbone."): v for k, v in model_state_dict.items()}
         # model_state_dict = {k.replace("encoder.backbone.head", "encoder.head"): v for k, v in model_state_dict.items()} 

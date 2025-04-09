@@ -235,8 +235,13 @@ class EncoderDecoder(nn.Module):
     def forward_val(self, x_images, x_lidar, y):
         
         targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(x_images, x_lidar, y)
+        
+        assert outputs.size(2) == self.pred_height
+        assert outputs.size(3) == self.pred_width
 
-        ### loss:
+        ##########################
+        ######## val loss ########    
+        ##########################
         loss_dict = self.init_loss_dict()
         if targets is not None:
             loss_dict['loss_jloc'] += F.cross_entropy(jloc_pred, targets['jloc'].squeeze(dim=1))
@@ -245,7 +250,10 @@ class EncoderDecoder(nn.Module):
             loss_dict['loss_afm'] += F.l1_loss(afm_pred, targets['afmap'])
             loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())
         
-        ### polygonization:    
+        
+        ##########################
+        ##### polygonization #####    
+        ##########################
         joff_pred = outputs[:, :].sigmoid() - 0.5
         jloc_convex_pred = jloc_pred.softmax(1)[:, 2:3]
         jloc_concave_pred = jloc_pred.softmax(1)[:, 1:2]
@@ -541,9 +549,6 @@ class MultiEncoder(nn.Module):
             loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())
 
         return loss_dict
-
-
-
 
 
 

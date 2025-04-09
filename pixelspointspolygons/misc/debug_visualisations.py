@@ -11,6 +11,9 @@ def plot_point_cloud(point_cloud, ax=None, show=False, alpha=0.15):
     if isinstance(point_cloud, torch.Tensor):
         point_cloud = point_cloud.detach().cpu().numpy()
     
+    if point_cloud.ndim == 3:
+        point_cloud = point_cloud.squeeze()
+    
     if ax is None:
         fig, ax = plt.subplots(figsize=(5, 5), dpi=50)
     

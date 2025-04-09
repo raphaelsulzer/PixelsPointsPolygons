@@ -10,11 +10,11 @@ hydra:
   run:
     dir: ${...output_dir}
 
-output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.experiment_name}
+output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.encoder.in_size}/${.experiment_name}
 checkpoint: null
-checkpoint_file: null
+# checkpoint_file: null
 # checkpoint_file: null # override for loading a specific checkpoint file not in the output_dir
-# checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly_hisup_ori/v1_lidar_LROnP/model_best.pth
+checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly/512/v1_lidar_LROnP/model_best_backup.pth
 # checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly_hisup_ori/v1_image_only_bs8/model_00062.pth
 
 experiment_name: debug
@@ -48,24 +48,26 @@ eval:
   modes:
     # - coco
     - iou
-    # - polis
+    - polis
     # - mta
-    # - stats
+    - stats
     - topdig
   experiments:
     - model: ffl
       experiment_name: 
-      - image_bs2x8
+      - 512/image_bs2x8
     - model: hisup
       experiment_name:
-      - image_only_nogn_nocj_bs4x8
-      - both_nogn_nocj_bs16
+      - 512/image_only_nogn_nocj_bs4x8
+      - 512/image_bs2x12
+      - 224/lidar_ppvit_bs2x8
+      - 512/both_nogn_nocj_bs16
     - model: pix2poly
       experiment_name:
-      - image_only_bs4x16
-      - lidar_only_bs2x16
-      - fusion_simple_bs4x32
-  eval_file: ${..host.data_root}/metrics.csv
+      - 224/image_only_bs4x16
+      - 224/lidar_only_bs2x16
+      - 224/fusion_simple_bs4x32
+  eval_file: ${..host.data_root}/${..dataset.name}/metrics.csv
 
 
 
