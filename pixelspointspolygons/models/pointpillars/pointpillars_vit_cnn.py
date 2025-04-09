@@ -1,19 +1,25 @@
+import logging
 import torch.nn as nn
 
-from multitask_head import MultitaskHead
-from pointpillars_vit import PointPillarsViT
+from ..multitask_head import MultitaskHead
+from .pointpillars_vit import PointPillarsViT
 
-class LiDAREncoder(nn.Module):
+from ...misc.logger import make_logger
+
+class PointPillarsViTCNN(nn.Module):
     
-    def __init__(self, cfg) -> None:
+    def __init__(self, cfg, local_rank=0) -> None:
         super().__init__()
         self.cfg = cfg
+        
+        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
+        self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
 
-        self.vision_transformer = PointPillarsViT(cfg)
+        self.pp_vision_transformer = PointPillarsViT(cfg, local_rank=local_rank)
                                 
         self.proj = nn.Sequential(
             nn.Upsample(size=128, mode='bilinear', align_corners=False),
-            nn.Conv2d(self.cfg.encoder.patch_embed_dim, self.cfg.model.decoder.in_feature_dim, kernel_size=3, padding=1),
+            nn.Conv2d(self.cfg.encoder.patch_feature_dim, self.cfg.model.decoder.in_feature_dim, kernel_size=3, padding=1),
             nn.BatchNorm2d(self.cfg.model.decoder.in_feature_dim),
             nn.ReLU(inplace=True)
         )
@@ -23,7 +29,7 @@ class LiDAREncoder(nn.Module):
 
     def forward(self, points):
         
-        x = self.vision_transformer(points)
+        x = self.pp_vision_transformer(points)
         
         x = x[:, 1:,:] # drop CLS token
         

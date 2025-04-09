@@ -5,7 +5,7 @@ from torch import nn
 from torch.nn import functional as F
 from timm.models.layers import trunc_normal_
 
-from ..pointpillars_encoder import PointPillarsEncoder
+from ..pointpillars import PointPillarsEncoder
 
 from .utils import create_mask
 
@@ -144,7 +144,7 @@ class FeatureFusionLayer(nn.Module):
             pretrained=cfg.encoder.pretrained
         ).patch_embed                
                 
-        self.fusion = nn.Linear(cfg.encoder.patch_embed_dim*2, cfg.encoder.patch_embed_dim)
+        self.fusion = nn.Linear(cfg.encoder.patch_feature_dim*2, cfg.encoder.patch_feature_dim)
 
         
     def forward(self, x_images, x_lidar):
@@ -200,7 +200,7 @@ class MultiEncoder(nn.Module):
             self.fusion_layer1 = PatchFusionLayer(cfg)
             self.fusion_layer2 = nn.Linear(num_patches*2,num_patches)
             
-            modality_embed = nn.Embedding(2, cfg.encoder.patch_embed_dim)
+            modality_embed = nn.Embedding(2, cfg.encoder.patch_feature_dim)
 
             modality_ids = torch.cat([
                 torch.zeros((1, 1), dtype=torch.long),      # CLS

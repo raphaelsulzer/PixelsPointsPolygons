@@ -13,8 +13,8 @@ from skimage.measure import label, regionprops
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from ...misc import make_logger
-from ..pointpillars_ori import PointPillarsEncoder
-from ..pointpillars import PointPillarsNoHead
+# from ..pointpillars import *
+from ..pointpillars import PointPillarsEncoder, PointPillarsViTCNN
 from ..multitask_head import MultitaskHead
 
 from .hrnet48v2 import HighResolutionNet as HRNet48v2
@@ -563,7 +563,12 @@ class HiSupModel(torch.nn.Module):
         elif self.cfg.use_images:
             encoder = ImageEncoder(self.cfg,local_rank)
         elif self.cfg.use_lidar: 
-            encoder = LiDAREncoder(self.cfg,local_rank)
+            if self.cfg.encoder.name == "pointpillars":
+                encoder = PointPillarsEncoder(self.cfg,local_rank=local_rank)
+            elif self.cfg.encoder.name == "pointpillars_vit_cnn":
+                encoder = PointPillarsViTCNN(self.cfg,local_rank=local_rank)
+            else:
+                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented")
         else:
             raise ValueError("At least one of use_image or use_lidar must be True")
         

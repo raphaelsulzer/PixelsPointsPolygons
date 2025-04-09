@@ -6,6 +6,7 @@ os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
 import torch
 import laspy
+import json
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -36,6 +37,7 @@ class HiSupPredictor(Predictor):
         self.load_checkpoint()
     
     def predict_dataset(self):
+        """This is for predicting the test dataset. Currently just used for debug stuff on val dataset..."""
         
         self.setup_model_and_load_checkpoint()
         
@@ -75,7 +77,10 @@ class HiSupPredictor(Predictor):
                     coco_predictions.extend(image_result)
 
 
-        return loss_dict, coco_predictions
+        os.makedirs(os.path.dirname(self.cfg.eval.pred_file), exist_ok=True)
+        self.logger.info(f"Writing predictions to {self.cfg.eval.pred_file}")
+        with open(self.cfg.eval.pred_file, "w") as fp:
+            fp.write(json.dumps(coco_predictions))
         
     
     def predict_file(self,img_infile=None,lidar_infile=None,outfile=None):
@@ -97,10 +102,8 @@ class HiSupPredictor(Predictor):
             image = None
 
         if lidar_infile is not None:
-            # las = laspy.read(lidar_infile)
-            # lidar = np.vstack((las.x, las.y, las.z)).transpose()
-
-            lidar = np.load("/data/rsulzer/lidar_test.npz")['arr_0']
+            las = laspy.read(lidar_infile)
+            lidar = np.vstack((las.x, las.y, las.z)).transpose()
             
             img_dim = 512
             img_res = 0.25

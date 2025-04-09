@@ -21,7 +21,7 @@ encoder:
 
     patch_size: 8
     num_patches: null
-    patch_embed_dim: 384
+    patch_feature_dim: 384
 
     out_dim: 256
 

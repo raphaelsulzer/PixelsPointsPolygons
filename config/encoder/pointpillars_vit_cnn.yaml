@@ -1,4 +1,4 @@
-name: pointpillars_vit
+name: pointpillars_vit_cnn
 
 use_images: false
 use_lidar: true
@@ -25,8 +25,12 @@ max_num_voxels: # here: (224/8)**2
     train: 784 # (${.encoder.in_size} // ${.encoder.patch_size})**2
     test: 784 # (${.encoder.in_size} // ${.encoder.patch_size})**2
 
-out_feature_width: 28 # ${model.encoder.in_width} // ${model.encoder.patch_size}
-out_feature_height: 28 # ${model.encoder.in_height} // ${model.encoder.patch_size}
+out_feature_size: 128
+out_feature_height: ${.out_feature_size}
+out_feature_width: ${.out_feature_size}
+
+out_feature_dim: 256
+
 
 
 
@@ -37,12 +41,16 @@ type: vit_small_patch${.patch_size}_${.in_size}.dino
 pretrained: True
 
 patch_size: 8
-num_patches: null
+
+patch_feature_size: 128
+patch_feature_height: ${.patch_feature_size}
+patch_feature_width: ${.patch_feature_size}
+
 patch_feature_dim: 384
 
-out_feature_dim: ${.patch_feature_dim} # 384
+# out_feature_width: 28 # ${model.encoder.in_width} // ${model.encoder.patch_size}
+# out_feature_height: 28 # ${model.encoder.in_height} // ${model.encoder.patch_size}
 
 
-out_feature_size: 128
-out_feature_height: ${.out_feature_size}
-out_feature_width: ${.out_feature_size}
+
+

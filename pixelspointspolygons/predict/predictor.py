@@ -23,14 +23,13 @@ class Predictor:
         
         self.local_rank = local_rank
         self.world_size = world_size
-        
+
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
-        if verbosity == logging.INFO and local_rank != 0:
-            verbosity = logging.WARNING
+        self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
+
         self.verbosity = verbosity
         self.update_pbar_every = cfg.update_pbar_every
 
-        self.logger = make_logger(f"Predictor (rank {local_rank})",level=verbosity)
         self.logger.log(logging.INFO, f"Init Predictor on rank {local_rank} in world size {world_size}...")
         self.logger.info(f"Create output directory {cfg.output_dir}")
         if self.local_rank == 0:
@@ -85,13 +84,15 @@ class Predictor:
         
         ## load the model weights
         if not self.cfg.multi_gpu:
-            model_state_dict = {k.replace(".module.", "."): v for k, v in checkpoint["model"].items()}      
+            # model_state_dict = {k.replace(".module.", "."): v for k, v in checkpoint["model"].items()}      
+            model_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["model"].items()}      
         else:
             model_state_dict = checkpoint["model"]  
             
-        model_state_dict = {k.replace("image_backbone.", "encoder.backbone."): v for k, v in model_state_dict.items()}
-        model_state_dict = {k.replace("pillar_", "encoder.backbone.pillar_"): v for k, v in model_state_dict.items()} 
-        model_state_dict = {k.replace("encoder.backbone.pillar_head", "encoder.backbone.head"): v for k, v in model_state_dict.items()} 
+        # model_state_dict = {k.replace("image_backbone.", "encoder.backbone."): v for k, v in model_state_dict.items()}
+        # model_state_dict = {k.replace("pillar_", "encoder.backbone.pillar_"): v for k, v in model_state_dict.items()} 
+        # model_state_dict = {k.replace("encoder.backbone.pillar_head", "encoder.backbone.head"): v for k, v in model_state_dict.items()} 
+        model_state_dict = {k.replace("encoder.backbone.", ""): v for k, v in model_state_dict.items()}
 
         self.model.load_state_dict(model_state_dict)
         epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))

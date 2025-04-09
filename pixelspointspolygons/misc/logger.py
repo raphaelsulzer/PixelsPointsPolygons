@@ -40,8 +40,7 @@ class MetricLogger:
         return self.delimiter.join(loss_str)
 
 
-def make_logger(name="MyLogger",level=logging.INFO,
-                filepath=None):
+def make_logger(name, level=logging.INFO, local_rank=0, filepath=None):
     """
     Attach a stream handler to all loggers.
 
@@ -65,6 +64,9 @@ def make_logger(name="MyLogger",level=logging.INFO,
     # make sure we log warnings from the warnings module
     # logging.captureWarnings(capture_warnings)
 
+    if local_rank is not None:
+        name = f"{name} rank {local_rank}"
+
     formatter = colorlog.ColoredFormatter(
         "%(log_color)s[%(name)s] [%(asctime)s] [(%(filename)s:%(lineno)3s)] [%(levelname)s] %(message)s",
         datefmt="%H:%M:%S",
@@ -85,6 +87,12 @@ def make_logger(name="MyLogger",level=logging.INFO,
 
     # if no handler was passed use a StreamHandler
     logger = logging.getLogger(name)
+    
+    # if in multiprocessing there a different processed and the logging level is set to INFO, do not print for every process but only for main.
+    # however, do print if there is a warning or if in debug mode
+    if level == logging.INFO and local_rank != 0:
+        level = logging.WARNING
+        
     logger.setLevel(level)
     logger.propagate = 0
 
