@@ -328,9 +328,10 @@ class ImageEncoder(torch.nn.Module):
         head_size = [[2]]
         num_class = sum(sum(head_size, []))
 
-        self.backbone = HRNet48v2(cfg,
-                        head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
-                        num_class = num_class)
+        # self.backbone = HRNet48v2(cfg,
+        #                 head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
+        #                 num_class = num_class)
+        self.backbone = HRNet48v2()
         
         ## load pretrained backbone weights
         if not cfg.host.name == "jeanzay":
@@ -351,46 +352,13 @@ class ImageEncoder(torch.nn.Module):
         
         self.name = cfg.encoder.type
         # self.head = self.backbone.head
+        self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
 
     
     def forward(self, images):
         
         return self.backbone(images)
 
-
-
-class LiDAREncoder(nn.Module):
-    
-    def __init__(self, cfg, local_rank=0) -> None:
-        super().__init__()
-        self.cfg = cfg
-        
-        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
-        if verbosity == logging.INFO and local_rank != 0:
-            verbosity = logging.WARNING
-        self.verbosity = verbosity
-        self.logger = make_logger(f"LiDAR Encoder (rank {local_rank})",level=verbosity)
-
-        # self.backbone = PointPillarsNoHead(cfg)                                
-        # self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
-        self.backbone = PointPillarsEncoder(cfg)
-        
-        ## load pretrained backbone weights
-        if cfg.encoder.checkpoint_file is not None:
-            checkpoint_file = cfg.encoder.checkpoint_file
-            if not os.path.isfile(checkpoint_file):
-                raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
-            
-            self.logger.debug(f"Load LiDAR backbone checkpoint from {checkpoint_file}")
-            self.backbone.init_weights(pretrained=checkpoint_file)
-
-        else:
-            self.logger.debug(f"No checkpoint file provided for LiDAR backbone.")
-
-
-    def forward(self, x_lidar):
-        
-        return self.backbone(x_lidar)
 
 
 class MultiEncoder(nn.Module):

@@ -260,7 +260,7 @@ blocks_dict = {
 
 class HighResolutionNet(nn.Module):
 
-    def __init__(self, config, head, num_class):
+    def __init__(self):
         global ALIGN_CORNERS
         # extra = config.MODEL.EXTRA
         super(HighResolutionNet, self).__init__()
@@ -364,7 +364,7 @@ class HighResolutionNet(nn.Module):
                 padding=0)
         )
 
-        self.head = head(256, num_class)
+        # self.head = head(256, num_class)
 
     def _make_transition_layer(
             self, num_channels_pre_layer, num_channels_cur_layer):
