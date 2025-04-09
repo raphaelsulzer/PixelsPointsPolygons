@@ -26,5 +26,5 @@ cd ../../../../
 # pip install .
 # cd ../PixelsPointPolygons
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=v3_lidar_ppori_vit_cnn_bs2x16 checkpoint=null model.batch_size=16 encoder=pointpillars_vit_cnn
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=v3_lidar_ppori_vit_cnn_bs2x12 checkpoint=null model.batch_size=12 encoder=pointpillars_vit_cnn
 
