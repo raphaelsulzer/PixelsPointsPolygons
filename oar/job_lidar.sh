@@ -6,25 +6,25 @@
 #OAR -O oar/runs/lidar_pp_ori.out
 #OAR -E oar/runs/lidar_pp_ori.out 
 
-# display some information about attributed resources
+## display some information about attributed resources
 hostname 
 nvidia-smi 
 
-# make use of a python torch environment
+## make use of a python torch environment
 module load conda
 conda activate ppp
 python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))";
 
-# recompile the afm module
+## recompile the afm module
 cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-# install pointpillars
-cd ../PointPillars
-python setup.py build_ext --inplace
-pip install .
-cd ../PixelsPointPolygons
+## install pointpillars
+# cd ../PointPillars
+# python setup.py build_ext --inplace
+# pip install .
+# cd ../PixelsPointPolygons
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=lidar_pp_ori_bs2x12 checkpoint=null model.batch_size=12 encoder=pointpillars
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=v3_lidar_ppori_vit_cnn_bs2x16 checkpoint=null model.batch_size=16 encoder=pointpillars_vit_cnn
 
