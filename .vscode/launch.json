@@ -41,8 +41,8 @@
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
-                "checkpoint=validation_best",
-                "experiment_name=debug",
+                // "checkpoint=validation_best",
+                // "experiment_name=debug",
                 // "checkpoint_file=/data/rsulzer/ffl_outputs/checkpoint.best_val.epoch_000234.tar"
             ],
             "justMyCode": false

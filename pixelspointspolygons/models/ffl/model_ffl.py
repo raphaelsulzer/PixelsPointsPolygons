@@ -4,8 +4,9 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.nn as nn
 from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 
+from ..pointpillars import *
+
 from .unet_resnet import UNetResNetBackbone
-from ..pointpillars_encoder import PointPillarsEncoder
 
 
 def get_out_channels(module):
