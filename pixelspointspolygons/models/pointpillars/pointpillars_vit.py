@@ -1,14 +1,14 @@
+import torch
 import logging
 import timm
 
-import open3d.ml.torch as ml3d
 
-# from pointpillars_encoder import PointPillarsEncoder
-from .pointpillars_ori import PointPillarsEncoder
+# from .pointpillars_ori import PointPillarsEncoder
+from .pointpillars_o3d import PointPillarsEncoder
 
 from ...misc.logger import make_logger
 
-class PointPillarsViT:
+class PointPillarsViT(torch.nn.Module):
     
     """Object detection model. Based on the PointPillars architecture
     https://github.com/nutonomy/second.pytorch.
@@ -41,4 +41,20 @@ class PointPillarsViT:
             pretrained=cfg.encoder.pretrained
         )
         # replace VisionTransformer patch embedding with LiDAR encoder
-        self.vision_transformer.patch_embed = PointPillarsEncoder(cfg, local_rank=local_rank)
+        
+        output_shape = [cfg.encoder.patch_feature_width, cfg.encoder.patch_feature_height]
+        voxel_encoder={
+            'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
+            'feat_channels': [64,cfg.encoder.patch_feature_dim],
+        }
+        scatter={
+            "in_channels" : cfg.encoder.patch_feature_dim, 
+            "output_shape" : output_shape
+        }
+        self.vision_transformer.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
+                
+        
+    def forward(self, x_lidar):
+        """Extract features from points."""
+        
+        return self.vision_transformer(x_lidar)

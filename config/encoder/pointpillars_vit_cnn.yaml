@@ -42,7 +42,7 @@ pretrained: True
 
 patch_size: 8
 
-patch_feature_size: 128
+patch_feature_size: 28
 patch_feature_height: ${.patch_feature_size}
 patch_feature_width: ${.patch_feature_size}
 

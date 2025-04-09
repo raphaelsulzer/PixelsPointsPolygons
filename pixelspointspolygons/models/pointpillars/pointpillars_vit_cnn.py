@@ -15,7 +15,7 @@ class PointPillarsViTCNN(nn.Module):
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
 
-        self.pp_vision_transformer = PointPillarsViT(cfg, local_rank=local_rank)
+        self.pp_vit = PointPillarsViT(cfg, local_rank=local_rank)
                                 
         self.proj = nn.Sequential(
             nn.Upsample(size=128, mode='bilinear', align_corners=False),
@@ -29,7 +29,7 @@ class PointPillarsViTCNN(nn.Module):
 
     def forward(self, points):
         
-        x = self.pp_vision_transformer(points)
+        x = self.pp_vit(points)
         
         x = x[:, 1:,:] # drop CLS token
         

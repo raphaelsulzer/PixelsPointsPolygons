@@ -49,23 +49,6 @@ class PointPillarsEncoder(nn.Module):
         self.head = MultitaskHead(input_channels=cfg.encoder.out_feature_dim,num_class=num_class,head_size=head_size)
     
     
-    # def init_weights(self, pretrained=''):
-    #     for m in self.modules():
-    #         if isinstance(m, nn.Conv2d):
-    #             nn.init.normal_(m.weight, std=0.001)
-    #         elif isinstance(m, BatchNorm2d_class):
-    #             nn.init.constant_(m.weight, 1)
-    #             nn.init.constant_(m.bias, 0)
-    #     if os.path.isfile(pretrained):
-    #         pretrained_dict = torch.load(pretrained)
-    #         model_dict = self.state_dict()              
-    #         pretrained_dict = {k: v for k, v in pretrained_dict['model'].items()
-    #                            if k in model_dict.keys()}
-    #         if not pretrained_dict:
-    #             self.logger.warning("Did not load any weights from LiDAR backbone.")
-    #         # for k, _ in pretrained_dict.items():
-    #         model_dict.update(pretrained_dict)
-    #         self.load_state_dict(model_dict)
     
     def forward(self, batched_pts):
         # batched_pts: list[tensor] -> pillars: (p1 + p2 + ... + pb, num_points, c),
