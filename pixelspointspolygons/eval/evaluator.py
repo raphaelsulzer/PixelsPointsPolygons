@@ -262,9 +262,11 @@ class Evaluator:
         for model in self.cfg.eval.experiments:
             
             for exp in model.experiment_name:
+                
+                img_dim, name = exp.split('/')
                             
                 pred = "validation_best"
-                pred_file = os.path.join(self.cfg.host.data_root,f"{model.model}_outputs",self.cfg.dataset.name,exp,"predictions",f"{pred}.json")
+                pred_file = os.path.join(self.cfg.host.data_root,f"{model.model}_outputs",self.cfg.dataset.name,img_dim,name,"predictions",f"{pred}.json")
                 if not os.path.isfile(pred_file):
                     raise FileExistsError(f"{pred_file} does not exist!")
 
@@ -285,14 +287,16 @@ class Evaluator:
             
             for exp in model.experiment_name:
             
+                img_dim, name = exp.split('/')
+
                 self.logger.info(f"Evaluate {model.model}/{exp}")
                 
                 pred = "validation_best"
-                pred_file = os.path.join(self.cfg.host.data_root,f"{model.model}_outputs",self.cfg.dataset.name,exp,"predictions",f"{pred}.json")
+                pred_file = os.path.join(self.cfg.host.data_root,f"{model.model}_outputs",self.cfg.dataset.name,img_dim,name,"predictions",f"{pred}.json")
                 if not os.path.isfile(pred_file):
                     raise FileExistsError(f"{pred_file} does not exist!")
                 
-                gt_file = os.path.join(self.cfg.host.data_root,self.cfg.dataset.name,model.model,"annotations_val.json")
+                gt_file = os.path.join(self.cfg.host.data_root,self.cfg.dataset.name,img_dim,"annotations_val.json")
                 if not os.path.isfile(gt_file):
                     raise FileExistsError(f"{gt_file} does not exist!")
                 
@@ -312,7 +316,8 @@ class Evaluator:
         print(df)
         print("\n")
         
-        df.to_csv(self.cfg.eval.eval_file, index=True)
+        self.logger.info(f"Save eval file to {self.cfg.eval.eval_file}")
+        df.to_csv(self.cfg.eval.eval_file, index=True, float_format="%.3g")
         
     
     def format_model_and_modality(self, val):
