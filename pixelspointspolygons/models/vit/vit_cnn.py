@@ -1,12 +1,12 @@
+import timm
 import logging
 import torch.nn as nn
 
 from ..multitask_head import MultitaskHead
-from .pointpillars_vit import PointPillarsViT
 
 from ...misc.logger import make_logger
 
-class PointPillarsViTCNN(nn.Module):
+class ViTCNN(nn.Module):
     
     def __init__(self, cfg, local_rank=0) -> None:
         super().__init__()
@@ -15,8 +15,13 @@ class PointPillarsViTCNN(nn.Module):
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
 
-        self.pp_vit = PointPillarsViT(cfg, local_rank=local_rank)
-                                
+        self.vit = timm.create_model(
+            model_name=cfg.encoder.type,
+            num_classes=0,
+            global_pool='',
+            pretrained=cfg.encoder.pretrained
+        )
+        
         self.proj = nn.Sequential(
             nn.Upsample(size=self.cfg.encoder.out_feature_size, mode='bilinear', align_corners=False),
             nn.Conv2d(self.cfg.encoder.patch_feature_dim, self.cfg.model.decoder.in_feature_dim, kernel_size=3, padding=1),
@@ -27,9 +32,9 @@ class PointPillarsViTCNN(nn.Module):
         self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
 
 
-    def forward(self, points):
+    def forward(self, image):
         
-        x = self.pp_vit(points)
+        x = self.vit(image)
         
         x = x[:, 1:,:] # drop CLS token
         
