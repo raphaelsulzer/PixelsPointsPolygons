@@ -10,10 +10,14 @@ def main(cfg):
     print("\nConfiguration:")
     print(OmegaConf.to_yaml(cfg))
     
+    modes_str = "_".join(cfg.eval.modes)
+    cfg.eval.eval_file = f"{cfg.eval.eval_file}_{modes_str}.csv"
+    
     ee = Evaluator(cfg)
     ee.evaluate_all()    
-    # ee.to_latex(csv_file=cfg.eval.eval_file)
+    ee.to_latex(csv_file=cfg.eval.eval_file)
     
+
 
 if __name__ == "__main__":
     main()

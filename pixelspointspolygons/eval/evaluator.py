@@ -318,6 +318,7 @@ class Evaluator:
         
         self.logger.info(f"Save eval file to {self.cfg.eval.eval_file}")
         df.to_csv(self.cfg.eval.eval_file, index=True, float_format="%.3g")
+        df.to_csv("metrics.csv", index=True, float_format="%.3g")
         
     
     def format_model_and_modality(self, val):
@@ -372,14 +373,16 @@ class Evaluator:
     
     def get_first_and_second_best(self, col, col_vals):
         
-        if col in ['IoU', 'C-IoU', 'Boundary IoU', 'NR']:
+        if col in ['IoU', 'C-IoU', 'Boundary IoU', 'NR']: # higher is better
             best_val = col_vals.max()
             second__best_val = col_vals.nlargest(2).iloc[-1] if len(col_vals.unique()) > 1 else None
-        elif col in ['POLIS', 'MTA']:
+        elif col in ['POLIS', 'MTA']: # lower is better
             best_val = col_vals.min()
             second__best_val = col_vals.nsmallest(2).iloc[-1] if len(col_vals.unique()) > 1 else None
         else:
-            raise ValueError(f"Unknown metric: {col}")
+            best_val = None
+            second__best_val = None
+            # raise ValueError(f"Unknown metric: {col}")
         
         return best_val, second__best_val
     
@@ -405,7 +408,7 @@ class Evaluator:
         cols = self.format_metric_name(df.columns)
         cols = [r'\textbf{Method}', r'\textbf{Modality}'] + cols
         align = 'll'+ 'H' + ('c' * (len(cols)-1))
-
+        lines.append(r'\resizebox{\textwidth}{!}{')
         lines.append(r'\begin{tabular}{' + align + '}')
         lines.append(r'\toprule')
         lines.append(' & '.join(cols) + r' \\')
@@ -429,12 +432,16 @@ class Evaluator:
                         is_numeric_col = False
 
                     if is_numeric_col:
-                        best_val, second__best_val = self.get_first_and_second_best(col,col_vals)
+                        best_val, second_best_val = self.get_first_and_second_best(col,col_vals)
 
-                        val_str = f'{val:.3g}'
-                        if val == best_val:
+                        if abs(val) >= 100:
+                            val_str = f'{int(val)}'  # Use fixed-point notation for other values
+                        else:
+                            val_str = f'{val:.3g}'  # Use scientific notation for very large or small numbers
+
+                        if best_val is not None and val == best_val:
                             val_str = r'\cellcolor{blue!25} ' + val_str
-                        elif val == second__best_val:
+                        elif second_best_val is not None and val == second_best_val:
                             val_str = r'\cellcolor{blue!10} ' + val_str
                     else:
                         val_str = str(val)
@@ -447,10 +454,16 @@ class Evaluator:
 
         lines.append(r'\bottomrule')
         lines.append(r'\end{tabular}')
+        lines.append(r'}')
         if caption:
             lines.append(r'\caption{' + caption + '}')
         if label:
             lines.append(r'\label{' + label + '}')
         lines.append(r'\end{table}')
-        print('\n'.join(lines))
         
+        latex_string = '\n'.join(lines)
+        
+        outfile = self.cfg.eval.eval_file.replace('.csv', '.tex')
+        with open(outfile, 'w') as f:
+            f.write(latex_string)
+        self.logger.info(f"Saved LaTeX table to {outfile}")

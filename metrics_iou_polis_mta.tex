@@ -1,0 +1,22 @@
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llHccccccc}
+\toprule
+\textbf{Method} & \textbf{Modality} & Unnamed: 0 & \textbf{POLIS} $\downarrow$ & \textbf{MTA [$^\circ$]} $\downarrow$ & \textbf{IoU} $\uparrow$ & \textbf{C-IoU} $\uparrow$ & \textbf{NR=1} \\
+\midrule
+\cellcolor{yellow!10}\textbf{FFL} \cite{ffl} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{ffl/512/image_bs2x8} & 5.47 & \cellcolor{blue!25} 36.1 & 0.769 & 0.622 & 0.797 \\
+\midrule
+\cellcolor{yellow!10}\textbf{HiSup} \cite{hisup} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{hisup/512/image_bs2x12} & 4.09 & 43.1 & 0.811 & 0.676 & 0.822 \\
+\cellcolor{green!10}\textbf{HiSup} \cite{hisup} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{hisup/224/v3_lidar_ppori_vit_cnn_bs2x12} & \cellcolor{blue!25} 2.23 & 41.8 & \cellcolor{blue!25} 0.836 & 0.653 & 0.744 \\
+\cellcolor{magenta!10}\textbf{HiSup} \cite{hisup} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{hisup/512/both_nogn_nocj_bs16} & 3.98 & 44.3 & \cellcolor{blue!10} 0.812 & 0.64 & 0.769 \\
+\midrule
+\cellcolor{yellow!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{pix2poly/224/image_only_bs4x16} & 3.89 & 37.7 & 0.73 & 0.633 & 0.794 \\
+\cellcolor{green!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{pix2poly/224/lidar_only_bs2x16} & \cellcolor{blue!10} 2.27 & \cellcolor{blue!10} 37.4 & 0.798 & \cellcolor{blue!25} 0.712 & \cellcolor{blue!25} 0.855 \\
+\cellcolor{magenta!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{pix2poly/224/fusion_simple_bs4x32} & 2.37 & 38.7 & 0.788 & \cellcolor{blue!10} 0.698 & \cellcolor{blue!10} 0.838 \\
+\bottomrule
+\end{tabular}
+}
+\caption{\textbf{Quantitative results of patch prediction on our dataset}. We compare the baseline models trained and tested on different modalities. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores.}
+\label{tab:patch}
+\end{table}

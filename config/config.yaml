@@ -49,8 +49,8 @@ eval:
   modes:
     # - coco
     - iou
-    # - polis
-    # - mta
+    - polis
+    - mta
     # - stats
     # - topdig
   experiments:
@@ -59,16 +59,16 @@ eval:
       - 512/image_bs2x8
     - model: hisup
       experiment_name:
-      - 512/image_only_nogn_nocj_bs4x8
       - 512/image_bs2x12
-      - 224/lidar_ppvit_bs2x8
+      - 224/v3_lidar_ppori_vit_cnn_bs2x12
       - 512/both_nogn_nocj_bs16
     - model: pix2poly
       experiment_name:
       - 224/image_only_bs4x16
       - 224/lidar_only_bs2x16
       - 224/fusion_simple_bs4x32
-  eval_file: ${..host.data_root}/${..dataset.name}/metrics.csv
+  # eval_file: ${..host.data_root}/${..dataset.name}/metrics.csv
+  eval_file: metrics
 
 
 
