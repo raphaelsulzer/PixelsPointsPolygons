@@ -1,0 +1,22 @@
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llHcccccccccccccc}
+\toprule
+\textbf{Method} & \textbf{Modality} & Unnamed: 0 & AP & AP50 & AP75 & AP_small & AP_medium & AP_large & AR1 & AR10 & AR100 & AR_small & AR_medium & AR_large \\
+\midrule
+\cellcolor{yellow!10}\textbf{FFL} \cite{ffl} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{ffl/512/image_bs2x8} & 0.286 & 0.529 & 0.3 & 0.33 & 0.341 & 0 & 0.09 & 0.476 & 0.498 & 0.463 & 0.665 & 0 \\
+\midrule
+\cellcolor{yellow!10}\textbf{HiSup} \cite{hisup} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{hisup/512/image_bs2x12} & 0.401 & 0.642 & 0.437 & 0.437 & 0.505 & 0 & 0.102 & 0.552 & 0.577 & 0.544 & 0.736 & 0 \\
+\cellcolor{green!10}\textbf{HiSup} \cite{hisup} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{hisup/224/v3_lidar_ppori_vit_cnn_bs2x12} & 0.407 & 0.611 & 0.458 & 0.0553 & 0.541 & 0.729 & 0.271 & 0.624 & 0.625 & 0.217 & 0.69 & 0.811 \\
+\cellcolor{magenta!10}\textbf{HiSup} \cite{hisup} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{hisup/512/both_nogn_nocj_bs16} & 0.408 & 0.623 & 0.454 & 0.469 & 0.423 & 0 & 0.102 & 0.57 & 0.597 & 0.567 & 0.737 & 0 \\
+\midrule
+\cellcolor{yellow!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{pix2poly/224/image_only_bs4x16} & 0.273 & 0.474 & 0.284 & 0.0333 & 0.358 & 0.487 & 0.209 & 0.468 & 0.468 & 0.148 & 0.513 & 0.622 \\
+\cellcolor{green!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{pix2poly/224/lidar_only_bs2x16} & 0.417 & 0.615 & 0.46 & 0.086 & 0.53 & 0.638 & 0.255 & 0.589 & 0.589 & 0.229 & 0.65 & 0.75 \\
+\cellcolor{magenta!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{pix2poly/224/fusion_simple_bs4x32} & 0.393 & 0.59 & 0.429 & 0.0719 & 0.503 & 0.614 & 0.257 & 0.572 & 0.572 & 0.218 & 0.623 & 0.739 \\
+\bottomrule
+\end{tabular}
+}
+\caption{\textbf{Quantitative results of patch prediction on our dataset}. We compare the baseline models trained and tested on different modalities. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores.}
+\label{tab:patch}
+\end{table}

@@ -1,8 +1,8 @@
 defaults:
   # - encoder: hrnet
-  # - encoder: pointpillars
+  - encoder: pointpillars
   # - encoder: pointpillars_vit_cnn
-  - encoder: vit_cnn
+  # - encoder: vit_cnn
   - model: hisup
   - dataset: lidarpoly
   - run_type: release
@@ -48,10 +48,10 @@ eval:
   pred_file: ${..output_dir}/predictions/${..checkpoint}.json
   # eval_file: ${..output_dir}/eval/${..checkpoint}.csv
   modes:
-    # - coco
-    - iou
-    - polis
-    - mta
+    - coco
+    # - iou
+    # - polis
+    # - mta
     # - stats
     # - topdig
   experiments:

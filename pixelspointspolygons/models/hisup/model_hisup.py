@@ -12,7 +12,7 @@ from skimage.measure import label, regionprops
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 # from ..pointpillars import *
-from ..pointpillars import PointPillarsEncoder, PointPillarsViTCNN
+from ..pointpillars import PointPillarsEncoder, PointPillarsViTCNN, PointPillars
 from ..vit import ViTCNN
 from ..multitask_head import MultitaskHead
 
@@ -489,7 +489,7 @@ class HiSupModel(torch.nn.Module):
         elif self.cfg.use_lidar: 
             
             if self.cfg.encoder.name == "pointpillars":
-                encoder = PointPillarsEncoder(self.cfg,local_rank=local_rank)
+                encoder = PointPillars(self.cfg,local_rank=local_rank)
             elif self.cfg.encoder.name == "pointpillars_vit_cnn":
                 encoder = PointPillarsViTCNN(self.cfg,local_rank=local_rank)
             else:
