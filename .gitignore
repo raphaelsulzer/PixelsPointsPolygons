@@ -9,6 +9,7 @@ __pycache__
 **/*.so
 **/*.dylib
 **/*.dll
+pixelspointspolygons/models/hisup/afm_module
 
 *.egg-info/
 *.egg
