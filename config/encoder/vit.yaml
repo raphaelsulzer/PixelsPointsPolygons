@@ -1,0 +1,28 @@
+name: vit
+
+use_images: true
+use_lidar: false
+
+checkpoint_file: null # will load from official pretrained checkpoint
+type: vit_small_patch${.patch_size}_${.in_size}.dino
+
+in_size: 224
+in_height: ${.in_size}
+in_width: ${.in_size}
+
+pretrained: True
+
+patch_size: 8
+
+patch_feature_size: 28
+patch_feature_height: ${.patch_feature_size}
+patch_feature_width: ${.patch_feature_size}
+
+patch_feature_dim: 384
+
+
+out_feature_size: 128
+out_feature_height: ${.out_feature_size}
+out_feature_width: ${.out_feature_size}
+
+out_feature_dim: 256

@@ -10,7 +10,6 @@ from __future__ import print_function
 
 import os
 import logging
-import functools
 
 import numpy as np
 
@@ -18,13 +17,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .bn_helper import BatchNorm2d, BatchNorm2d_class, relu_inplace
+from huggingface_hub import hf_hub_download
+
+
+
+from ...misc.logger import make_logger
+from ..multitask_head import MultitaskHead
 
 BN_MOMENTUM = 0.1
 ALIGN_CORNERS = None
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
+relu_inplace = True
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
@@ -38,10 +40,10 @@ class BasicBlock(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(BasicBlock, self).__init__()
         self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = BatchNorm2d(planes, momentum=BN_MOMENTUM)
+        self.bn1 = nn.BatchNorm2d(planes, momentum=BN_MOMENTUM)
         self.relu = nn.ReLU(inplace=relu_inplace)
         self.conv2 = conv3x3(planes, planes)
-        self.bn2 = BatchNorm2d(planes, momentum=BN_MOMENTUM)
+        self.bn2 = nn.BatchNorm2d(planes, momentum=BN_MOMENTUM)
         self.downsample = downsample
         self.stride = stride
 
@@ -70,13 +72,13 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(Bottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        self.bn1 = BatchNorm2d(planes, momentum=BN_MOMENTUM)
+        self.bn1 = nn.BatchNorm2d(planes, momentum=BN_MOMENTUM)
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
                                padding=1, bias=False)
-        self.bn2 = BatchNorm2d(planes, momentum=BN_MOMENTUM)
+        self.bn2 = nn.BatchNorm2d(planes, momentum=BN_MOMENTUM)
         self.conv3 = nn.Conv2d(planes, planes * self.expansion, kernel_size=1,
                                bias=False)
-        self.bn3 = BatchNorm2d(planes * self.expansion,
+        self.bn3 = nn.BatchNorm2d(planes * self.expansion,
                                momentum=BN_MOMENTUM)
         self.relu = nn.ReLU(inplace=relu_inplace)
         self.downsample = downsample
@@ -128,19 +130,19 @@ class HighResolutionModule(nn.Module):
         if num_branches != len(num_blocks):
             error_msg = 'NUM_BRANCHES({}) <> NUM_BLOCKS({})'.format(
                 num_branches, len(num_blocks))
-            logger.error(error_msg)
+            self.logger.error(error_msg)
             raise ValueError(error_msg)
 
         if num_branches != len(num_channels):
             error_msg = 'NUM_BRANCHES({}) <> NUM_CHANNELS({})'.format(
                 num_branches, len(num_channels))
-            logger.error(error_msg)
+            self.logger.error(error_msg)
             raise ValueError(error_msg)
 
         if num_branches != len(num_inchannels):
             error_msg = 'NUM_BRANCHES({}) <> NUM_INCHANNELS({})'.format(
                 num_branches, len(num_inchannels))
-            logger.error(error_msg)
+            self.logger.error(error_msg)
             raise ValueError(error_msg)
 
     def _make_one_branch(self, branch_index, block, num_blocks, num_channels,
@@ -152,7 +154,7 @@ class HighResolutionModule(nn.Module):
                 nn.Conv2d(self.num_inchannels[branch_index],
                           num_channels[branch_index] * block.expansion,
                           kernel_size=1, stride=stride, bias=False),
-                BatchNorm2d(num_channels[branch_index] * block.expansion,
+                nn.BatchNorm2d(num_channels[branch_index] * block.expansion,
                             momentum=BN_MOMENTUM),
             )
 
@@ -194,7 +196,7 @@ class HighResolutionModule(nn.Module):
                                   1,
                                   0,
                                   bias=False),
-                        BatchNorm2d(num_inchannels[i], momentum=BN_MOMENTUM)))
+                        nn.BatchNorm2d(num_inchannels[i], momentum=BN_MOMENTUM)))
                 elif j == i:
                     fuse_layer.append(None)
                 else:
@@ -206,7 +208,7 @@ class HighResolutionModule(nn.Module):
                                 nn.Conv2d(num_inchannels[j],
                                           num_outchannels_conv3x3,
                                           3, 2, 1, bias=False),
-                                BatchNorm2d(num_outchannels_conv3x3, 
+                                nn.BatchNorm2d(num_outchannels_conv3x3, 
                                             momentum=BN_MOMENTUM)))
                         else:
                             num_outchannels_conv3x3 = num_inchannels[j]
@@ -214,7 +216,7 @@ class HighResolutionModule(nn.Module):
                                 nn.Conv2d(num_inchannels[j],
                                           num_outchannels_conv3x3,
                                           3, 2, 1, bias=False),
-                                BatchNorm2d(num_outchannels_conv3x3,
+                                nn.BatchNorm2d(num_outchannels_conv3x3,
                                             momentum=BN_MOMENTUM),
                                 nn.ReLU(inplace=relu_inplace)))
                     fuse_layer.append(nn.Sequential(*conv3x3s))
@@ -260,19 +262,24 @@ blocks_dict = {
 
 class HighResolutionNet(nn.Module):
 
-    def __init__(self):
+    def __init__(self, cfg, local_rank = 0):
         global ALIGN_CORNERS
         # extra = config.MODEL.EXTRA
         super(HighResolutionNet, self).__init__()
         ALIGN_CORNERS = True
+        
+        self.cfg = cfg
+        
+        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
+        self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
 
         # stem net
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=2, padding=1,
                                bias=False)
-        self.bn1 = BatchNorm2d(64, momentum=BN_MOMENTUM)
+        self.bn1 = nn.BatchNorm2d(64, momentum=BN_MOMENTUM)
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1,
                                bias=False)
-        self.bn2 = BatchNorm2d(64, momentum=BN_MOMENTUM)
+        self.bn2 = nn.BatchNorm2d(64, momentum=BN_MOMENTUM)
         self.relu = nn.ReLU(inplace=relu_inplace)
 
         # self.stage1_cfg = extra['STAGE1']
@@ -354,7 +361,7 @@ class HighResolutionNet(nn.Module):
                 kernel_size=1,
                 stride=1,
                 padding=0),
-            BatchNorm2d(last_inp_channels, momentum=BN_MOMENTUM),
+            nn.BatchNorm2d(last_inp_channels, momentum=BN_MOMENTUM),
             nn.ReLU(inplace=relu_inplace),
             nn.Conv2d(
                 in_channels=last_inp_channels,
@@ -364,7 +371,27 @@ class HighResolutionNet(nn.Module):
                 padding=0)
         )
 
-        # self.head = head(256, num_class)
+        self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+        
+        
+        
+        ### init weights ###
+        if not cfg.host.name == "jeanzay":
+            checkpoint_file = hf_hub_download(
+                repo_id="rsi/PixelsPointsPolygons",
+                filename="hrnetv2_w48_imagenet_pretrained.pth",
+                use_auth_token=True  # This is needed for private repos
+            )
+        else:
+            checkpoint_file = cfg.encoder.checkpoint_file
+            
+        if not os.path.isfile(checkpoint_file):
+            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
+        
+        self.logger.debug(f"Load image backbone checkpoint from {checkpoint_file}")
+
+        self.init_weights(pretrained=checkpoint_file)
+        
 
     def _make_transition_layer(
             self, num_channels_pre_layer, num_channels_cur_layer):
@@ -382,7 +409,7 @@ class HighResolutionNet(nn.Module):
                                   1,
                                   1,
                                   bias=False),
-                        BatchNorm2d(
+                        nn.BatchNorm2d(
                             num_channels_cur_layer[i], momentum=BN_MOMENTUM),
                         nn.ReLU(inplace=relu_inplace)))
                 else:
@@ -396,7 +423,7 @@ class HighResolutionNet(nn.Module):
                     conv3x3s.append(nn.Sequential(
                         nn.Conv2d(
                             inchannels, outchannels, 3, 2, 1, bias=False),
-                        BatchNorm2d(outchannels, momentum=BN_MOMENTUM),
+                        nn.BatchNorm2d(outchannels, momentum=BN_MOMENTUM),
                         nn.ReLU(inplace=relu_inplace)))
                 transition_layers.append(nn.Sequential(*conv3x3s))
 
@@ -408,7 +435,7 @@ class HighResolutionNet(nn.Module):
             downsample = nn.Sequential(
                 nn.Conv2d(inplanes, planes * block.expansion,
                           kernel_size=1, stride=stride, bias=False),
-                BatchNorm2d(planes * block.expansion, momentum=BN_MOMENTUM),
+                nn.BatchNorm2d(planes * block.expansion, momentum=BN_MOMENTUM),
             )
 
         layers = []
@@ -501,21 +528,21 @@ class HighResolutionNet(nn.Module):
         return x
 
     def init_weights(self, pretrained='',):
-        logger.info('=> init weights from normal distribution')
+        self.logger.info('=> init weights from normal distribution')
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.normal_(m.weight, std=0.001)
-            elif isinstance(m, BatchNorm2d_class):
+            elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
         if os.path.isfile(pretrained):
             pretrained_dict = torch.load(pretrained)
-            logger.info('=> loading pretrained model {}'.format(pretrained))
+            self.logger.info('=> loading pretrained model {}'.format(pretrained))
             model_dict = self.state_dict()              
             pretrained_dict = {k: v for k, v in pretrained_dict.items()
                                if k in model_dict.keys()}
             for k, _ in pretrained_dict.items():
-                logger.info(
+                self.logger.info(
                     '=> loading {} pretrained model {}'.format(k, pretrained))
             model_dict.update(pretrained_dict)
             self.load_state_dict(model_dict)

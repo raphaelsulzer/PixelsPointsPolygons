@@ -277,7 +277,7 @@ class Evaluator:
         
         self.logger.info("Evaluating all models...")
         
-        # first quickly check if the prediction file exists
+        # first quickly check if the prediction file exists before doing the more lengthy evaluation
         self.check_if_predictions_exist()
         self.logger.debug("All prediction files exist.")
         
@@ -318,7 +318,6 @@ class Evaluator:
         
         self.logger.info(f"Save eval file to {self.cfg.eval.eval_file}")
         df.to_csv(self.cfg.eval.eval_file, index=True, float_format="%.3g")
-        df.to_csv("metrics.csv", index=True, float_format="%.3g")
         
     
     def format_model_and_modality(self, val):

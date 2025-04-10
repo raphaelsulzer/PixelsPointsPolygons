@@ -1,0 +1,1 @@
+from .hrnet48v2 import HighResolutionNet

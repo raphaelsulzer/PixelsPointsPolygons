@@ -1,7 +1,6 @@
 import torch
 import cv2
 import os
-import logging
 
 import torch.nn.functional as F
 from copy import deepcopy
@@ -12,12 +11,12 @@ from torch.utils.data.dataloader import default_collate
 from skimage.measure import label, regionprops
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from ...misc import make_logger
 # from ..pointpillars import *
 from ..pointpillars import PointPillarsEncoder, PointPillarsViTCNN
+from ..vit import ViTCNN
 from ..multitask_head import MultitaskHead
 
-from .hrnet48v2 import HighResolutionNet as HRNet48v2
+from ..hrnet import HighResolutionNet as HRNet48v2
 from .afm_module.afm_op import afm
 from .polygon import get_pred_junctions, generate_polygon
 
@@ -122,10 +121,6 @@ class AnnotationEncoder:
             'afmap': afmap[0]
         }
         return target, meta
-    
-    
-    
-    
 
 class EncoderDecoder(nn.Module):
     def __init__(self, cfg, encoder):
@@ -314,52 +309,6 @@ class EncoderDecoder(nn.Module):
         return loss_dict
 
 
-class ImageEncoder(torch.nn.Module):
-    def __init__(self, cfg, local_rank=0):
-        super().__init__()
-        
-        self.cfg = cfg
-        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
-        if verbosity == logging.INFO and local_rank != 0:
-            verbosity = logging.WARNING
-        self.verbosity = verbosity
-        self.logger = make_logger(f"Image Encoder (rank {local_rank})",level=verbosity)
-
-        head_size = [[2]]
-        num_class = sum(sum(head_size, []))
-
-        # self.backbone = HRNet48v2(cfg,
-        #                 head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
-        #                 num_class = num_class)
-        self.backbone = HRNet48v2()
-        
-        ## load pretrained backbone weights
-        if not cfg.host.name == "jeanzay":
-            checkpoint_file = hf_hub_download(
-                repo_id="rsi/PixelsPointsPolygons",
-                filename="hrnetv2_w48_imagenet_pretrained.pth",
-                use_auth_token=True  # This is needed for private repos
-            )
-        else:
-            checkpoint_file = cfg.encoder.checkpoint_file
-            
-        if not os.path.isfile(checkpoint_file):
-            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
-        
-        self.logger.debug(f"Load image backbone checkpoint from {checkpoint_file}")
-
-        self.backbone.init_weights(pretrained=checkpoint_file)
-        
-        self.name = cfg.encoder.type
-        # self.head = self.backbone.head
-        self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
-
-    
-    def forward(self, images):
-        
-        return self.backbone(images)
-
-
 
 class MultiEncoder(nn.Module):
     def __init__(self, cfg, local_rank=0):
@@ -529,16 +478,25 @@ class HiSupModel(torch.nn.Module):
         if self.cfg.use_images and self.cfg.use_lidar:
             encoder = MultiEncoder(self.cfg,local_rank)
         elif self.cfg.use_images:
-            encoder = ImageEncoder(self.cfg,local_rank)
+            
+            if self.cfg.encoder.name == "hrnet":
+                encoder = HRNet48v2(self.cfg,local_rank=local_rank)
+            elif self.cfg.encoder.name == "vit_cnn":
+                encoder = ViTCNN(self.cfg,local_rank=local_rank)
+            else:
+                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__class__.__name__}")
+            
         elif self.cfg.use_lidar: 
+            
             if self.cfg.encoder.name == "pointpillars":
                 encoder = PointPillarsEncoder(self.cfg,local_rank=local_rank)
             elif self.cfg.encoder.name == "pointpillars_vit_cnn":
                 encoder = PointPillarsViTCNN(self.cfg,local_rank=local_rank)
             else:
-                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented")
+                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__class__.__name__}")
+            
         else:
-            raise ValueError("At least one of use_image or use_lidar must be True")
+            raise ValueError("Please specify either and image or lidar encoder with encoder=<name>. See help for a list of available encoders.")
         
         model = EncoderDecoder(
             encoder=encoder,

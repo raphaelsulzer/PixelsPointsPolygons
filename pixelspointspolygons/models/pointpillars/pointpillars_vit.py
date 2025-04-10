@@ -34,14 +34,14 @@ class PointPillarsViT(torch.nn.Module):
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
 
-        self.vision_transformer = timm.create_model(
+        self.vit = timm.create_model(
             model_name=cfg.encoder.type,
             num_classes=0,
             global_pool='',
             pretrained=cfg.encoder.pretrained
         )
-        # replace VisionTransformer patch embedding with LiDAR encoder
         
+        #### replace VisionTransformer patch embedding with LiDAR encoder        
         output_shape = [cfg.encoder.patch_feature_width, cfg.encoder.patch_feature_height]
         voxel_encoder={
             'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
@@ -51,10 +51,10 @@ class PointPillarsViT(torch.nn.Module):
             "in_channels" : cfg.encoder.patch_feature_dim, 
             "output_shape" : output_shape
         }
-        self.vision_transformer.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
+        self.vit.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
                 
         
     def forward(self, x_lidar):
         """Extract features from points."""
         
-        return self.vision_transformer(x_lidar)
+        return self.vit(x_lidar)
