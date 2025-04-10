@@ -3,8 +3,8 @@
 #OAR -q production 
 #OAR -l host=1/gpu=2,walltime=16
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
-#OAR -O oar/runs/image_hisup_ori.out
-#OAR -E oar/runs/image_hisup_ori.out
+#OAR -O oar/runs/image_hisup_vit_cnn.out
+#OAR -E oar/runs/image_hisup_vit_cnn.out
 
 # display some information about attributed resources
 hostname 
