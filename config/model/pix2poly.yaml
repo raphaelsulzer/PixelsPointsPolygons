@@ -1,8 +1,5 @@
 name: pix2poly
 
-defaults:
-    - encoder: pointpillars
-
 tokenizer: 
     num_bins: ${..encoder.input_size}
     shuffle_tokens: false
@@ -10,20 +7,6 @@ tokenizer:
     max_len: null
     pad_idx: null
     generation_steps: null
-
-encoder:
-    type: vit_small_patch${.patch_size}_${.input_size}.dino
-    pretrained: True
-
-    input_size: 224
-    input_height: ${.input_size}
-    input_width: ${.input_size}
-
-    patch_size: 8
-    num_patches: null
-    patch_feature_dim: 384
-
-    out_dim: 256
 
 fusion: patch_concat # or feature_concat
 
@@ -40,17 +23,3 @@ num_epochs: 100
 milestone: 0
 learning_rate: 4e-4
 weight_decay: 1e-4
-
-
-
-
-# the following values are adapted such that the PointPillars layer can be used as a drop in for the 
-# patch_embed layer of the vision transformer - vit_small_patch8_224_dino (specified in cfg.encoder)
-
-
-
-augmentations:
-    - D4
-    - Resize
-    - ColorJitter
-    - GaussNoise

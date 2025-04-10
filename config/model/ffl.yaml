@@ -1,23 +1,24 @@
 name: ffl
 
-defaults:
-    - encoder: unetresnet101
-    - polygonization: asm_acm
+
+# Inherit the base encoder configuration and override specific parameters
+encoder:
+  compute_seg: True
+  compute_crossfield: True
+  seg:
+    compute_interior: True
+    compute_edge: False
+    compute_vertex: False
 
 decoder:
+    in_feature_size: 512
+    in_feature_width: ${.in_feature_size}
+    in_feature_height: ${.in_feature_size}
+    in_feature_dim: 32
 
-    out_feature_size: 512
-    out_feature_height: ${.out_feature_size}
-    out_feature_width: ${.out_feature_size}
-    out_feature_channels: 32
-
-    compute_seg: True
-    compute_crossfield: True
-
-    seg:
-        compute_interior: True
-        compute_edge: False
-        compute_vertex: False
+point_pillars:
+    out_channels: [32, 32, 32]
+    upsample_strides: [4, 8, 16]
 
 loss:
   multi:
