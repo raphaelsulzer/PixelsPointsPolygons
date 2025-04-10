@@ -9,7 +9,7 @@ __pycache__
 **/*.so
 **/*.dylib
 **/*.dll
-pixelspointspolygons/models/hisup/afm_module
+pixelspointspolygons/models/hisup/afm_module/squeeze/squeeze.cpp
 
 *.egg-info/
 *.egg
