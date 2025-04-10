@@ -9,14 +9,14 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=debug",
+                "run_type=release",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
-                "checkpoint=null",
-                "experiment_name=debug",
-                "run_type.num_workers=4"
+                // "checkpoint=null",
+                // "experiment_name=debug",
+                // "run_type.num_workers=4"
                 // "model=ffl",
                 // "use_lidar=true",
                 // "use_images=false",
@@ -45,7 +45,12 @@
                 // "experiment_name=debug",
                 // "checkpoint_file=/data/rsulzer/ffl_outputs/checkpoint.best_val.epoch_000234.tar"
             ],
-            "justMyCode": false
+            "justMyCode": false,
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1",
+                "TORCH_USE_CUDA_DSA": "1",
+                // "CUDA_VISIBLE_DEVICES": "0"
+            }
         },
         {
             "name": "predict_demo",
