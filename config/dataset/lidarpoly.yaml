@@ -8,5 +8,3 @@ annotations:
   test: ${..path}/annotations_test.json
 train_subset: null
 val_subset: null
-image_mean: [108.9177, 114.1638, 100.8611]
-image_std: [49.3129, 45.7661, 48.6514]

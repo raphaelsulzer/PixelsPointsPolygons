@@ -95,8 +95,6 @@ cd ../..
 ### take this out of the script because it doesn't work on the front end of g5k and probably jz too, because cuda is not properly installed there
 ### instead run this inside the job submission script
 ## make the afm module for hisup
-# to get rid of this annoying warning: sh: /home/rsulzer/.conda/envs/ppp/bin/../lib/libtinfo.so.6: no version information available (required by sh)
-export LD_BIND_NOW=1
 echo "________________ Install AFM module for HiSup _______________"
 cd ./pixelspointspolygons/models/hisup/afm_module
 make

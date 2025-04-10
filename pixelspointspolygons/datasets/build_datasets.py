@@ -80,7 +80,7 @@ def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
     # TODO:
     # check what to do for ImageNet normalization for UNetResNet: https://pytorch.org/vision/stable/models.html
     # and also this has to probably be removed for ViT. or check what is the correct way for that.
-    transforms.append(A.Normalize(mean=cfg.dataset.image_mean, std=cfg.dataset.image_std, max_pixel_value=1.0)) 
+    transforms.append(A.Normalize(mean=cfg.encoder.image_mean, std=cfg.encoder.image_std, max_pixel_value=cfg.encoder.image_max_pixel_value)) 
     transforms.append(ToTensorV2())
     
     train_transforms = A.ReplayCompose(transforms=transforms,
@@ -126,7 +126,7 @@ def get_val_loader_lidarpoly(cfg,tokenizer,logger=None):
     if "Resize" in cfg.model.augmentations:
         transforms.append(A.Resize(height=cfg.encoder.in_height, width=cfg.encoder.in_width))
     
-    transforms.append(A.Normalize(mean=cfg.dataset.image_mean, std=cfg.dataset.image_std, max_pixel_value=1.0)) 
+    transforms.append(A.Normalize(mean=cfg.encoder.image_mean, std=cfg.encoder.image_std, max_pixel_value=cfg.encoder.image_max_pixel_value)) 
     transforms.append(ToTensorV2())
     
     val_transforms = A.ReplayCompose(transforms=transforms,
