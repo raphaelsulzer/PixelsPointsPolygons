@@ -26,9 +26,9 @@ max_num_voxels: # here: (224/8)**2
     train: 64000 # (${.encoder.in_size} // ${.encoder.patch_size})**2
     test: 64000 # (${.encoder.in_size} // ${.encoder.patch_size})**2
 
-out_feature_dim: 384
+out_feature_dim: 256
 
-out_feature_size: 128
+out_feature_size: ${..model.decoder.in_feature_size} # 128
 out_feature_height: ${.out_feature_size}
 out_feature_width: ${.out_feature_size}
 

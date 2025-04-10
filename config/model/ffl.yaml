@@ -4,19 +4,8 @@ defaults:
     - encoder: unetresnet101
     - polygonization: asm_acm
 
-encoder:
-    type: UNetResNet101
-    pretrained: true
+decoder:
 
-    in_size: 512
-    in_height: ${.in_size}
-    in_width: ${.in_size}
-
-    depth: 101
-    num_filters: 32
-    dropout_2d: 0.2
-    is_deconv: False
-    
     out_feature_size: 512
     out_feature_height: ${.out_feature_size}
     out_feature_width: ${.out_feature_size}
@@ -29,12 +18,6 @@ encoder:
         compute_interior: True
         compute_edge: False
         compute_vertex: False
-
-augmentations:
-    - D4
-    - Resize
-    - ColorJitter
-    - GaussNoise
 
 loss:
   multi:
@@ -69,8 +52,6 @@ gamma: 0.95
 
 
 eval:
-
   patch_size: null
   patch_overlap: 200
-
   seg_threshold: 0.5

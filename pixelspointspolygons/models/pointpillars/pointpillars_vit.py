@@ -52,7 +52,7 @@ class PointPillarsViT(torch.nn.Module):
             "output_shape" : output_shape
         }
         self.vit.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
-                
+        
         
     def forward(self, x_lidar):
         """Extract features from points."""

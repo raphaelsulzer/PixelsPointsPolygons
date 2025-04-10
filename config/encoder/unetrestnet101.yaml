@@ -1,0 +1,19 @@
+name: unetresnet101
+
+use_images: true
+use_lidar: false
+
+type: UNetResNet101
+pretrained: true
+checkpoint_file: null
+
+in_size: 512
+in_height: ${.in_size}
+in_width: ${.in_size}
+
+depth: 101
+num_filters: 32
+dropout_2d: 0.2
+is_deconv: False
+
+
