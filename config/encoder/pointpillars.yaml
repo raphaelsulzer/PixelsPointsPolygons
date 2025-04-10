@@ -31,3 +31,8 @@ out_feature_dim: 384
 out_feature_size: 128
 out_feature_height: ${.out_feature_size}
 out_feature_width: ${.out_feature_size}
+
+
+
+augmentations:
+    - D4

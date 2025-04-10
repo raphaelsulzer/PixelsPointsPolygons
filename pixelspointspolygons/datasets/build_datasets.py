@@ -43,49 +43,26 @@ def get_train_loader(cfg,tokenizer=None,logger=None):
 def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
     
     transforms = []
-    if "D4" in cfg.model.augmentations:
+    if "D4" in cfg.encoder.augmentations:
         transforms.append(A.D4(p=1.0))
-    if "Resize" in cfg.model.augmentations:
+    if "Resize" in cfg.encoder.augmentations:
         transforms.append(A.Resize(height=cfg.encoder.in_height, width=cfg.encoder.in_width))
-    if "ColorJitter" in cfg.model.augmentations:
+    if "ColorJitter" in cfg.encoder.augmentations:
         transforms.append(A.ColorJitter())
-    if "GaussNoise" in cfg.model.augmentations:
+    if "GaussNoise" in cfg.encoder.augmentations:
         transforms.append(A.GaussNoise())
-    # ## this is just used for debugging
-    # if "e" in cfg.model.augmentations:
-    #     transforms.append(A.Compose([]))
-    # if "r90" in cfg.model.augmentations:
-    #     transforms.append(A.Rotate(limit=(90, 90), p=1.0))
-    # if "r180" in cfg.model.augmentations:
-    #     transforms.append(A.Rotate(limit=(180, 180), p=1.0))
-    # if "r270" in cfg.model.augmentations:
-    #     transforms.append(A.Rotate(limit=(270, 270), p=1.0))
-    # if "h" in cfg.model.augmentations:
-    #     transforms.append(A.HorizontalFlip(p=1.0))
-    # if "v" in cfg.model.augmentations:
-    #     transforms.append(A.VerticalFlip(p=1.0))
-    # if "t" in cfg.model.augmentations:
-    #     transforms.append(A.Transpose(p=1.0))
-    # if "hvt" in cfg.model.augmentations:
-    #     transforms.append(A.Compose([
-    #         A.HorizontalFlip(p=1.0),
-    #         A.VerticalFlip(p=1.0),
-    #         A.Transpose(p=1.0),
-    #     ]))
-    
-    if logger is not None:
-        for t in transforms:
-            logger.debug(f"Added transform {t} to training pipeline.")
-    
-    # TODO:
-    # check what to do for ImageNet normalization for UNetResNet: https://pytorch.org/vision/stable/models.html
-    # and also this has to probably be removed for ViT. or check what is the correct way for that.
-    transforms.append(A.Normalize(mean=cfg.encoder.image_mean, std=cfg.encoder.image_std, max_pixel_value=cfg.encoder.image_max_pixel_value)) 
+    if "Normalize" in cfg.encoder.augmentations:
+        # TODO:
+        # check what to do for ImageNet normalization for UNetResNet: https://pytorch.org/vision/stable/models.html
+        # and also this has to probably be removed for ViT. or check what is the correct way for that.
+        transforms.append(A.Normalize(mean=cfg.encoder.image_mean, std=cfg.encoder.image_std, max_pixel_value=cfg.encoder.image_max_pixel_value)) 
     transforms.append(ToTensorV2())
-    
     train_transforms = A.ReplayCompose(transforms=transforms,
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
     )
+    if logger is not None:
+        for t in transforms:
+            logger.debug(f"Added transform {t} to training pipeline.")
     
     train_ds = TrainDataset(
         cfg,
@@ -123,12 +100,11 @@ def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
 def get_val_loader_lidarpoly(cfg,tokenizer,logger=None):
     
     transforms = []
-    if "Resize" in cfg.model.augmentations:
+    if "Resize" in cfg.encoder.augmentations:
         transforms.append(A.Resize(height=cfg.encoder.in_height, width=cfg.encoder.in_width))
-    
-    transforms.append(A.Normalize(mean=cfg.encoder.image_mean, std=cfg.encoder.image_std, max_pixel_value=cfg.encoder.image_max_pixel_value)) 
+    if "Normalize" in cfg.encoder.augmentations:
+        transforms.append(A.Normalize(mean=cfg.encoder.image_mean, std=cfg.encoder.image_std, max_pixel_value=cfg.encoder.image_max_pixel_value)) 
     transforms.append(ToTensorV2())
-    
     val_transforms = A.ReplayCompose(transforms=transforms,
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
     )
