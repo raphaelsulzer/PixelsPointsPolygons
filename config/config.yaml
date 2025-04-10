@@ -3,7 +3,8 @@ defaults:
   - encoder: pointpillars
   # - encoder: pointpillars_vit_cnn
   # - encoder: vit_cnn
-  - model: hisup
+  - model: ffl
+  - polygonization: asm_acm
   - dataset: lidarpoly
   - run_type: release
   - host: gin
@@ -19,7 +20,7 @@ checkpoint_file: null
 # checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly/512/v1_lidar_LROnP/model_best_backup.pth
 # checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly_hisup_ori/v1_image_only_bs8/model_00062.pth
 
-experiment_name: lidar_ppvit_bs2x8
+experiment_name: debug
 group_name: v2_${.model.name}
 multi_gpu: false
 device: cuda

@@ -37,9 +37,10 @@ class DefaultDataset(Dataset):
         
         ## FFL currently still has a specific annotations file which includes the path to the .pt file with the frame field stored
         if self.cfg.model.name == "ffl":
-            self.ann_file = os.path.join(self.dataset_dir,f"annotations_{split}_processed.json")
+            self.ann_file = os.path.join(self.dataset_dir,f"annotations_ffl_{split}.json")
             self.stats_filepath = os.path.join(self.dataset_dir, "processed", split, "stats.pt")
             if not os.path.isfile(self.stats_filepath):
+                # TODO: now there is no FFL training data for 224x224 tiles. Just include the FFL training data creation in ppp_dataset now
                 raise FileExistsError(self.stats_filepath)
             self.stats = torch.load(self.stats_filepath)
         else:

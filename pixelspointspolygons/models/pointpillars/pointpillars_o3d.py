@@ -151,8 +151,8 @@ class PointPillars(ml3d.models.PointPillars):
         }
         neck={
             "in_channels": [64, 128, 256],
-            "out_channels": [128, 128, 128],
-            "upsample_strides": [1, 2, 4],
+            "out_channels": self.cfg.model.point_pillars.out_channels,
+            "upsample_strides": self.cfg.model.point_pillars.upsample_strides,
             "use_conv_for_no_stride": False
         }
         
@@ -168,9 +168,20 @@ class PointPillars(ml3d.models.PointPillars):
                     neck=neck,
                     augment=augment)
         
-        self.reduce_dim = nn.Conv2d(in_channels=384, out_channels=256, kernel_size=1, stride=1, padding=0)
 
-        self.head = MultitaskHead(cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+        if sum(cfg.model.point_pillars.out_channels) != cfg.model.decoder.in_feature_dim:
+            self.reduce_dim = nn.Conv2d(in_channels=sum(cfg.model.point_pillars.out_channels), out_channels=cfg.model.decoder.in_feature_dim, kernel_size=1, stride=1, padding=0)
+            self.reduce_dim = nn.Sequential(
+                self.reduce_dim,
+                nn.ReLU()
+            )
+        else:
+            self.reduce_dim = nn.Identity()
+
+        if cfg.model.name != "ffl":
+            self.head = MultitaskHead(cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+            
+        # TODO: the head should really be defined in the decoder and not here!!
 
         # remove unsused modules from PointPillars
         del self.bbox_head
@@ -194,6 +205,5 @@ class PointPillars(ml3d.models.PointPillars):
         x = self.neck(x)
         
         x = self.reduce_dim(x)
-        x = nn.functional.relu(x,inplace=True)
                                 
         return x

@@ -7,6 +7,10 @@ decoder:
 
     in_feature_dim: 256
 
+point_pillars:
+    out_channels: [128, 128, 128]
+    upsample_strides: [1, 2, 4]
+
 # training
 batch_size: 16
 start_epoch: 0

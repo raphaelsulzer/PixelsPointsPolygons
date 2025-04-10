@@ -225,7 +225,7 @@ class FFLTrainer(Trainer):
             with torch.no_grad():
 
                 if self.local_rank == 0:
-                    self.visualization(self.train_loader,epoch,show=self.cfg.debug_vis)
+                    self.visualization(self.train_loader,epoch)
                     wandb_dict ={}
                     wandb_dict['epoch'] = epoch
                     for k, v in train_loss_dict.items():
@@ -279,7 +279,7 @@ class FFLTrainer(Trainer):
                         coco_predictions = list(coco_predictions.values())[0]
                         self.logger.info(f"Evaluate {poly_method} polygonization...")
                     
-                        self.visualization(self.val_loader,epoch,coco=coco_predictions,show=self.cfg.debug_vis)
+                        self.visualization(self.val_loader,epoch,coco=coco_predictions)
 
                     if self.local_rank == 0 and len(coco_predictions):
                         

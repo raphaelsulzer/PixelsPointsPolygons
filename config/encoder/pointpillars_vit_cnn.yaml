@@ -29,7 +29,7 @@ out_feature_size: 128
 out_feature_height: ${.out_feature_size}
 out_feature_width: ${.out_feature_size}
 
-out_feature_dim: 256
+out_feature_dim: ${..model.decoder.in_feature_dim}
 
 
 
