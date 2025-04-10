@@ -16,3 +16,8 @@ out_feature_height: ${.out_feature_size}
 out_feature_width: ${.out_feature_size}
 
 out_feature_dim: 256
+
+# for compatibility with pretrained HRNet weights
+image_mean: [108.9177, 114.1638, 100.8611]
+image_std: [49.3129, 45.7661, 48.6514]
+image_max_pix_val: 1.0
