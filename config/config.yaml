@@ -49,8 +49,8 @@ eval:
   pred_file: ${..output_dir}/predictions/${..checkpoint}.json
   # eval_file: ${..output_dir}/eval/${..checkpoint}.csv
   modes:
-    - coco
-    # - iou
+    # - coco
+    - iou
     # - polis
     # - mta
     # - stats
