@@ -73,16 +73,16 @@ class FFLPredictor(Predictor):
                 pool = None # there is some skan error when I try with Pool()
             
             #     # --- Polygonize
-            # try:
-            batch["polygons"], batch["polygon_probs"] = polygonize.polygonize(
-                self.cfg.polygonization, batch["seg"],
-                crossfield_batch=batch.get("crossfield", None),
-                pool=pool)
-            # except Exception as e:
-            #     # raise e
-            #     self.logger.error(f"Polygonization failed: {e}")
-            #     self.logger.error("Skipping this batch...")
-            #     continue
+            try:
+                batch["polygons"], batch["polygon_probs"] = polygonize.polygonize(
+                    self.cfg.polygonization, batch["seg"],
+                    crossfield_batch=batch.get("crossfield", None),
+                    pool=pool)
+            except Exception as e:
+                # raise e
+                self.logger.error(f"Polygonization failed: {e}")
+                self.logger.error("Skipping this batch...")
+                continue
 
             batch = batch_to_cpu(batch)
             sample_list = split_batch(batch,batch_size=batch_size)
