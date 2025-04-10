@@ -84,8 +84,8 @@ class Predictor:
         
         ## load the model weights
         if not self.cfg.multi_gpu:
-            # model_state_dict = {k.replace(".module.", "."): v for k, v in checkpoint["model"].items()}      
-            model_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["model"].items()}      
+            model_state_dict = {k.replace(".module.", "."): v for k, v in checkpoint["model"].items()}      
+            # model_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["model"].items()}      
         else:
             model_state_dict = checkpoint["model"]  
             

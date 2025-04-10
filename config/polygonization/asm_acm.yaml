@@ -1,8 +1,8 @@
 # Possible options: simple, acm, asm, tracing or a list to apply multiple methods
 method: 
   # - simple
-  # - acm
-  - asm
+  - acm
+  # - asm
   # - tracing
 
 common_params:
