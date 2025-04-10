@@ -15,7 +15,9 @@ module load conda
 conda activate ppp
 python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))";
 
-## recompile the afm module
+# to get rid of this annoying warning: sh: /home/rsulzer/.conda/envs/ppp/bin/../lib/libtinfo.so.6: no version information available (required by sh)
+export LD_BIND_NOW=1
+# recompile the afm module
 cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
