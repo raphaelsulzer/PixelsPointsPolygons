@@ -26,4 +26,4 @@ torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type
 
 # git pull && torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=false host=g5k run_type=debug multi_gpu=true experiment_name=debug checkpoint=null model.batch_size=2 use_lidar=False use_images=True update_pbar_every=0.5
 
-python scripts/train.py log_to_wandb=false host=g5k run_type=release multi_gpu=false experiment_name=debug checkpoint=null model.batch_size=12 encoder=hrnet
+python scripts/train.py log_to_wandb=false host=g5k run_type=release multi_gpu=false experiment_name=debug checkpoint=null model.batch_size=12 encoder=hrnet update_pbar_every=0.5
