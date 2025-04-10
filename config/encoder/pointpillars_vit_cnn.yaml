@@ -51,6 +51,5 @@ patch_feature_dim: 384
 # out_feature_width: 28 # ${model.encoder.in_width} // ${model.encoder.patch_size}
 # out_feature_height: 28 # ${model.encoder.in_height} // ${model.encoder.patch_size}
 
-
-
-
+augmentations:
+    - D4

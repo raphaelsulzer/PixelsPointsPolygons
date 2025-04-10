@@ -26,3 +26,16 @@ out_feature_height: ${.out_feature_size}
 out_feature_width: ${.out_feature_size}
 
 out_feature_dim: 256
+
+
+# ViT doesn't seem to need any normalization
+image_mean: [0.0, 0.0, 0.0]
+image_std: [1.0, 1.0, 1.0]
+image_max_pixel_value: 255.0
+
+augmentations:
+    - D4
+    # - Resize
+    - ColorJitter
+    - GaussNoise
+    - Normalize

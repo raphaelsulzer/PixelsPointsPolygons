@@ -22,8 +22,3 @@ loss_weights:
     loss_afm : 0.1
     loss_remask : 1.0
 
-augmentations:
-    - D4
-    # - Resize
-    - ColorJitter
-    - GaussNoise
