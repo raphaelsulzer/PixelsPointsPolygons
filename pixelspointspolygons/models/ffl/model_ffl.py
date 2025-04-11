@@ -5,6 +5,8 @@ import torch.nn as nn
 from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 
 from ..pointpillars import *
+from ..vit import *
+from ..hrnet import HighResolutionNet as HRNet48v2
 
 from .unet_resnet import UNetResNetBackbone
 
@@ -121,8 +123,16 @@ class FFLModel(torch.nn.Module):
             encoder = MultiEncoderDecoder(self.cfg)
             
         elif self.cfg.use_images:
-            encoder = UNetResNetBackbone(self.cfg)
-            encoder = _SimpleSegmentationModel(encoder, classifier=torch.nn.Identity())
+            
+            if self.cfg.encoder.name == "hrnet":
+                encoder = HRNet48v2(self.cfg,local_rank=local_rank)
+            elif self.cfg.encoder.name == "unetresnet101":
+                encoder = UNetResNetBackbone(self.cfg)
+                encoder = _SimpleSegmentationModel(encoder, classifier=torch.nn.Identity())
+            elif self.cfg.encoder.name == "vit_cnn":
+                encoder = ViTCNN(self.cfg,local_rank=local_rank)
+            else:
+                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
             
         elif self.cfg.use_lidar: 
             

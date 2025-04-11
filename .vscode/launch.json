@@ -9,7 +9,7 @@
             "program": "${workspaceFolder}/scripts/train.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=release",
+                "run_type=debug",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
@@ -41,9 +41,8 @@
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
+                "polygonization.method=[asm]"
                 // "checkpoint=validation_best",
-                // "experiment_name=debug",
-                // "checkpoint_file=/data/rsulzer/ffl_outputs/checkpoint.best_val.epoch_000234.tar"
             ],
             "justMyCode": false,
             "env": {
@@ -89,11 +88,13 @@
             "program": "${workspaceFolder}/data_preprocess/ffl/preprocess_ffl.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=release",
+                // "run_type=release",
+                "run_type=debug",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
+                "encoder=pointpillars_vit" // setting an encoder here, simply to load the 224x224 dataset version
             ],
             "justMyCode": false
         },

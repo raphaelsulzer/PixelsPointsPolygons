@@ -42,7 +42,14 @@ class FFLPredictor(Predictor):
             self.logger.info(f"Saving prediction {k} to {outfile}")
             with open(outfile, "w") as fp:
                 fp.write(json.dumps(coco_predictions))
-
+        
+        self.logger.info(f"Copy asm.tol_1 to predictions/{self.cfg.checkpoint}.json")
+        if "asm.tol_1" in annotations.keys():
+            outfile = os.path.join(os.path.dirname(self.cfg.eval.pred_file), f"{self.cfg.checkpoint}.json")
+            os.makedirs(os.path.dirname(outfile), exist_ok=True)
+            with open(outfile, "w") as fp:
+                fp.write(json.dumps(annotations["asm.tol_1"]))
+        
         
     def predict_from_loader(self, model, loader):
         

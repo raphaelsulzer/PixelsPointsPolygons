@@ -32,4 +32,4 @@ idracct
 module load miniforge/24.9.0 && conda activate ppp
 
 ### reserve interactive node
-srun --ntasks=4 --gres=gpu:4 --account=cso@v100 --time=01:00:00 --pty bash
+srun --ntasks=2 --gres=gpu:2 --account=cso@v100 --time=01:00:00 --pty bash

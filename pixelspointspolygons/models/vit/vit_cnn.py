@@ -29,7 +29,8 @@ class ViTCNN(nn.Module):
             nn.ReLU(inplace=True)
         )
         
-        self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+        ## heads are now defined in the decoder as they should be
+        # self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
 
 
     def forward(self, image):

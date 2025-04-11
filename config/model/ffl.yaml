@@ -11,13 +11,17 @@ encoder:
     compute_vertex: False
 
 decoder:
-    in_feature_size: 512
+    in_feature_size: ${...encoder.in_size} # FFL basically has a feature size equal to input image size
     in_feature_width: ${.in_feature_size}
     in_feature_height: ${.in_feature_size}
-    in_feature_dim: 32
+
+    in_feature_dim: ${if:${eq:${.in_feature_size},512}, 32, 256}  # if in_feature_size is 512, set in_feature_dim to 32, otherwise (=224) set it to 256
 
 point_pillars:
-    out_channels: [32, 32, 32]
+    out_channels: 
+     - ${...decoder.in_feature_dim}
+     - ${...decoder.in_feature_dim}
+     - ${...decoder.in_feature_dim}]
     upsample_strides: [4, 8, 16]
 
 loss:

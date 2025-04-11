@@ -31,19 +31,7 @@ class Print(object):
                 print(key, type(item), item.size, item.mode, np.array(item).min(), np.array(item).max())
             elif type(item) == list:
                 print(key, type(item[0]), len(item))
-        # exit()
-        # print(sample["image"].dtype)
-        # print(sample["image"].shape)
-        # print(sample["image"].min())
-        # print(sample["image"].max())
-        # for key, value in sample.items():
-        #     print(key + ":")
-        #     if type(value) == np.ndarray:
-        #         print(value.shape)
-        #     elif type(value) == list:
-        #         print(len(value))
-        #     else:
-        #         print("a")
+
         return sample
 
 

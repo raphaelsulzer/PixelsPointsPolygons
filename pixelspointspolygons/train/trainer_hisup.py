@@ -17,7 +17,7 @@ from torch import optim
 from transformers import get_cosine_schedule_with_warmup
 from collections import defaultdict
 
-from ..misc import get_lr, get_tile_names_from_dataloader, MetricLogger
+from ..misc import get_lr, get_tile_names_from_dataloader, MetricLogger, denormalize_image_for_visualization
 from ..models.hisup import HiSupModel
 from ..eval import Evaluator
 from ..misc.coco_conversions import generate_coco_ann
@@ -128,8 +128,7 @@ class HiSupTrainer(Trainer):
             ax = ax.flatten()
 
             if self.cfg.use_images:
-                image = (x_image[i].permute(1, 2, 0).cpu().numpy()*np.array(self.cfg.encoder.image_std) + np.array(self.cfg.encoder.image_mean))
-                image = np.clip(image/self.cfg.encoder.image_max_pixel_value, 0, 1)
+                image = denormalize_image_for_visualization(x_image[i], self.cfg)
                 plot_image(image, ax=ax[0])
                 plot_image(image, ax=ax[1])
             if self.cfg.use_lidar:
