@@ -35,6 +35,6 @@ image_max_pixel_value: 255.0
 augmentations:
     - D4
     # - Resize
-    # - ColorJitter
-    # - GaussNoise
+    - ColorJitter
+    - GaussNoise
     - Normalize
