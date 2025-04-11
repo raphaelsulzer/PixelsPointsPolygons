@@ -76,3 +76,5 @@ def coco_anns_to_shapely_polys(coco_anns):
         
         polygons.append(Polygon(poly))
     return polygons
+
+

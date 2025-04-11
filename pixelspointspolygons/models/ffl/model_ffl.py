@@ -5,7 +5,7 @@ import torch.nn as nn
 from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 
 from ..pointpillars import *
-from ..vit import *
+from ..vision_transformer import *
 from ..hrnet import HighResolutionNet as HRNet48v2
 
 from .unet_resnet import UNetResNetBackbone

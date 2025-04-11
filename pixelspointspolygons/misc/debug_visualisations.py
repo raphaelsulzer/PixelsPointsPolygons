@@ -179,7 +179,12 @@ def plot_crossfield_jet(image, mask=None, alpha = 0.7, ax=None, show_axis='off',
     if show:
         plt.show(block=False)
         
+def plot_corners(vertices, ax=None, color=[1,0,1,0.7], pointcolor=None, pointsize=3, show=False):
 
+    ax.plot(vertices[:, 0], vertices[:, 1], color=pointcolor, marker='.', markersize=pointsize, linestyle='none')
+                
+    if show:
+        plt.show(block=False)
 
 def plot_crossfield(crossfield, crossfield_stride=8, ax=None, show_axis='off', mask=None, alpha=0.8, width=1.8, add_scale=0.8, show=False):
     
@@ -229,7 +234,7 @@ def plot_image(image, ax=None, show_axis='off', show=False):
         
 
 
-def plot_point_activations(corner_image, ax=None, show_axis='off', show=False):
+def plot_point_activations(corner_image, color, ax=None, show_axis='off', show=False):
     
     if isinstance(corner_image, torch.Tensor):
         corner_image = corner_image.permute(1, 2, 0).cpu().numpy()
@@ -245,7 +250,7 @@ def plot_point_activations(corner_image, ax=None, show_axis='off', show=False):
     
     # Plot a red cross at each 1 value
     for y, x, _ in ones_coords:
-        ax.plot(x,y, color='magenta', linewidth=25, marker='x')
+        ax.plot(x,y, color=color, markersize=10, linewidth=10, marker='x')
         
     #     # Plot a red cross at each 1 value
     # for x, y, _ in ones_coords:

@@ -1,7 +1,14 @@
 name: pix2poly
 
+decoder:
+    in_feature_size: ${...encoder.patch_feature_size}
+    in_feature_width: ${.in_feature_size}
+    in_feature_height: ${.in_feature_size}
+
+    in_feature_dim: 256
+
 tokenizer: 
-    num_bins: ${..encoder.input_size}
+    num_bins: ${...encoder.in_size}
     shuffle_tokens: false
     n_vertices: 192
     max_len: null

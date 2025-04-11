@@ -344,7 +344,7 @@ class HiSupTrainer(Trainer):
                     self.logger.info("Evaluate validation set with latest model...")
 
                     
-                    if self.is_ddp:
+                    if self.cfg.multi_gpu:
                         
                         # Gather the list of dictionaries from all ranks
                         gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects

@@ -4,10 +4,32 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from timm.models.layers import trunc_normal_
+from torch.nn.parallel import DistributedDataParallel as DDP
 
-from ..pointpillars import PointPillarsEncoder
+from ..pointpillars import PointPillarsViT
+from ..vision_transformer import ViT
 
-from .utils import create_mask
+
+def generate_square_subsequent_mask(sz,device):
+    mask = (
+        torch.triu(torch.ones((sz, sz), device=device)) == 1
+    ).transpose(0, 1)
+
+    mask = mask.float().masked_fill(mask==0, float('-inf')).masked_fill(mask==1, float(0.0))
+
+    return mask
+
+def create_mask(tgt, pad_idx):
+    """
+    tgt shape: (N, L)
+    """
+
+    tgt_seq_len = tgt.size(1)
+    tgt_mask = generate_square_subsequent_mask(tgt_seq_len,device=tgt.device)
+    # changing the type here from bool to float32 to get rid of the torch warning
+    tgt_padding_mask = (tgt == pad_idx).to(dtype=tgt_mask.dtype)
+
+    return tgt_mask, tgt_padding_mask
 
 
 # Borrowed from https://github.com/magicleap/SuperGluePretrainedNetwork/blob/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/superglue.py#L143
@@ -113,23 +135,7 @@ class LiDAREncoder(nn.Module):
         return x
     
 
-class ImageEncoder(nn.Module):
-    
-    def __init__(self, cfg) -> None:
-        super().__init__()
-        self.cfg = cfg
-        self.model = timm.create_model(
-            model_name=cfg.encoder.type,
-            num_classes=0,
-            global_pool='',
-            pretrained=cfg.encoder.pretrained
-        )
-        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_dim)
-    
-    def forward(self, x_images=None, x_lidar=None):
-        
-        features = self.model(x_images)
-        return self.bottleneck(features[:, 1:,:])
+
 
 
 class FeatureFusionLayer(nn.Module):
@@ -366,10 +372,18 @@ class EncoderDecoder(nn.Module):
         self.scorenet2 = ScoreNet(self.n_vertices)
         self.bin_score = torch.nn.Parameter(torch.tensor(1.0))
 
-    def forward(self, x_image, x_lidar, y):
+    def forward(self, x_images, x_lidar, y):
+        
+        if self.cfg.use_images and not self.cfg.use_lidar:
+            features = self.encoder(x_images)
+        elif not self.cfg.use_images and self.cfg.use_lidar:
+            features = self.encoder(x_lidar)
+        elif self.cfg.use_images and self.cfg.use_lidar:
+            features = self.encoder(x_images, x_lidar)
+        else:
+            raise ValueError("At least one of use_images or use_lidar must be True")
                 
-        encoder_out = self.encoder(x_image, x_lidar)
-        preds, feats = self.decoder(encoder_out, y)
+        preds, feats = self.decoder(features, y)
         perm_mat1 = self.scorenet1(feats)
         perm_mat2 = self.scorenet2(feats)
         perm_mat = perm_mat1 + torch.transpose(perm_mat2, 1, 2)
@@ -393,38 +407,44 @@ class EncoderDecoder(nn.Module):
 
 class Pix2PolyModel(torch.nn.Module):
     
-    def __new__(self, cfg, local_rank):
+    def __new__(self, cfg, vocab_size, local_rank):
         
         self.cfg = cfg
                 
         if self.cfg.use_images and self.cfg.use_lidar:
             encoder = MultiEncoder(self.cfg,local_rank)
+            
         elif self.cfg.use_images:
             
-            if self.cfg.encoder.name == "hrnet":
-                encoder = HRNet48v2(self.cfg,local_rank=local_rank)
-            elif self.cfg.encoder.name == "vit_cnn":
-                encoder = ViTCNN(self.cfg,local_rank=local_rank)
+            if self.cfg.encoder.name == "vit":
+                encoder = ViT(self.cfg,local_rank=local_rank)
             else:
-                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__class__.__name__}")
+                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
             
         elif self.cfg.use_lidar: 
             
-            if self.cfg.encoder.name == "pointpillars":
-                encoder = PointPillars(self.cfg,local_rank=local_rank)
-            elif self.cfg.encoder.name == "pointpillars_vit_cnn":
-                encoder = PointPillarsViTCNN(self.cfg,local_rank=local_rank)
+            if self.cfg.encoder.name == "pointpillars_vit":
+                encoder = PointPillarsViT(self.cfg,local_rank=local_rank)
             else:
-                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__class__.__name__}")
+                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
             
         else:
             raise ValueError("Please specify either and image or lidar encoder with encoder=<name>. See help for a list of available encoders.")
         
+        decoder = Decoder(
+            vocab_size=vocab_size,
+            encoder_len=self.cfg.encoder.num_patches,
+            dim=self.cfg.encoder.out_feature_dim,
+            num_heads=8,
+            num_layers=6,
+            max_len=self.cfg.model.tokenizer.max_len,
+            pad_idx=self.cfg.model.tokenizer.pad_idx,
+        )
         model = EncoderDecoder(
             encoder=encoder,
+            decoder=decoder,
             cfg=self.cfg
         )
-        
         model.to(self.cfg.device)
         
         if self.cfg.multi_gpu:

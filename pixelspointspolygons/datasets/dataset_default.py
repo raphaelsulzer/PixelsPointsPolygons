@@ -289,6 +289,11 @@ class DefaultDataset(Dataset):
         
     
     def __getitem__pix2poly(self, index):
+        
+        if not hasattr(self,"tokenizer"):
+            raise ValueError("Tokenizer not set. Please pass a tokenizer to the dataset class when using Pix2Poly.")
+        if self.tokenizer is None:
+            raise ValueError("Tokenizer not set. Please pass a tokenizer to the dataset class when using Pix2Poly.")
 
         img_id = self.tile_ids[index]
         img_info = self.coco.loadImgs(img_id)[0]
@@ -375,13 +380,14 @@ class DefaultDataset(Dataset):
             corner_mask = augmentations['masks'][1]
             corner_coords = np.array(augmentations['keypoints'])
 
-        if self.tokenizer is not None:
-            coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.model.tokenizer.shuffle_tokens)
-            coords_seqs = torch.LongTensor(coords_seqs)
-            if self.cfg.model.tokenizer.shuffle_tokens:
-                perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
-        else:
-            coords_seqs = corner_coords
+        # if self.tokenizer is not None:
+
+        coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.model.tokenizer.shuffle_tokens)
+        coords_seqs = torch.LongTensor(coords_seqs)
+        if self.cfg.model.tokenizer.shuffle_tokens:
+            perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
+        # else:
+        #     coords_seqs = corner_coords
 
         return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
 

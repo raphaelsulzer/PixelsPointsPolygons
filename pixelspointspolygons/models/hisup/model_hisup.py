@@ -13,7 +13,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 # from ..pointpillars import *
 from ..pointpillars import PointPillarsEncoder, PointPillarsViTCNN, PointPillars
-from ..vit import ViTCNN
+from ..vision_transformer import ViTCNN
 from ..multitask_head import MultitaskHead
 
 from ..hrnet import HighResolutionNet as HRNet48v2

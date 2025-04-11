@@ -98,15 +98,15 @@ class AverageMeter:
         self.reset()
 
     def reset(self):
-        self.avg, self.sum, self.count = [0]*3
+        self.global_avg, self.sum, self.count = [0]*3
 
     def update(self, val, count=1):
         self.count += count
         self.sum += val * count
-        self.avg = self.sum / self.count
+        self.global_avg = self.sum / self.count
 
     def __repr__(self) -> str:
-        text = f"{self.name}: {self.avg:.4f}"
+        text = f"{self.name}: {self.global_avg:.4f}"
         return text
 
 class SmoothedValue:
