@@ -26,7 +26,7 @@ from ..misc import AverageMeter, get_lr, get_tile_names_from_dataloader, denorma
 from ..predict.predictor_pix2poly import Pix2PolyPredictor as Predictor
 from ..eval import Evaluator
 from ..misc.debug_visualisations import *
-from ..misc.coco_conversions import coco_anns_to_shapely_polys
+from ..misc.coco_conversions import coco_anns_to_shapely_polys, tensor_to_shapely_polys
 
 from .trainer import Trainer
 
@@ -152,13 +152,14 @@ class Pix2PolyTrainer(Trainer):
             
             if coco is not None:
                 polygons = coco_anns[i]
+                polygons = coco_anns_to_shapely_polys(polygons)
             elif batch_polygons is not None:
                 polygons = batch_polygons[i]
+                polygons = tensor_to_shapely_polys(polygons)
             else:
                 polygons = []
 
             if len(polygons):
-                polygons = coco_anns_to_shapely_polys(polygons)
                 plot_shapely_polygons(polygons, ax=ax[1],pointcolor=[1,1,0],edgecolor=[1,0,1])
                 
             ax[0].set_title("GT_"+names[i])

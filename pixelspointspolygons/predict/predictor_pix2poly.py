@@ -33,7 +33,6 @@ class Pix2PolyPredictor(Predictor):
             height=self.cfg.encoder.input_height,
             max_len=self.cfg.model.tokenizer.max_len
         )
-        
 
         val_loader = get_val_loader(self.cfg,tokenizer)
         

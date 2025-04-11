@@ -18,7 +18,7 @@ import torch.distributed as dist
 from tqdm import tqdm
 from omegaconf import OmegaConf
 
-from ..misc import make_logger, get_lr, seed_everything
+from ..misc import make_logger, get_lr, seed_everything, smart_load_state_dict
 from ..datasets import get_train_loader, get_val_loader
 from ..predict import Predictor
 from ..eval import Evaluator

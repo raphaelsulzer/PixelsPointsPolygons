@@ -6,6 +6,7 @@ from shapely.geometry import Polygon
 from skimage.measure import label, regionprops
 from pycocotools import mask as coco_mask
 
+from timm.models import VisionTransformer
 
 def get_bbox_from_coco_seg(poly):
     """
@@ -78,3 +79,13 @@ def coco_anns_to_shapely_polys(coco_anns):
     return polygons
 
 
+def tensor_to_shapely_polys(polygons_list):
+
+    polygons = []
+    for poly in polygons_list:
+        poly = np.array(poly)
+        # xmin, ymin, w, h = ann.get('bbox')
+        # bbox_poly = Polygon([(xmin, ymin), (xmin + w, ymin), (xmin + w, ymin + h), (xmin, ymin + h)])
+        
+        polygons.append(Polygon(poly))
+    return polygons
