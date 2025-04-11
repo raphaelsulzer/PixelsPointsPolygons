@@ -3,14 +3,14 @@
 #OAR -q production 
 #OAR -l host=1/gpu=2,walltime=16
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
-#OAR -O oar/runs/ffl_lidar_pp_o3d.out
-#OAR -E oar/runs/ffl_lidar_pp_o3d.out 
+#OAR -O oar/runs/image_ffl_vit_cnn.out
+#OAR -E oar/runs/image_ffl_vit_cnn.out
 
-## display some information about attributed resources
+# display some information about attributed resources
 hostname 
 nvidia-smi 
 
-## make use of a python torch environment
+# make use of a python torch environment
 module load conda
 conda activate ppp
 python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))";
@@ -22,11 +22,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-## install pointpillars
-# cd ../PointPillars
-# python setup.py build_ext --inplace
-# pip install .
-# cd ../PixelsPointPolygons
-
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=v3_lidar_pp_o3d_bs2x16 checkpoint=null model.batch_size=16 encoder=pointpillars model=ffl
-
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=image_vit_cnn_bs2x16 checkpoint=null model.batch_size=16 encoder=vit_cnn model=ffl
