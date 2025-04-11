@@ -4,6 +4,8 @@ import torch.nn as nn
 
 from ...misc import make_logger
 
+# from timm.models import VisionTransformer
+
 class ViT(nn.Module):
     
     def __init__(self, cfg, local_rank=0) -> None:
@@ -17,7 +19,8 @@ class ViT(nn.Module):
             model_name=cfg.encoder.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.encoder.pretrained
+            pretrained=cfg.encoder.pretrained,
+            checkpoint_path=cfg.encoder.checkpoint_file
         )
         self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_feature_dim)
     

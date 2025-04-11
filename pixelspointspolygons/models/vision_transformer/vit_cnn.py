@@ -19,7 +19,8 @@ class ViTCNN(nn.Module):
             model_name=cfg.encoder.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.encoder.pretrained
+            pretrained=cfg.encoder.pretrained,
+            checkpoint_path=cfg.encoder.checkpoint_file
         )
         
         self.proj = nn.Sequential(
