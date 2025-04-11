@@ -1,2 +1,2 @@
-from .model_pix2poly import LiDAREncoder, ImageEncoder, MultiEncoder, EncoderDecoder, Decoder
+from .model_pix2poly import Pix2PolyModel
 from .tokenizer import Tokenizer

@@ -1,9 +1,11 @@
 defaults:
   # - encoder: hrnet
   # - encoder: pointpillars
-  - encoder: pointpillars_vit_cnn
+  # - encoder: pointpillars_vit_cnn
   # - encoder: vit_cnn
-  - model: ffl
+  - encoder: vit
+  # - model: ffl
+  - model: pix2poly
   # - model: hisup
   - polygonization: asm_acm
   - dataset: lidarpoly

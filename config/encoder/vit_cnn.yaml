@@ -3,21 +3,20 @@ name: vit_cnn
 use_images: true
 use_lidar: false
 
+pretrained: True
 checkpoint_file: null # will load from official pretrained checkpoint
 type: vit_small_patch${.patch_size}_${.in_size}.dino
 
+# image/lidar input dimensions
 in_size: 224
 in_height: ${.in_size}
 in_width: ${.in_size}
 
-pretrained: True
-
+# patching
 patch_size: 8
-
 patch_feature_size: 28
 patch_feature_height: ${.patch_feature_size}
 patch_feature_width: ${.patch_feature_size}
-
 patch_feature_dim: 384
 
 

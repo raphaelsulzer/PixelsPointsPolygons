@@ -63,6 +63,8 @@ def collate_fn_hisup(batch, cfg):
     return image_batch, lidar_batch, annotations_batch, tile_id_batch
 
 
+
+
 def collate_fn_pix2poly(batch, cfg):
     """
     if max_len:

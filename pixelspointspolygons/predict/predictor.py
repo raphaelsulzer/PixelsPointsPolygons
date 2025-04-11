@@ -21,6 +21,8 @@ class Predictor:
         self.local_rank = local_rank
         self.world_size = world_size
 
+        self.device = torch.device(f"cuda:{local_rank}")
+
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
 

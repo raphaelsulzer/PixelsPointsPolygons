@@ -15,18 +15,19 @@ import torch
 
 import torch.distributed as dist
 
-from torch.nn.parallel import DistributedDataParallel as DDP
-from tqdm import tqdm
-from omegaconf import OmegaConf
+from collections import defaultdict
 from torch import nn
 from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
-from ..models.pix2poly import Tokenizer, ImageEncoder, LiDAREncoder, MultiEncoder, EncoderDecoder, Decoder
-from ..misc import AverageMeter, make_logger, get_lr, get_tile_names_from_dataloader, plot_pix2poly, seed_everything
 from ..datasets import get_train_loader, get_val_loader
+from ..models.pix2poly import Tokenizer, Pix2PolyModel
+from ..misc import AverageMeter, get_lr, get_tile_names_from_dataloader, denormalize_image_for_visualization
 from ..predict.predictor_pix2poly import Pix2PolyPredictor as Predictor
 from ..eval import Evaluator
+from ..misc.debug_visualisations import *
+from ..misc.coco_conversions import coco_anns_to_shapely_polys
+
 from .trainer import Trainer
 
 class Pix2PolyTrainer(Trainer):
@@ -51,57 +52,27 @@ class Pix2PolyTrainer(Trainer):
     def setup_tokenizer(self):
         self.tokenizer = Tokenizer(num_classes=1,
             num_bins=self.cfg.model.tokenizer.num_bins,
-            width=self.cfg.encoder.input_width,
-            height=self.cfg.encoder.input_height,
+            width=self.cfg.encoder.in_width,
+            height=self.cfg.encoder.in_height,
             max_len=self.cfg.model.tokenizer.max_len
         )
     
-    def setup_cfg_vars(self):
-    
+    def setup_model(self):
+        
+        self.setup_tokenizer()
         self.cfg.model.tokenizer.pad_idx = self.tokenizer.PAD_code
         self.cfg.model.tokenizer.max_len = self.cfg.model.tokenizer.n_vertices*2+2
         self.cfg.model.tokenizer.generation_steps = self.cfg.model.tokenizer.n_vertices*2+1
-        self.cfg.encoder.num_patches = int((self.cfg.encoder.input_size // self.cfg.encoder.patch_size) ** 2)
-    
-    def setup_model(self):
         
-        ## TODO: maybe it is better to make a model class that goes inside the model_{archictecture}.py file, which can then also be used by the Predictor class
-        ## See FFL where this is already done
+        self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
         
-        if self.cfg.use_images and self.cfg.use_lidar:
-            encoder = MultiEncoder(self.cfg)
-        elif self.cfg.use_images:
-            encoder = ImageEncoder(self.cfg)
-        elif self.cfg.use_lidar: 
-            encoder = LiDAREncoder(self.cfg)
-        else:
-            raise ValueError("At least one of use_image or use_lidar must be True")
-        
-        decoder = Decoder(
-            vocab_size=self.tokenizer.vocab_size,
-            encoder_len=self.cfg.encoder.num_patches,
-            dim=self.cfg.encoder.out_dim,
-            num_heads=8,
-            num_layers=6,
-            max_len=self.cfg.model.tokenizer.max_len,
-            pad_idx=self.cfg.model.tokenizer.pad_idx,
-        )
-        model = EncoderDecoder(
-            encoder=encoder,
-            decoder=decoder,
-            cfg=self.cfg
-        )
-        model.to(self.cfg.device)
-        
-        if self.is_ddp:
-            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model = DDP(model, device_ids=[self.local_rank])
-        
-        self.model = model
-        
-        self.setup_tokenizer()
-        self.setup_cfg_vars()
 
+
+    def setup_dataloader(self):
+        """Pix2Poly needs a tokenizer in the dataset __get_item__ method to tokenize the polygons. Thus overwrite the setup_dataloader method here."""
+        
+        self.train_loader = get_train_loader(self.cfg,logger=self.logger,tokenizer=self.tokenizer)
+        self.val_loader = get_val_loader(self.cfg,logger=self.logger,tokenizer=self.tokenizer)
 
     def setup_optimizer(self):
         # Get optimizer
@@ -123,7 +94,83 @@ class Pix2PolyTrainer(Trainer):
         weight[self.tokenizer.num_bins:self.tokenizer.BOS_code] = 0.0
         self.loss_fn_dict["vertex"] = nn.CrossEntropyLoss(ignore_index=self.cfg.model.tokenizer.pad_idx, label_smoothing=self.cfg.model.label_smoothing, weight=weight)
         self.loss_fn_dict["perm"] = nn.BCELoss()
+    
+    
+    def visualization(self,  loader, epoch, predictor=None, coco=None, num_images=2):
         
+        self.model.eval()
+        
+        x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids = next(iter(loader))
+        
+        # TODO: maybe plot y_sequence instead of y_corner_mask, because it is the input to the model
+        if self.cfg.use_images:
+            x_image = x_image.to(self.cfg.device, non_blocking=True)
+            x_image = x_image[:num_images]
+        if self.cfg.use_lidar:
+            x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+            x_lidar = x_lidar[:num_images]
+
+        if predictor is not None:
+            batch_polygons = predictor.batch_to_polygons(x_image, x_lidar, self.model, self.tokenizer)
+            if not len(batch_polygons):
+                batch_polygons = None
+        else: 
+            batch_polygons = None
+        
+        outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
+        os.makedirs(outpath, exist_ok=True)
+        self.logger.info(f"Save visualizations to {outpath}")
+        
+        coco_anns = defaultdict(list)
+        if coco is not None:
+            for ann in coco:
+                if ann["image_id"] >= num_images: 
+                    break
+                coco_anns[ann["image_id"]].append(ann)
+                
+        if self.cfg.use_lidar:
+            lidar_batches = torch.unbind(x_lidar, dim=0)
+            
+        names = get_tile_names_from_dataloader(loader, tile_ids.cpu().numpy().flatten().tolist())
+
+        for i in range(num_images):
+        
+            fig, ax = plt.subplots(1,2,figsize=(8, 4), dpi=150)
+            ax = ax.flatten()
+
+            if self.cfg.use_images:
+                image = denormalize_image_for_visualization(x_image[i], self.cfg)
+                plot_image(image, ax=ax[0])
+                plot_image(image, ax=ax[1])
+            if self.cfg.use_lidar:
+                plot_point_cloud(lidar_batches[i], ax=ax[0])
+                plot_point_cloud(lidar_batches[i], ax=ax[1])
+                
+            mask_color = [1,0,1,0.6]
+            plot_mask(y_mask[i], ax=ax[0], color=mask_color)
+            plot_point_activations(y_corner_mask[i], ax=ax[0], color=[1,1,0,1.0])
+            
+            if coco is not None:
+                polygons = coco_anns[i]
+            elif batch_polygons is not None:
+                polygons = batch_polygons[i]
+            else:
+                polygons = []
+
+            if len(polygons):
+                polygons = coco_anns_to_shapely_polys(polygons)
+                plot_shapely_polygons(polygons, ax=ax[1],pointcolor=[1,1,0],edgecolor=[1,0,1])
+                
+            ax[0].set_title("GT_"+names[i])
+            ax[1].set_title("PRED_"+names[i])
+            
+            plt.tight_layout()
+            outfile = os.path.join(outpath, f"{names[i]}.png")
+            self.logger.debug(f"Save visualization to {outfile}")
+            plt.savefig(outfile)
+            if self.cfg.log_to_wandb and self.local_rank == 0:
+                wandb.log({f"{epoch}: {names[i]}": wandb.Image(fig)})            
+            plt.close(fig)
         
     def valid_one_epoch(self):
 
@@ -169,7 +216,7 @@ class Pix2PolyTrainer(Trainer):
             perm_loss_meter.update(perm_loss.item(), batch_size)
 
 
-        self.logger.debug(f"Validation loss: {loss_meter.avg:.3f}")
+        self.logger.debug(f"Validation loss: {loss_meter.global_avg:.3f}")
         loss_dict = {
             'total_loss': self.average_across_gpus(loss_meter),
             'vertex_loss': self.average_across_gpus(vertex_loss_meter),
@@ -197,13 +244,7 @@ class Pix2PolyTrainer(Trainer):
 
         for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids in loader:
                         
-            batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
-            
-            # ### debug vis
-            if self.cfg.debug_vis:
-                file_names = get_tile_names_from_dataloader(self.train_loader.dataset.coco.imgs, tile_ids)
-                # plot_pix2poly(image_batch=x_image,lidar_batch=x_lidar,mask_batch=y_mask,corner_image_batch=y_corner_mask,tile_names=file_names)        
-                plot_pix2poly(image_batch=x_image,lidar_batch=x_lidar,corner_image_batch=y_corner_mask,tile_names=file_names)        
+            batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)     
             
             if self.cfg.use_images:
                 x_image = x_image.to(self.cfg.device, non_blocking=True)
@@ -242,7 +283,7 @@ class Pix2PolyTrainer(Trainer):
 
             lr = get_lr(self.optimizer)
 
-            loader.set_postfix(train_loss=loss_meter.avg, lr=f"{lr:.5f}")
+            loader.set_postfix(train_loss=loss_meter.global_avg, lr=f"{lr:.5f}")
 
             iter_idx += 1
 
@@ -250,7 +291,7 @@ class Pix2PolyTrainer(Trainer):
             #     break
             
         
-        self.logger.debug(f"Train loss: {loss_meter.avg:.3f}")
+        self.logger.debug(f"Train loss: {loss_meter.global_avg:.3f}")
         loss_dict = {
             'total_loss': self.average_across_gpus(loss_meter),
             'vertex_loss': self.average_across_gpus(vertex_loss_meter),
@@ -299,8 +340,9 @@ class Pix2PolyTrainer(Trainer):
             if self.is_ddp:
                 dist.barrier()
             
-            with torch.no_grad:
+            with torch.no_grad():
                 if self.local_rank == 0:
+                    self.visualization(self.train_loader,epoch,predictor=predictor)
                     wandb_dict ={}
                     wandb_dict['epoch'] = epoch
                     for k, v in train_loss_dict.items():
@@ -340,7 +382,7 @@ class Pix2PolyTrainer(Trainer):
                 if (epoch + 1) % self.cfg.val_every == 0:
 
                     self.logger.info("Predict validation set with latest model...")
-                    coco_predictions = predictor.predict_dataset(self.model,self.tokenizer,self.val_loader)
+                    coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)
                     
                     
                     self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
@@ -353,13 +395,13 @@ class Pix2PolyTrainer(Trainer):
 
                         # Flatten the list of lists into a single list
                         coco_predictions = [item for sublist in gathered_predictions for item in sublist]
-                        
                     
                     if not len(coco_predictions):
                         self.logger.info("No polygons predicted. Skipping coco evaluation...")
-                        continue
-                        
-                    if self.local_rank == 0:
+                    else:
+                        self.visualization(self.val_loader,epoch,coco=coco_predictions)
+                    
+                    if self.local_rank == 0 and len(coco_predictions):
                         self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 
                         self.logger.info(f"Run coco evaluation on rank {self.local_rank}...")
 
