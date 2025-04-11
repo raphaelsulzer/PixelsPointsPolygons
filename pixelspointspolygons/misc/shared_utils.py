@@ -7,7 +7,7 @@ import contextlib
 import numpy as np
 import torch.distributed as dist
 
-from collections import deque
+from collections import deque, OrderedDict
 
 @contextlib.contextmanager
 def suppress_stdout():
@@ -19,8 +19,69 @@ def suppress_stdout():
             yield
         finally:
             sys.stdout = old_stdout
-    
 
+
+def denormalize_image_for_visualization(image, cfg):
+    """Reverse albumentations formula given here: https://explore.albumentations.ai/transform/Normalize
+    A bit overkill with the division by image_max_pixel_value, but this is what is applied internally, so it should be checked here by showing that the plot is correct"""
+    
+    if isinstance(image, torch.Tensor):
+        image = image.permute(1, 2, 0).cpu().numpy()
+    
+    std = np.array(cfg.encoder.image_std)
+    mean = np.array(cfg.encoder.image_mean)
+    max_pixel_val = cfg.encoder.image_max_pixel_value
+    
+    image = image * std * max_pixel_val + (mean * max_pixel_val)
+    
+    image = image.astype(np.uint8)
+    
+    return image
+
+def smart_load_state_dict(model, checkpoint_state_dict, logger, strict=True):
+    model_state_dict = model.state_dict()
+    new_state_dict = OrderedDict()
+
+    unmatched_model_keys = set(model_state_dict.keys())
+    unmatched_checkpoint_keys = set(checkpoint_state_dict.keys())
+
+    for ckpt_key in checkpoint_state_dict.keys():
+        # Exact match first
+        if ckpt_key in model_state_dict:
+            new_state_dict[ckpt_key] = checkpoint_state_dict[ckpt_key]
+            unmatched_model_keys.discard(ckpt_key)
+            unmatched_checkpoint_keys.discard(ckpt_key)
+        else:
+            # Try to match by suffix (removing "module." or adding it)
+            for model_key in model_state_dict.keys():
+                if ckpt_key.endswith(model_key):
+                    new_state_dict[model_key] = checkpoint_state_dict[ckpt_key]
+                    unmatched_model_keys.discard(model_key)
+                    unmatched_checkpoint_keys.discard(ckpt_key)
+                    break
+                if model_key.endswith(ckpt_key):
+                    new_state_dict[model_key] = checkpoint_state_dict[ckpt_key]
+                    unmatched_model_keys.discard(model_key)
+                    unmatched_checkpoint_keys.discard(ckpt_key)
+                    break
+
+    logger.debug("Loading model state dict report")
+    logger.debug(f"Matched {len(model_state_dict) - len(unmatched_model_keys)} / {len(model_state_dict)} keys")
+
+    if unmatched_model_keys:
+        logger.debug("Unmatched model keys (not found in checkpoint):")
+        for k in unmatched_model_keys:
+            logger.debug(f"  - {k}")
+
+    if unmatched_checkpoint_keys:
+        logger.debug("Unused checkpoint keys (not used in model):")
+        for k in unmatched_checkpoint_keys:
+            logger.debug(f"  - {k}")
+
+    # Load matched params only
+    model.load_state_dict(new_state_dict, strict=strict)
+
+    return model
 
 def seed_everything(seed=1234):
     random.seed(seed)

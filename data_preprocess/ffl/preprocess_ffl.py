@@ -3,6 +3,7 @@ import pathlib
 import warnings
 import hydra
 import json
+import logging
 
 import skimage.io
 from multiprocessing import Pool
@@ -22,26 +23,28 @@ import torch
 from omegaconf import OmegaConf
 from copy import deepcopy
 
-# from lydorn_utils import print_utils
-# from lydorn_utils import python_utils
-
 from torch_lydorn.torch.utils.data import __repr__
-
-from torch_lydorn.torchvision.datasets import utils
-
 
 import data_transforms
 
-class DatasetWithPreprocessing(torch.utils.data.Dataset):
-    def __init__(self, root, pre_transform, fold="train", pool_size=1):
+from pixelspointspolygons.misc import make_logger
+
+class FFLPreprocessing(torch.utils.data.Dataset):
+    def __init__(self, cfg, pre_transform, fold="train"):
         super().__init__()
+        
+        self.cfg = cfg
+        
+        verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
+        self.logger = make_logger(self.__class__.__name__, level=verbosity)
+        
         assert fold in ["train", "val", "test_images"], "Input fold={} should be in [\"train\", \"val\", \"test_images\"]".format(fold)
 
-        self.root = root
+        self.root = cfg.dataset.path
         self.fold = fold
         os.makedirs(self.processed_dir, exist_ok=True)
 
-        self.pool_size = pool_size
+        self.pool_size = cfg.run_type.num_workers
 
         self.coco = None
         self.image_id_list = self.load_image_ids()
@@ -53,6 +56,10 @@ class DatasetWithPreprocessing(torch.utils.data.Dataset):
 
         self.pre_transform = pre_transform
         # super(DatasetPreprocessor, self).__init__(root, None, pre_transform)
+        
+        self.logger.info("DatasetPreprocessor initialized with root={}, fold={}, pool_size={}".format(self.root, self.fold, self.pool_size))
+        
+        a=5
 
     def load_image_ids(self):
 
@@ -79,7 +86,7 @@ class DatasetWithPreprocessing(torch.utils.data.Dataset):
 
     @property
     def processed_dir(self):
-        return os.path.join(self.root, 'processed', self.fold)
+        return os.path.join(self.root, 'ffl', self.fold)
 
     @property
     def processed_file_names(self):
@@ -90,12 +97,6 @@ class DatasetWithPreprocessing(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.image_id_list)
-
-    def _download(self):
-        pass
-
-    def download(self):
-        pass
 
     def _process(self):
         f = os.path.join(self.processed_dir, 'pre_transform.pt')
@@ -146,7 +147,7 @@ class DatasetWithPreprocessing(torch.utils.data.Dataset):
             
             image_info_list.append(image_info)
 
-            image_info_with_pt_file["ffl_pt_path"] = f"processed/{self.fold}/{image_info['name']}"
+            image_info_with_pt_file["ffl_pt_path"] = f"ffl/{self.fold}/{image_info['name']}"
             image_info_with_pt_file_list.append(image_info_with_pt_file)
             
         
@@ -188,7 +189,7 @@ class DatasetWithPreprocessing(torch.utils.data.Dataset):
         coco_ds = deepcopy(coco.dataset)
         coco_ds["images"] = image_info_with_pt_file_list
         
-        new_annotation_outfile = os.path.join(self.root, f"annotations_{self.fold}_processed.json")
+        new_annotation_outfile = os.path.join(self.root, f"annotations_ffl_{self.fold}.json")
         with open(new_annotation_outfile, 'w') as f_json:
             json.dump(coco_ds, f_json)
 
@@ -257,9 +258,11 @@ def preprocess_one(image_info, pre_transform):
             coords = np.reshape(flattened_arrays, (-1, 2))
             polygon = shapely.geometry.Polygon(coords)
 
-            # Filter out degenerate polygons (area is lower than 2.0)
-            if 2.0 < polygon.area:
-                gt_polygons.append(polygon)
+            ### do not do this here, it is already done in my own preprocessing
+            # # Filter out degenerate polygons (area is lower than 2.0)
+            # if 2.0 < polygon.area:
+            #     gt_polygons.append(polygon)
+            gt_polygons.append(polygon)
 
         data = {
             "image": image,
@@ -268,10 +271,16 @@ def preprocess_one(image_info, pre_transform):
             "name": image_info["name"],
             "image_id": image_info["id"]
         }
+
         
         data = pre_transform(data)
+        
+        data_needed_in_ppp = {}
+        for k,v in data.items():
+            if k in ['image_id', 'gt_polygons_image', 'distances', 'sizes', 'gt_crossfield_angle']:
+                data_needed_in_ppp[k] = v
 
-        torch.save(data, image_info["pt_outfile"])
+        torch.save(data_needed_in_ppp, image_info["pt_outfile"])
 
     # Compute stats for later aggregation for the whole dataset
     normed_image = data["image"] / 255
@@ -292,13 +301,12 @@ def main(cfg):
     OmegaConf.resolve(cfg)
     
     fold = "train"
-    fold = "val"
+    # fold = "val"
     
-    dataset = DatasetWithPreprocessing(cfg.dataset.path,
+    dataset = FFLPreprocessing(cfg,
                                pre_transform=data_transforms.get_offline_transform_patch(),
-                               fold=fold,
-                               pool_size=cfg.num_workers)
-    # dataset._process()
+                               fold=fold)
+    dataset._process()
 
 
     # TODO: need to decide how to integrate this into PPP.
@@ -314,43 +322,45 @@ def main(cfg):
     
     ## UPDATE: I should really just add all of this to the ppp_dataset preprocessing and directly store the ffl_info inside the 
     ## COCO annotations file.
+    ## UPDATE 2: maybe also not a good idea, because the necessary data are tensors, which probably shouldn't go inside the annotatinos.json file
+    ## -> keeping it like this for now
 
     ###########################################
     ########### DEBUG VISUALIZATION ###########
     ###########################################
-    for i in range(len(dataset)):
-        print("Images:")
-        # Save output to visualize
-        seg = np.array(dataset[i]["gt_polygons_image"])
-        # seg = np.moveaxis(seg, 0, -1)
-        seg_display = utils.get_seg_display(seg)
-        seg_display = (seg_display * 255).astype(np.uint8)
-        skimage.io.imsave("gt_seg.png", seg_display)
-        skimage.io.imsave("gt_seg_edge.png", seg[:, :, 1])
+    # for i in range(len(dataset)):
+    #     print("Images:")
+    #     # Save output to visualize
+    #     seg = np.array(dataset[i]["gt_polygons_image"])
+    #     # seg = np.moveaxis(seg, 0, -1)
+    #     seg_display = utils.get_seg_display(seg)
+    #     seg_display = (seg_display * 255).astype(np.uint8)
+    #     skimage.io.imsave("gt_seg.png", seg_display)
+    #     skimage.io.imsave("gt_seg_edge.png", seg[:, :, 1])
 
-        im = np.array(dataset[i]["image"])
-        # im = np.moveaxis(im, 0, -1)
-        skimage.io.imsave('im.png', im)
+    #     im = np.array(dataset[i]["image"])
+    #     # im = np.moveaxis(im, 0, -1)
+    #     skimage.io.imsave('im.png', im)
 
-        gt_crossfield_angle = np.array(dataset[i]["gt_crossfield_angle"])
-        # gt_crossfield_angle = np.moveaxis(gt_crossfield_angle, 0, -1)
-        skimage.io.imsave('gt_crossfield_angle.png', gt_crossfield_angle)
+    #     gt_crossfield_angle = np.array(dataset[i]["gt_crossfield_angle"])
+    #     # gt_crossfield_angle = np.moveaxis(gt_crossfield_angle, 0, -1)
+    #     skimage.io.imsave('gt_crossfield_angle.png', gt_crossfield_angle)
 
-        distances = np.array(dataset[i]["distances"])
-        # distances = np.moveaxis(distances, 0, -1)
-        distances = 255-(distances*255).astype(np.uint8)
-        skimage.io.imsave('distances.png', distances)
+    #     distances = np.array(dataset[i]["distances"])
+    #     # distances = np.moveaxis(distances, 0, -1)
+    #     distances = 255-(distances*255).astype(np.uint8)
+    #     skimage.io.imsave('distances.png', distances)
 
-        sizes = np.array(dataset[i]["sizes"])
-        # sizes = np.moveaxis(sizes, 0, -1)
-        sizes = 255-(sizes*255).astype(np.uint8)
-        skimage.io.imsave('sizes.png', sizes)
+    #     sizes = np.array(dataset[i]["sizes"])
+    #     # sizes = np.moveaxis(sizes, 0, -1)
+    #     sizes = 255-(sizes*255).astype(np.uint8)
+    #     skimage.io.imsave('sizes.png', sizes)
 
-        # valid_mask = np.array(dataset[i]["valid_mask"])
-        # # valid_mask = np.moveaxis(valid_mask, 0, -1)
-        # skimage.io.imsave('valid_mask.png', valid_mask)
+    #     # valid_mask = np.array(dataset[i]["valid_mask"])
+    #     # # valid_mask = np.moveaxis(valid_mask, 0, -1)
+    #     # skimage.io.imsave('valid_mask.png', valid_mask)
 
-        input("Press enter to continue...")
+    #     input("Press enter to continue...")
     
 if __name__ == '__main__':
     main()

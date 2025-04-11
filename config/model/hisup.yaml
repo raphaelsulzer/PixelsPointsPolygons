@@ -1,7 +1,7 @@
 name: hisup
 
 decoder:
-    in_feature_size: 128
+    in_feature_size: ${if:${eq:${...encoder.name},hrnet}, 128, 224} # 128 for hrnet, 224 for ViT. This doesn't work for other type though
     in_feature_width: ${.in_feature_size}
     in_feature_height: ${.in_feature_size}
 

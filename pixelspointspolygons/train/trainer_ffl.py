@@ -16,7 +16,7 @@ import torch.distributed as dist
 from collections import defaultdict
 from transformers import  get_cosine_schedule_with_warmup
 
-from ..misc import get_lr, MetricLogger, get_tile_names_from_dataloader
+from ..misc import get_lr, MetricLogger, get_tile_names_from_dataloader, denormalize_image_for_visualization
 from ..models.ffl.losses import build_combined_loss
 from ..models.ffl.local_utils import batch_to_cuda
 from ..models.ffl.model_ffl import FFLModel
@@ -90,10 +90,10 @@ class FFLTrainer(Trainer):
             ax = ax.flatten()
 
             if self.cfg.use_images:
-                image = (batch["image"][i].permute(1, 2, 0).cpu().numpy()*np.array(self.cfg.encoder.image_std) + np.array(self.cfg.encoder.image_mean))
-                image = np.clip(image/self.cfg.encoder.image_max_pixel_value, 0, 1)
-                plot_image(batch["image"][i], ax=ax[0])
-                plot_image(batch["image"][i], ax=ax[1])
+
+                image = denormalize_image_for_visualization(batch["image"][i], self.cfg)
+                plot_image(image, ax=ax[0])
+                plot_image(image, ax=ax[1])
             if self.cfg.use_lidar:
                 plot_point_cloud(lidar_batches[i], ax=ax[0])
                 plot_point_cloud(lidar_batches[i], ax=ax[1])

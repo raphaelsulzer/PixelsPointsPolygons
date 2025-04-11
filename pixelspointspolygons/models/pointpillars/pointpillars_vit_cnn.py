@@ -24,7 +24,8 @@ class PointPillarsViTCNN(nn.Module):
             nn.ReLU(inplace=True)
         )
         
-        self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+        ## TODO: the head should go in the decoder!        
+        # self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
 
 
     def forward(self, points):

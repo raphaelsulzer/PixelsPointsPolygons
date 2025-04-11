@@ -5,9 +5,6 @@ import os
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
 import logging
-import time
-import json
-import cv2
 import torch
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
@@ -82,19 +79,8 @@ class Predictor:
                     self.logger.error(f"Model checkpoint was trained with fusion={cfg.model.fusion}, but current config is fusion={self.cfg.model.fusion}.")
                     raise ValueError("Model checkpoint and current config do not match.")   
         
-        ## load the model weights
-        if not self.cfg.multi_gpu:
-            model_state_dict = {k.replace(".module.", "."): v for k, v in checkpoint["model"].items()}      
-            # model_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["model"].items()}      
-        else:
-            model_state_dict = checkpoint["model"]  
-            
-        # model_state_dict = {k.replace("image_backbone.", "encoder.backbone."): v for k, v in model_state_dict.items()}
-        # model_state_dict = {k.replace("pillar_", "encoder.backbone.pillar_"): v for k, v in model_state_dict.items()} 
-        # model_state_dict = {k.replace("encoder.backbone.pillar_head", "encoder.backbone.head"): v for k, v in model_state_dict.items()} 
-        # model_state_dict = {k.replace("encoder.vision_transformer", "encoder.pp_vit.vision_transformer"): v for k, v in model_state_dict.items()}
-
-        self.model.load_state_dict(model_state_dict)
+        # self.model.load_state_dict(model_state_dict)
+        self.model = smart_load_state_dict(self.model, checkpoint["model"], self.logger, strict=True)
         epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))
         
         self.logger.info(f"Model loaded from epoch: {epoch}")

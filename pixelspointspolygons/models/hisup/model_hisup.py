@@ -141,6 +141,7 @@ class EncoderDecoder(nn.Module):
         self.mask_head = self._make_conv(dim_in, dim_in, dim_in)
         self.jloc_head = self._make_conv(dim_in, dim_in, dim_in)
         self.afm_head = self._make_conv(dim_in, dim_in, dim_in)
+        self.joff_head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
 
         self.a2m_att = ECA(dim_in)
         self.a2j_att = ECA(dim_in)
@@ -151,6 +152,7 @@ class EncoderDecoder(nn.Module):
 
         self.refuse_conv = self._make_conv(2, dim_in//2, dim_in)
         self.final_conv = self._make_conv(dim_in*2, dim_in, 2)
+        
 
     def _make_conv(self, dim_in, dim_hid, dim_out):
         layer = nn.Sequential(
@@ -208,7 +210,7 @@ class EncoderDecoder(nn.Module):
         else:
             raise ValueError("At least one of use_images or use_lidar must be True")
         
-        outputs = self.encoder.head(features)
+        joff_pred = self.joff_head(features)
 
         mask_feature = self.mask_head(features)
         jloc_feature = self.jloc_head(features)
@@ -224,15 +226,15 @@ class EncoderDecoder(nn.Module):
         afm_conv = self.refuse_conv(afm_pred)
         remask_pred = self.final_conv(torch.cat((features, afm_conv), dim=1))
         
-        return targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred
+        return targets, joff_pred, jloc_pred, mask_pred, afm_pred, remask_pred
 
     
     def forward_val(self, x_images, x_lidar, y):
         
-        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(x_images, x_lidar, y)
+        targets, joff_pred, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(x_images, x_lidar, y)
         
-        assert outputs.size(2) == self.pred_height
-        assert outputs.size(3) == self.pred_width
+        assert joff_pred.size(2) == self.pred_height
+        assert joff_pred.size(3) == self.pred_width
 
         ##########################
         ######## val loss ########    
@@ -240,7 +242,7 @@ class EncoderDecoder(nn.Module):
         loss_dict = self.init_loss_dict()
         if targets is not None:
             loss_dict['loss_jloc'] += F.cross_entropy(jloc_pred, targets['jloc'].squeeze(dim=1))
-            loss_dict['loss_joff'] += sigmoid_l1_loss(outputs[:, :], targets['joff'], -0.5, targets['jloc'])
+            loss_dict['loss_joff'] += sigmoid_l1_loss(joff_pred[:, :], targets['joff'], -0.5, targets['jloc'])
             loss_dict['loss_mask'] += F.cross_entropy(mask_pred, targets['mask'].squeeze(dim=1).long())
             loss_dict['loss_afm'] += F.l1_loss(afm_pred, targets['afmap'])
             loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())
@@ -249,7 +251,7 @@ class EncoderDecoder(nn.Module):
         ##########################
         ##### polygonization #####    
         ##########################
-        joff_pred = outputs[:, :].sigmoid() - 0.5
+        joff_pred = joff_pred[:, :].sigmoid() - 0.5
         jloc_convex_pred = jloc_pred.softmax(1)[:, 2:3]
         jloc_concave_pred = jloc_pred.softmax(1)[:, 1:2]
         remask_pred = remask_pred.softmax(1)[:, 1:]
@@ -296,171 +298,12 @@ class EncoderDecoder(nn.Module):
 
     def forward_train(self, x_images, x_lidar, y = None):
 
-        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(x_images,x_lidar,y)
+        targets, joff_pred, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(x_images,x_lidar,y)
         
         loss_dict = self.init_loss_dict()
         if targets is not None:
             loss_dict['loss_jloc'] += F.cross_entropy(jloc_pred, targets['jloc'].squeeze(dim=1))
-            loss_dict['loss_joff'] += sigmoid_l1_loss(outputs[:, :], targets['joff'], -0.5, targets['jloc'])
-            loss_dict['loss_mask'] += F.cross_entropy(mask_pred, targets['mask'].squeeze(dim=1).long())
-            loss_dict['loss_afm'] += F.l1_loss(afm_pred, targets['afmap'])
-            loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())
-
-        return loss_dict
-
-
-
-class MultiEncoder(nn.Module):
-    def __init__(self, cfg, local_rank=0):
-        super().__init__(cfg)
-
-        head_size = [[2]]
-        num_class = sum(sum(head_size, []))
-
-        self.backbone = HRNet48v2(cfg,
-                        head=lambda c_in, c_out: MultitaskHead(c_in, c_out, head_size=head_size),
-                        num_class = num_class)
-        
-        if not cfg.host.name == "jeanzay":
-            checkpoint_file = hf_hub_download(
-                repo_id="rsi/PixelsPointsPolygons",
-                filename="hrnetv2_w48_imagenet_pretrained.pth",
-                use_auth_token=True  # This is needed for private repos
-            )
-        else:
-            checkpoint_file = cfg.encoder.checkpoint_file
-        if not os.path.isfile(checkpoint_file):
-            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
-        
-        self.logger.debug(f"Load image backbone checkpoint from {checkpoint_file}")
-        
-        self.backbone.init_weights(pretrained=checkpoint_file)
-        self.backbone_name = cfg.encoder.type
-        
-        
-        # ### This version increases the encoder hidden dim to 128 to allow for [64,64] image + lidar features
-        # ### turns out it doesn't even fit into 50GB VRAM
-        # # replace the first conv layer
-        self.pixel_embed = deepcopy(self.backbone.conv1)
-        self.point_embed = PointPillarsEncoder(cfg)
-        self.backbone.conv1 = nn.Identity()
-        # self.backbone.bn1 = BatchNorm2d(128, momentum=BN_MOMENTUM)
-
-        # # replace the second conv layer
-        # self.backbone.conv2 = conv3x3(128, 128)
-        # self.backbone.bn2 = BatchNorm2d(128, momentum=BN_MOMENTUM)
-
-        # # replace the first layer
-        # num_channels = self.backbone.stage1_cfg['NUM_CHANNELS'][0]
-        # block = blocks_dict[self.backbone.stage1_cfg['BLOCK']]
-        # num_blocks = self.backbone.stage1_cfg['NUM_BLOCKS'][0]
-        # self.backbone.layer1 = self.backbone._make_layer(block, 128, num_channels, num_blocks)
-                
-        self.fusion = nn.Conv2d(in_channels=128, out_channels=64, kernel_size=1, stride=1, padding=0)
-        
-    def forward(self, images, points, annotations = None):
-        if self.training:
-            return self.forward_train(images, points, annotations=annotations)
-        else:
-            # return self.forward_test(images, annotations=annotations)
-            return self.forward_val(images, points, annotations=annotations)
-
-
-    def forward_common(self, images, points,annotations=None):
-        
-        targets, _ = self.annotation_encoder(annotations)
-        
-        features = torch.cat((self.pixel_embed(images), self.point_embed(points)), dim=1)
-        features = self.fusion(features)
-        
-        features = self.backbone(features)
-        outputs = self.backbone.head(features)
-
-        mask_feature = self.mask_head(features)
-        jloc_feature = self.jloc_head(features)
-        afm_feature = self.afm_head(features)
-
-        mask_att_feature = self.a2m_att(afm_feature, mask_feature)
-        jloc_att_feature = self.a2j_att(afm_feature, jloc_feature)
-
-        mask_pred = self.mask_predictor(mask_feature + mask_att_feature)
-        jloc_pred = self.jloc_predictor(jloc_feature + jloc_att_feature)
-        afm_pred = self.afm_predictor(afm_feature)
-
-        afm_conv = self.refuse_conv(afm_pred)
-        remask_pred = self.final_conv(torch.cat((features, afm_conv), dim=1))
-        
-        return targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred
-
-    
-    def forward_val(self, images, points, annotations):
-        
-        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images, points, annotations)
-
-        ### loss:
-        loss_dict = self.init_loss_dict()
-        if targets is not None:
-            loss_dict['loss_jloc'] += F.cross_entropy(jloc_pred, targets['jloc'].squeeze(dim=1))
-            loss_dict['loss_joff'] += sigmoid_l1_loss(outputs[:, :], targets['joff'], -0.5, targets['jloc'])
-            loss_dict['loss_mask'] += F.cross_entropy(mask_pred, targets['mask'].squeeze(dim=1).long())
-            loss_dict['loss_afm'] += F.l1_loss(afm_pred, targets['afmap'])
-            loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())
-        
-        ### polygonization:    
-        joff_pred = outputs[:, :].sigmoid() - 0.5
-        jloc_convex_pred = jloc_pred.softmax(1)[:, 2:3]
-        jloc_concave_pred = jloc_pred.softmax(1)[:, 1:2]
-        remask_pred = remask_pred.softmax(1)[:, 1:]
-        
-        scale_y = self.origin_height / self.pred_height
-        scale_x = self.origin_width / self.pred_width
-
-        batch_polygons = []
-        batch_masks = []
-        batch_scores = []
-        batch_juncs = []
-
-        for b in range(remask_pred.size(0)):
-            mask_pred_per_im = cv2.resize(remask_pred[b][0].cpu().numpy(), (self.origin_width, self.origin_height))
-            juncs_pred = get_pred_junctions(jloc_concave_pred[b], jloc_convex_pred[b], joff_pred[b])
-            juncs_pred[:,0] *= scale_x
-            juncs_pred[:,1] *= scale_y
-
-            polys, scores = [], []
-            props = regionprops(label(mask_pred_per_im > 0.5))
-            for prop in props:
-                poly, juncs_sa, edges_sa, score, juncs_index = generate_polygon(prop, mask_pred_per_im, \
-                                                                        juncs_pred, 0, False)
-                if juncs_sa.shape[0] == 0:
-                    continue
-
-                polys.append(poly)
-                scores.append(score)
-            batch_scores.append(scores)
-            batch_polygons.append(polys)
-
-            batch_masks.append(mask_pred_per_im)
-            batch_juncs.append(juncs_pred)
-
-        output = {
-            'polys_pred': batch_polygons,
-            'mask_pred': batch_masks,
-            'scores': batch_scores,
-            'juncs_pred': batch_juncs
-        }
-        
-        return output, loss_dict
-
-
-    def forward_train(self, images, points, annotations = None):
-
-        targets, outputs, jloc_pred, mask_pred, afm_pred, remask_pred = self.forward_common(images, points,annotations)
-        
-        
-        loss_dict = self.init_loss_dict()
-        if targets is not None:
-            loss_dict['loss_jloc'] += F.cross_entropy(jloc_pred, targets['jloc'].squeeze(dim=1))
-            loss_dict['loss_joff'] += sigmoid_l1_loss(outputs[:, :], targets['joff'], -0.5, targets['jloc'])
+            loss_dict['loss_joff'] += sigmoid_l1_loss(joff_pred[:, :], targets['joff'], -0.5, targets['jloc'])
             loss_dict['loss_mask'] += F.cross_entropy(mask_pred, targets['mask'].squeeze(dim=1).long())
             loss_dict['loss_afm'] += F.l1_loss(afm_pred, targets['afmap'])
             loss_dict['loss_remask'] += F.cross_entropy(remask_pred, targets['mask'].squeeze(dim=1).long())
@@ -484,7 +327,7 @@ class HiSupModel(torch.nn.Module):
             elif self.cfg.encoder.name == "vit_cnn":
                 encoder = ViTCNN(self.cfg,local_rank=local_rank)
             else:
-                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__class__.__name__}")
+                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
             
         elif self.cfg.use_lidar: 
             
@@ -493,7 +336,7 @@ class HiSupModel(torch.nn.Module):
             elif self.cfg.encoder.name == "pointpillars_vit_cnn":
                 encoder = PointPillarsViTCNN(self.cfg,local_rank=local_rank)
             else:
-                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__class__.__name__}")
+                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
             
         else:
             raise ValueError("Please specify either and image or lidar encoder with encoder=<name>. See help for a list of available encoders.")

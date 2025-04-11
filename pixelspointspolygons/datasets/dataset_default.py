@@ -38,7 +38,7 @@ class DefaultDataset(Dataset):
         ## FFL currently still has a specific annotations file which includes the path to the .pt file with the frame field stored
         if self.cfg.model.name == "ffl":
             self.ann_file = os.path.join(self.dataset_dir,f"annotations_ffl_{split}.json")
-            self.stats_filepath = os.path.join(self.dataset_dir, "processed", split, "stats.pt")
+            self.stats_filepath = os.path.join(self.dataset_dir, "ffl", split, "stats.pt")
             if not os.path.isfile(self.stats_filepath):
                 # TODO: now there is no FFL training data for 224x224 tiles. Just include the FFL training data creation in ppp_dataset now
                 raise FileExistsError(self.stats_filepath)
@@ -237,10 +237,6 @@ class DefaultDataset(Dataset):
         if not os.path.isfile(ffl_pt_file):
             raise FileExistsError(ffl_pt_file)
         ffl_data = torch.load(ffl_pt_file,weights_only=False)
-        del ffl_data["gt_polygons"]
-        del ffl_data["image_relative_filepath"]
-        del ffl_data["name"]
-        del ffl_data["image_id"]
         
         ffl_data["image_id"] = torch.IntTensor([img_id])
         
@@ -445,7 +441,11 @@ class DefaultDataset(Dataset):
 
         annotations = self.make_hisup_annotations(corner_coords, corner_poly_ids, img_info['height'], img_info['width'])
         annotations["mask"] = augmentations['masks'][0]
-        self.resize_hisup_annotations(annotations)
+        
+        if self.cfg.model.decoder.in_feature_width != img_info['width'] or self.cfg.model.decoder.in_feature_height != img_info['height']:
+            self.resize_hisup_annotations(annotations)
+        else:
+            annotations['mask_ori'] = annotations['mask'].clone()
         
         for k, v in annotations.items():
             if isinstance(v, np.ndarray):

@@ -178,11 +178,10 @@ class PointPillars(ml3d.models.PointPillars):
         else:
             self.reduce_dim = nn.Identity()
 
-        if cfg.model.name != "ffl":
-            self.head = MultitaskHead(cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
-            
-        # TODO: the head should really be defined in the decoder and not here!!
-
+        # TODO: the head should go in the decoder
+        # if cfg.model.name != "ffl":
+        #     self.head = MultitaskHead(cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+        
         # remove unsused modules from PointPillars
         del self.bbox_head
         del self.loss_cls
