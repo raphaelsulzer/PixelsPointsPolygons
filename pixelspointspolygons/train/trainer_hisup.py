@@ -128,8 +128,8 @@ class HiSupTrainer(Trainer):
             ax = ax.flatten()
 
             if self.cfg.use_images:
-                image = (x_image[i].permute(1, 2, 0).cpu().numpy()*np.array(self.cfg.dataset.image_std) + np.array(self.cfg.dataset.image_mean))
-                image = np.clip(image/255.0, 0, 1)
+                image = (x_image[i].permute(1, 2, 0).cpu().numpy()*np.array(self.cfg.encoder.image_std) + np.array(self.cfg.encoder.image_mean))
+                image = np.clip(image/self.cfg.encoder.image_max_pixel_value, 0, 1)
                 plot_image(image, ax=ax[0])
                 plot_image(image, ax=ax[1])
             if self.cfg.use_lidar:
