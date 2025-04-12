@@ -15,7 +15,7 @@ class ViT(nn.Module):
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
         
-        self.model = timm.create_model(
+        self.vit = timm.create_model(
             model_name=cfg.encoder.type,
             num_classes=0,
             global_pool='',
@@ -24,7 +24,7 @@ class ViT(nn.Module):
         )
         self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_feature_dim)
     
-    def forward(self, x_images):
+    def forward(self, x):
         
-        features = self.model(x_images)
-        return self.bottleneck(features[:, 1:,:])
+        x = self.vit(x)
+        return self.bottleneck(x[:, 1:,:])

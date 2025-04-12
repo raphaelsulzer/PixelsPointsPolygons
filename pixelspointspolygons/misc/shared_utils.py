@@ -7,6 +7,7 @@ import contextlib
 import numpy as np
 import torch.distributed as dist
 
+from copy import deepcopy
 from collections import deque, OrderedDict
 
 @contextlib.contextmanager
@@ -45,6 +46,13 @@ def smart_load_state_dict(model, checkpoint_state_dict, logger, strict=True):
     unmatched_model_keys = set(model_state_dict.keys())
     unmatched_checkpoint_keys = set(checkpoint_state_dict.keys())
 
+    temp_state_dict = deepcopy(checkpoint_state_dict)
+    for k,v in checkpoint_state_dict.items():
+        # temp_state_dict[k.replace(".vision_transformer.", ".vit.")] = v
+        temp_state_dict[k.replace("encoder.model.", "encoder.vit.")] = v
+    checkpoint_state_dict = temp_state_dict
+    del temp_state_dict
+    
     for ckpt_key in checkpoint_state_dict.keys():
         # Exact match first
         if ckpt_key in model_state_dict:
@@ -64,7 +72,8 @@ def smart_load_state_dict(model, checkpoint_state_dict, logger, strict=True):
                     unmatched_model_keys.discard(model_key)
                     unmatched_checkpoint_keys.discard(ckpt_key)
                     break
-
+                    # Check for matches using the similar names dictionary
+            
     logger.debug("Loading model state dict report")
     logger.debug(f"Matched {len(model_state_dict) - len(unmatched_model_keys)} / {len(model_state_dict)} keys")
 

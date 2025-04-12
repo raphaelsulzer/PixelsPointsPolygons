@@ -2,6 +2,7 @@ import torch
 import logging
 import timm
 
+import torch.nn as nn
 
 # from .pointpillars_ori import PointPillarsEncoder
 from .pointpillars_o3d import PointPillarsEncoder
@@ -54,8 +55,12 @@ class PointPillarsViT(torch.nn.Module):
         }
         self.vit.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
         
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_feature_dim)
+
         
-    def forward(self, x_lidar):
+        
+    def forward(self, x):
         """Extract features from points."""
         
-        return self.vit(x_lidar)
+        x = self.vit(x)
+        return self.bottleneck(x[:, 1:,:])

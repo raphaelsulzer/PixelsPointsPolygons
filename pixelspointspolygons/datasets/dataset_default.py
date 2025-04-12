@@ -373,21 +373,17 @@ class DefaultDataset(Dataset):
             augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
             
             if self.use_lidar:
-                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar, img_info['id'])
+                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar)
             
             image = augmentations['image']
             mask = augmentations['masks'][0]
             corner_mask = augmentations['masks'][1]
             corner_coords = np.array(augmentations['keypoints'])
 
-        # if self.tokenizer is not None:
-
         coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.model.tokenizer.shuffle_tokens)
         coords_seqs = torch.LongTensor(coords_seqs)
         if self.cfg.model.tokenizer.shuffle_tokens:
             perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
-        # else:
-        #     coords_seqs = corner_coords
 
         return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
 

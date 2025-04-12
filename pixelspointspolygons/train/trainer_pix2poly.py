@@ -56,18 +56,15 @@ class Pix2PolyTrainer(Trainer):
             height=self.cfg.encoder.in_height,
             max_len=self.cfg.model.tokenizer.max_len
         )
+        self.cfg.model.tokenizer.pad_idx = self.tokenizer.PAD_code
+        self.cfg.model.tokenizer.max_len = self.cfg.model.tokenizer.n_vertices*2+2
+        self.cfg.model.tokenizer.generation_steps = self.cfg.model.tokenizer.n_vertices*2+1
     
     def setup_model(self):
         
         self.setup_tokenizer()
-        self.cfg.model.tokenizer.pad_idx = self.tokenizer.PAD_code
-        self.cfg.model.tokenizer.max_len = self.cfg.model.tokenizer.n_vertices*2+2
-        self.cfg.model.tokenizer.generation_steps = self.cfg.model.tokenizer.n_vertices*2+1
-        
         self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
         
-
-
     def setup_dataloader(self):
         """Pix2Poly needs a tokenizer in the dataset __get_item__ method to tokenize the polygons. Thus overwrite the setup_dataloader method here."""
         
@@ -108,9 +105,7 @@ class Pix2PolyTrainer(Trainer):
             x_image = x_image[:num_images]
         if self.cfg.use_lidar:
             x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
-            x_lidar = x_lidar[:num_images]
-
-
+            x_lidar = torch.nested.nested_tensor([t[:num_images] for t in x_lidar.unbind()], layout=torch.jagged)
         
         outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
         os.makedirs(outpath, exist_ok=True)

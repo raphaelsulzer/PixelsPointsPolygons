@@ -22,33 +22,40 @@ from .predictor import Predictor
 
 class Pix2PolyPredictor(Predictor):
     
-    def predict(self):
-        
-        self.logger.error("Predictor.predict() is probably not working. This will have to be implement for test.")
-
-        tokenizer = Tokenizer(
-            num_classes=1,
+    def setup_tokenizer(self):
+        self.tokenizer = Tokenizer(num_classes=1,
             num_bins=self.cfg.model.tokenizer.num_bins,
-            width=self.cfg.encoder.input_width,
-            height=self.cfg.encoder.input_height,
+            width=self.cfg.encoder.in_width,
+            height=self.cfg.encoder.in_height,
             max_len=self.cfg.model.tokenizer.max_len
         )
-
-        val_loader = get_val_loader(self.cfg,tokenizer)
+        self.cfg.model.tokenizer.pad_idx = self.tokenizer.PAD_code
+        self.cfg.model.tokenizer.max_len = self.cfg.model.tokenizer.n_vertices*2+2
+        self.cfg.model.tokenizer.generation_steps = self.cfg.model.tokenizer.n_vertices*2+1
+    
+    def predict_dataset(self):
         
-        model = Pix2PolyModel(self.cfg,tokenizer=self.tokenizer)
-        self.load_checkpoint(model)
+
+        self.setup_tokenizer()
+        self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
+        self.load_checkpoint()
+        
+        val_loader = get_val_loader(self.cfg,self.tokenizer)
+        
+        self.logger.info(f"Predicting {len(val_loader.dataset)} images with Pix2Poly checkpoint {self.cfg.experiment_name}/{self.cfg.checkpoint}")
 
         with torch.no_grad():
             t0 = time.time()
-            coco_predictions = self.predict_from_loader(model,tokenizer,val_loader)
+            coco_predictions = self.predict_from_loader(self.model,self.tokenizer,val_loader)
 
-        prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", f"{self.cfg.checkpoint}.json")
+        # prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", f"{self.cfg.checkpoint}.json")
+        prediction_outfile = self.cfg.eval.pred_file
+        self.logger.info(f"Saving predictions to {prediction_outfile}")
+        os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
         with open(prediction_outfile, "w") as fp:
             fp.write(json.dumps(coco_predictions))
 
-        self.logger.debug(f"Average prediction speed: {(time.time() - t0) / len(val_loader.dataset):.2f} [s / image]")
-
+        self.logger.info(f"Average prediction speed: {(time.time() - t0) / len(val_loader.dataset):.2f} [s / image]")
 
     
     def predict_from_loader(self, model, tokenizer, loader):
