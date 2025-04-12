@@ -265,7 +265,7 @@ class Evaluator:
                 
                 img_dim, name = exp.split('/')
                             
-                pred = "validation_best"
+                pred = self.cfg.checkpoint
                 pred_file = os.path.join(self.cfg.host.data_root,f"{model.model}_outputs",self.cfg.dataset.name,img_dim,name,"predictions",f"{pred}.json")
                 if not os.path.isfile(pred_file):
                     raise FileExistsError(f"{pred_file} does not exist!")
@@ -289,9 +289,10 @@ class Evaluator:
             
                 img_dim, name = exp.split('/')
 
-                self.logger.info(f"Evaluate {model.model}/{exp}")
+                pred = self.cfg.checkpoint
+
+                self.logger.info(f"Evaluate {model.model}/{exp}/{pred}")
                 
-                pred = "validation_best"
                 pred_file = os.path.join(self.cfg.host.data_root,f"{model.model}_outputs",self.cfg.dataset.name,img_dim,name,"predictions",f"{pred}.json")
                 if not os.path.isfile(pred_file):
                     raise FileExistsError(f"{pred_file} does not exist!")

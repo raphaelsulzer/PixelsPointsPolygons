@@ -67,15 +67,15 @@ def coco_anns_to_shapely_polys(coco_anns):
     polygons = []
     for ann in coco_anns:
         if not len(ann.get('segmentation')):
-            print(f"Strange annotation without segmentation in image {img_id}")
+            print(f"Strange annotation without segmentation in image")
             continue
         poly = np.array(ann.get('segmentation')[0])
         poly = poly.reshape(int(len(poly) / 2), 2)
         
         # xmin, ymin, w, h = ann.get('bbox')
         # bbox_poly = Polygon([(xmin, ymin), (xmin + w, ymin), (xmin + w, ymin + h), (xmin, ymin + h)])
-        
-        polygons.append(Polygon(poly))
+        if len(poly) > 4:
+            polygons.append(Polygon(poly))
     return polygons
 
 
@@ -86,6 +86,6 @@ def tensor_to_shapely_polys(polygons_list):
         poly = np.array(poly)
         # xmin, ymin, w, h = ann.get('bbox')
         # bbox_poly = Polygon([(xmin, ymin), (xmin + w, ymin), (xmin + w, ymin + h), (xmin, ymin + h)])
-        if len(poly):
+        if len(poly) > 4:
             polygons.append(Polygon(poly))
     return polygons
