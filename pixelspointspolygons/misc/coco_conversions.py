@@ -86,6 +86,6 @@ def tensor_to_shapely_polys(polygons_list):
         poly = np.array(poly)
         # xmin, ymin, w, h = ann.get('bbox')
         # bbox_poly = Polygon([(xmin, ymin), (xmin + w, ymin), (xmin + w, ymin + h), (xmin, ymin + h)])
-        
-        polygons.append(Polygon(poly))
+        if len(poly):
+            polygons.append(Polygon(poly))
     return polygons
