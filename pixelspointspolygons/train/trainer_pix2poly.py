@@ -110,17 +110,14 @@ class Pix2PolyTrainer(Trainer):
             x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
             x_lidar = x_lidar[:num_images]
 
-        if predictor is not None:
-            batch_polygons = predictor.batch_to_polygons(x_image, x_lidar, self.model, self.tokenizer)
-            if not len(batch_polygons):
-                batch_polygons = None
-        else: 
-            batch_polygons = None
+
         
         outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
         os.makedirs(outpath, exist_ok=True)
         self.logger.info(f"Save visualizations to {outpath}")
         
+        if predictor is not None:
+            batch_polygons = predictor.batch_to_polygons(x_image, x_lidar, self.model, self.tokenizer)
         coco_anns = defaultdict(list)
         if coco is not None:
             for ann in coco:
@@ -151,11 +148,9 @@ class Pix2PolyTrainer(Trainer):
             plot_point_activations(y_corner_mask[i], ax=ax[0], color=[1,1,0,1.0])
             
             if coco is not None:
-                polygons = coco_anns[i]
-                polygons = coco_anns_to_shapely_polys(polygons)
-            elif batch_polygons is not None:
-                polygons = batch_polygons[i]
-                polygons = tensor_to_shapely_polys(polygons)
+                polygons = coco_anns_to_shapely_polys(coco_anns[i])
+            elif predictor is not None:
+                polygons = tensor_to_shapely_polys(batch_polygons[i])
             else:
                 polygons = []
 
