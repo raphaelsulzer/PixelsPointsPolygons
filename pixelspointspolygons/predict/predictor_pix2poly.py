@@ -76,6 +76,7 @@ class Pix2PolyPredictor(Predictor):
         return coco_predictions
     
     def batch_to_polygons(self, x_images, x_lidar, model, tokenizer):
+        """Takes one batch with samples of images and/or lidar data and returns the polygons for each sample of the batch."""
         
         ### need this so I do not have to pass the model and tokenizer to the several polygonization functions
         self.tokenizer = tokenizer
@@ -105,8 +106,8 @@ class Pix2PolyPredictor(Predictor):
                 p = p[p[:, 0] != self.cfg.model.tokenizer.pad_idx]
                 if len(p) > 0:
                     polys.append(p)
-            if len(polys):
-                batch_polygons_processed.append(polys)
+            
+            batch_polygons_processed.append(polys)
             
         return batch_polygons_processed
         
