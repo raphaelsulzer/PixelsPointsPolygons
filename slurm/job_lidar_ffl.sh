@@ -2,8 +2,8 @@
 
 #SBATCH --account=cso@v100
 #SBATCH --job-name=lidar_pp_vit_cnn_bs4x8  # Job name
-#SBATCH --output=./slurm/runs/lidar_pp_vit_cnn_bs4x8.log       # Standard output and error log
-#SBATCH --error=./slurm/runs/lidar_pp_vit_cnn_bs4x8.log         # Error log
+#SBATCH --output=./slurm/runs/lidar_ffl_pp_vit_cnn_bs4x8.log       # Standard output and error log
+#SBATCH --error=./slurm/runs/lidar_ffl_pp_vit_cnn_bs4x8.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
 #SBATCH --ntasks=4 # reserve 4 tasks (or processes)
 #SBATCH --gres=gpu:4              # Request 2 GPUs

@@ -105,7 +105,8 @@ class Pix2PolyPredictor(Predictor):
                 p = p[p[:, 0] != self.cfg.model.tokenizer.pad_idx]
                 if len(p) > 0:
                     polys.append(p)
-            batch_polygons_processed.append(polys)
+            if len(polys):
+                batch_polygons_processed.append(polys)
             
         return batch_polygons_processed
         
