@@ -1,4 +1,3 @@
-import timm
 import torch
 
 from torch import nn
@@ -8,7 +7,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from ..pointpillars import PointPillarsViT
 from ..vision_transformer import ViT
-
+from ..fusion_models.fusion_vit import FusionViT
 
 def generate_square_subsequent_mask(sz,device):
     mask = (
@@ -108,148 +107,6 @@ class ScoreNet(nn.Module):
         return x[:, 0]
 
 
-class LiDAREncoder(nn.Module):
-    
-    def __init__(self, cfg) -> None:
-        super().__init__()
-        self.cfg = cfg
-        self.point_pillars = PointPillarsEncoder(cfg)        
-        self.vision_transformer = timm.create_model(
-            model_name=cfg.encoder.type,
-            num_classes=0,
-            global_pool='',
-            pretrained=cfg.encoder.pretrained
-        )
-        # replace VisionTransformer patch embedding with LiDAR encoder
-        self.vision_transformer.patch_embed = self.point_pillars
-                        
-        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_dim)
-
-
-    def forward(self, x_images=None, x_lidar=None):
-        
-        # x = self.point_pillars(x_lidar)
-        x = self.vision_transformer(x_lidar)
-        x = self.bottleneck(x[:, 1:,:])
-        
-        return x
-    
-
-
-
-
-class FeatureFusionLayer(nn.Module):
-    def __init__(self, cfg) -> None:
-        super().__init__()
-        self.cfg = cfg
-        self.point_pillars = PointPillarsEncoder(cfg)        
-        self.vit_patch_embed = timm.create_model(
-            model_name=cfg.encoder.type,
-            num_classes=0,
-            global_pool='',
-            pretrained=cfg.encoder.pretrained
-        ).patch_embed                
-                
-        self.fusion = nn.Linear(cfg.encoder.patch_feature_dim*2, cfg.encoder.patch_feature_dim)
-
-        
-    def forward(self, x_images, x_lidar):
-        
-        x_lidar = self.point_pillars(x_lidar)
-        x_images = self.vit_patch_embed(x_images)
-        
-        x = torch.cat([x_images, x_lidar], dim=-1)
-        x = self.fusion(x)
-        
-        return x
-
-class PatchFusionLayer(nn.Module):
-    def __init__(self, cfg) -> None:
-        super().__init__()
-        self.cfg = cfg
-        self.point_pillars = PointPillarsEncoder(cfg)        
-        self.vit_patch_embed = timm.create_model(
-            model_name=cfg.encoder.type,
-            num_classes=0,
-            global_pool='',
-            pretrained=cfg.encoder.pretrained
-        ).patch_embed
-
-        
-    def forward(self, x_images, x_lidar):
-        
-        x_lidar = self.point_pillars(x_lidar)
-        x_images = self.vit_patch_embed(x_images)
-        
-        x = torch.cat([x_images, x_lidar], dim=1)
-        
-        return x
-
-
-class MultiEncoder(nn.Module):
-    
-    def __init__(self, cfg) -> None:
-        super().__init__()
-        self.cfg = cfg
-        self.multi_vision_transformer = timm.create_model(
-            model_name=cfg.encoder.type,
-            num_classes=0,
-            global_pool='',
-            pretrained=cfg.encoder.pretrained
-        )
-        # identity patch embedding, which is already done in fusion layer
-        self.multi_vision_transformer.patch_embed = nn.Identity()
-
-        num_patches = (cfg.encoder.input_size // cfg.encoder.patch_size)**2
-
-        if cfg.model.fusion == "patch_concat":
-            self.fusion_layer1 = PatchFusionLayer(cfg)
-            self.fusion_layer2 = nn.Linear(num_patches*2,num_patches)
-            
-            modality_embed = nn.Embedding(2, cfg.encoder.patch_feature_dim)
-
-            modality_ids = torch.cat([
-                torch.zeros((1, 1), dtype=torch.long),      # CLS
-                torch.zeros((1, num_patches), dtype=torch.long),      # image patches
-                torch.ones((1, num_patches), dtype=torch.long)        # lidar patches
-            ], dim=1)  # (1, 2L+1)
-
-
-            # fix the pos_embeding to also account for lidar patches and then add the modality embedding
-            self.multi_vision_transformer.pos_embed = \
-                nn.Parameter(torch.cat([self.multi_vision_transformer.pos_embed, self.multi_vision_transformer.pos_embed[:,1:,:] ], dim=1)+ \
-                    + modality_embed(modality_ids))
-            
-            self.forward = self.forward_patch_concat
-
-            
-        elif cfg.model.fusion == "feature_concat":
-            self.fusion_layer1 = FeatureFusionLayer(cfg)
-            self.forward = self.forward_feature_concat
-        else:
-            raise ValueError(f"Invalid fusion layer type {cfg.model.fusion} specified. Choose from 'patch_concat' or 'feature_concat'")
-            
-        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_dim)
-
-
-    def forward_patch_concat(self, x_images, x_lidar):
-        
-        x = self.fusion_layer1(x_images, x_lidar)        
-        x = self.multi_vision_transformer(x)
-        x = x.permute(0, 2, 1)
-        x = self.fusion_layer2(x[:, :,1:]).permute(0, 2, 1)
-        x = self.bottleneck(x)
-        
-        return x
-
-    def forward_feature_concat(self, x_images, x_lidar):
-        
-        x = self.fusion_layer1(x_images, x_lidar)        
-        x = self.multi_vision_transformer(x)
-        x = self.bottleneck(x[:, 1:,:])
-        
-        return x
-
 
 class Decoder(nn.Module):
     def __init__(
@@ -323,6 +180,9 @@ class Decoder(nn.Module):
         return self.output(preds), preds
 
     def predict(self, encoder_out, tgt):
+        """This is only used in inference mode"""
+        
+               
         length = tgt.size(1)
         padding = (
             torch.ones((tgt.size(0), self.max_len - length - 1), device=tgt.device)
@@ -397,11 +257,11 @@ class EncoderDecoder(nn.Module):
 
     
     def predict(self, encoded_image, tgt):
+        """This is only used in inference mode"""
+        
         # encoder_out = self.encoder(image)
         preds, feats = self.decoder.predict(encoded_image, tgt)
         return preds, feats
-    
-    
     
 
 
@@ -412,7 +272,10 @@ class Pix2PolyModel(torch.nn.Module):
         self.cfg = cfg
                 
         if self.cfg.use_images and self.cfg.use_lidar:
-            encoder = MultiEncoder(self.cfg,local_rank)
+            if self.cfg.encoder.name == "fusion_vit":
+                encoder = FusionViT(self.cfg,local_rank=local_rank)
+            else:
+                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
             
         elif self.cfg.use_images:
             
