@@ -105,7 +105,9 @@ class Pix2PolyTrainer(Trainer):
             x_image = x_image[:num_images]
         if self.cfg.use_lidar:
             x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
-            x_lidar = torch.nested.nested_tensor([t[:num_images] for t in x_lidar.unbind()], layout=torch.jagged)
+            x_lidar = x_lidar.unbind()
+            x_lidar = list(x_lidar)[:num_images]
+            x_lidar = torch.nested.nested_tensor(x_lidar, layout=torch.jagged)
         
         outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
         os.makedirs(outpath, exist_ok=True)
