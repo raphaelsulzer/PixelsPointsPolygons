@@ -7,7 +7,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from ..pointpillars import PointPillarsViT
 from ..vision_transformer import ViT
-from ..fusion_models.fusion_vit import FusionViT
+from ..fusion_layers.fusion_vit import FusionViT
 
 def generate_square_subsequent_mask(sz,device):
     mask = (

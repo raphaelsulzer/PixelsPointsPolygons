@@ -23,10 +23,6 @@ class PointPillarsViTCNN(nn.Module):
             nn.BatchNorm2d(self.cfg.model.decoder.in_feature_dim),
             nn.ReLU(inplace=True)
         )
-        
-        ## TODO: the head should go in the decoder!        
-        # self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
-
 
     def forward(self, points):
         
@@ -37,7 +33,6 @@ class PointPillarsViTCNN(nn.Module):
         B, N, C = x.shape
         H = W = int(N ** 0.5)
         x = x.permute(0, 2, 1).view(B, C, H, W)
-        
         x = self.proj(x)
         
         return x

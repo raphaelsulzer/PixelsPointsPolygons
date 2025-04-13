@@ -5,9 +5,10 @@ defaults:
   # - encoder: vit_cnn
   # - encoder: vit
   # - encoder: pointpillars_vit
-  - encoder: fusion_vit
-  # - model: ffl
-  - model: pix2poly
+  # - encoder: fusion_vit
+  - encoder: fusion_vit_cnn
+  - model: ffl
+  # - model: pix2poly
   # - model: hisup
   - polygonization: asm_acm
   - dataset: lidarpoly
