@@ -7,9 +7,8 @@ from torchvision.models.segmentation._utils import _SimpleSegmentationModel
 from ..pointpillars import *
 from ..vision_transformer import *
 from ..hrnet import HighResolutionNet as HRNet48v2
-
-from .unet_resnet import UNetResNetBackbone
-
+from ..unetresnet.unet_resnet import UNetResNetBackbone
+from ..fusion_layers import FusionViTCNN
 
 def get_out_channels(module):
     if hasattr(module, "out_channels"):
@@ -79,36 +78,39 @@ class EncoderDecoder(torch.nn.Module):
             )
 
     
-    def inference(self, image_or_lidar):
+    def inference(self, x_images, x_lidar):
         outputs = {}
 
         # --- Extract features for every pixel of the image with a U-Net --- #
-        backbone_features = self.encoder(image_or_lidar)
+        if self.cfg.use_images and not self.cfg.use_lidar:
+            features = self.encoder(x_images)
+        elif not self.cfg.use_images and self.cfg.use_lidar:
+            features = self.encoder(x_lidar)
+        elif self.cfg.use_images and self.cfg.use_lidar:
+            features = self.encoder(x_images, x_lidar)
+        else:
+            raise ValueError("At least one of use_images or use_lidar must be True")
 
         if self.cfg.model.encoder.compute_seg:
             # --- Output a segmentation of the image --- #
-            seg = self.seg_module(backbone_features)
+            seg = self.seg_module(features)
             seg_to_cat = seg.clone().detach()
-            backbone_features = torch.cat([backbone_features, seg_to_cat], dim=1)  # Add seg to image features
+            features = torch.cat([features, seg_to_cat], dim=1)  # Add seg to image features
             outputs["seg"] = seg
 
         if self.cfg.model.encoder.compute_crossfield:
             # --- Output a cross-field of the image --- #
-            crossfield = 2 * self.crossfield_module(backbone_features)  # Outputs c_0, c_2 values in [-2, 2]
+            crossfield = 2 * self.crossfield_module(features)  # Outputs c_0, c_2 values in [-2, 2]
             outputs["crossfield"] = crossfield
 
         return outputs
 
     # @profile
     def forward(self, xb):
-        if self.cfg.use_images and not self.cfg.use_lidar:
-            final_outputs = self.inference(xb["image"])
-        elif self.cfg.use_lidar and not self.cfg.use_images:
-            final_outputs = self.inference(xb["lidar"])
-        elif self.cfg.use_images and self.cfg.use_lidar:
-            raise NotImplementedError("MultiEncoderDecoder not implemented yet")
-        else:
-            raise ValueError("At least one of use_image or use_lidar must be True")
+        # TODO: the passing through of xb is a bit useless now since I removed the augmentations from the forward pass.
+        # should be removed
+        
+        final_outputs = self.inference(xb["image"], xb["lidar"])
         return final_outputs, xb
 
 
@@ -120,7 +122,12 @@ class FFLModel(torch.nn.Module):
         self.cfg = cfg
                 
         if self.cfg.use_images and self.cfg.use_lidar:
-            encoder = MultiEncoderDecoder(self.cfg)
+            
+            if self.cfg.encoder.name == "fusion_vit_cnn":
+                encoder = FusionViTCNN(self.cfg,local_rank=local_rank)
+            else:
+                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
+            
             
         elif self.cfg.use_images:
             
