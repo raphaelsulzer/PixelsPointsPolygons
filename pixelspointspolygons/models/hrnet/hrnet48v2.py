@@ -371,26 +371,30 @@ class HighResolutionNet(nn.Module):
                 padding=0)
         )
 
-        self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
-        
-        
-        
+        # self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+                
         ### init weights ###
-        if not cfg.host.name == "jeanzay":
-            checkpoint_file = hf_hub_download(
-                repo_id="rsi/PixelsPointsPolygons",
-                filename="hrnetv2_w48_imagenet_pretrained.pth",
-                use_auth_token=True  # This is needed for private repos
-            )
-        else:
-            checkpoint_file = cfg.encoder.checkpoint_file
-            
-        if not os.path.isfile(checkpoint_file):
-            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
+        # if not cfg.host.name == "jeanzay":
+        #     checkpoint_file = hf_hub_download(
+        #         repo_id="rsi/PixelsPointsPolygons",
+        #         filename="hrnetv2_w48_imagenet_pretrained.pth",
+        #         use_auth_token=True  # This is needed for private repos
+        #     )
+        # else:
+        #     checkpoint_file = cfg.encoder.checkpoint_file
         
-        self.logger.debug(f"Load image backbone checkpoint from {checkpoint_file}")
+        if cfg.encoder.hrnet.pretrained:
+            checkpoint_file = cfg.encoder.hrnet.checkpoint_file
+                
+            if not os.path.isfile(checkpoint_file):
+                raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
+            
+            self.logger.info(f"Load HRNet checkpoint from {checkpoint_file}")
 
-        self.init_weights(pretrained=checkpoint_file)
+            self.init_weights(pretrained=checkpoint_file)
+        else:
+            self.logger.info(f"No HRNet checkpoint loaded")
+
         
 
     def _make_transition_layer(
@@ -528,7 +532,7 @@ class HighResolutionNet(nn.Module):
         return x
 
     def init_weights(self, pretrained='',):
-        self.logger.info('=> init weights from normal distribution')
+        # self.logger.info('=> init weights from normal distribution')
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.normal_(m.weight, std=0.001)
@@ -537,13 +541,13 @@ class HighResolutionNet(nn.Module):
                 nn.init.constant_(m.bias, 0)
         if os.path.isfile(pretrained):
             pretrained_dict = torch.load(pretrained)
-            self.logger.info('=> loading pretrained model {}'.format(pretrained))
+            # self.logger.info('=> loading pretrained model {}'.format(pretrained))
             model_dict = self.state_dict()              
             pretrained_dict = {k: v for k, v in pretrained_dict.items()
                                if k in model_dict.keys()}
-            for k, _ in pretrained_dict.items():
-                self.logger.info(
-                    '=> loading {} pretrained model {}'.format(k, pretrained))
+            # for k, _ in pretrained_dict.items():
+            #     self.logger.info(
+            #         '=> loading {} pretrained model {}'.format(k, pretrained))
             model_dict.update(pretrained_dict)
             self.load_state_dict(model_dict)
         # else:

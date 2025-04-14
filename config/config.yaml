@@ -1,15 +1,16 @@
 defaults:
-  # - encoder: hrnet
+  - encoder: hrnet
   # - encoder: pointpillars
   # - encoder: pointpillars_vit_cnn
   # - encoder: vit_cnn
   # - encoder: vit
   # - encoder: pointpillars_vit
   # - encoder: fusion_vit
-  - encoder: fusion_vit_cnn
-  - model: ffl
+  # - encoder: fusion_vit_cnn
+  # - encoder: fusion_hrnet
+  # - model: ffl
   # - model: pix2poly
-  # - model: hisup
+  - model: hisup
   - polygonization: asm_acm
   - dataset: lidarpoly
   - run_type: release
@@ -20,7 +21,7 @@ hydra:
     dir: ${...output_dir}
 
 output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.encoder.in_size}/${.experiment_name}
-checkpoint: validation_best
+checkpoint: null
 checkpoint_file: null
 # checkpoint_file: null # override for loading a specific checkpoint file not in the output_dir
 # checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly/512/v1_lidar_LROnP/model_best_backup.pth

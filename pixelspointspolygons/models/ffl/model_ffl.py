@@ -95,12 +95,12 @@ class EncoderDecoder(torch.nn.Module):
         return outputs
 
     # @profile
-    def forward(self, xb):
+    def forward(self, x_batch):
         # TODO: the passing through of xb is a bit useless now since I removed the augmentations from the forward pass.
         # should be removed
         
-        final_outputs = self.inference(xb.get("image",None), xb.get("lidar",None))
-        return final_outputs, xb
+        final_outputs = self.inference(x_batch.get("image",None), x_batch.get("lidar",None))
+        return final_outputs
 
 
 

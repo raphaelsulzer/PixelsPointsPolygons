@@ -5,7 +5,7 @@ import timm
 import torch.nn as nn
 
 # from .pointpillars_ori import PointPillarsEncoder
-from ..pointpillars.pointpillars_o3d import PointPillarsEncoder
+from ..pointpillars import PointPillarsViT
 
 from ...misc.logger import make_logger
 
@@ -35,26 +35,27 @@ class FusionViT(torch.nn.Module):
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
 
-        ###### LiDAR encoder #######
-        self.pp_vit = timm.create_model(
-            model_name=cfg.encoder.type,
-            num_classes=0,
-            global_pool='',
-            pretrained=cfg.encoder.pretrained,
-            checkpoint_path=cfg.encoder.checkpoint_file
-        )
+        # ###### LiDAR encoder #######
+        # self.pp_vit = timm.create_model(
+        #     model_name=cfg.encoder.type,
+        #     num_classes=0,
+        #     global_pool='',
+        #     pretrained=cfg.encoder.pretrained,
+        #     checkpoint_path=cfg.encoder.checkpoint_file
+        # )
         
-        #### replace VisionTransformer patch embedding with LiDAR encoder        
-        output_shape = [cfg.encoder.patch_feature_width, cfg.encoder.patch_feature_height]
-        voxel_encoder={
-            'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
-            'feat_channels': [64,cfg.encoder.patch_feature_dim],
-        }
-        scatter={
-            "in_channels" : cfg.encoder.patch_feature_dim, 
-            "output_shape" : output_shape
-        }
-        self.pp_vit.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
+        # #### replace VisionTransformer patch embedding with LiDAR encoder        
+        # output_shape = [cfg.encoder.patch_feature_width, cfg.encoder.patch_feature_height]
+        # voxel_encoder={
+        #     'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
+        #     'feat_channels': [64,cfg.encoder.patch_feature_dim],
+        # }
+        # scatter={
+        #     "in_channels" : cfg.encoder.patch_feature_dim, 
+        #     "output_shape" : output_shape
+        # }
+        # self.pp_vit.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
+        self.pp_vit = PointPillarsViT(cfg)
         
         ###### Image encoder #######
         self.vit = timm.create_model(

@@ -8,6 +8,7 @@ from pixelspointspolygons.eval import Evaluator
 def main(cfg):
     OmegaConf.register_new_resolver("eq", lambda a, b: str(a) == str(b))
     OmegaConf.register_new_resolver("if", lambda cond, a, b: a if cond == "True" else b)
+    OmegaConf.register_new_resolver("divide", lambda a, b: int(a) // int(b))
     OmegaConf.resolve(cfg)
     
     print("\nConfiguration:")

@@ -3,19 +3,16 @@ import cv2
 import os
 
 import torch.nn.functional as F
-from copy import deepcopy
-from huggingface_hub import hf_hub_download
 from math import log
 from torch import nn
 from torch.utils.data.dataloader import default_collate
 from skimage.measure import label, regionprops
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-# from ..pointpillars import *
-from ..pointpillars import PointPillarsEncoder, PointPillarsViTCNN, PointPillars
+from ..pointpillars import PointPillarsViTCNN, PointPillars
 from ..vision_transformer import ViTCNN
 from ..multitask_head import MultitaskHead
-from ..fusion_layers import FusionViTCNN
+from ..fusion_layers import FusionViTCNN, FusionHRNet
 from ..hrnet import HighResolutionNet as HRNet48v2
 from .afm_module.afm_op import afm
 from .polygon import get_pred_junctions, generate_polygon
