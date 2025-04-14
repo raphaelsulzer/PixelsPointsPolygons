@@ -12,7 +12,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from ..pointpillars import PointPillarsViTCNN, PointPillars
 from ..vision_transformer import ViTCNN
 from ..multitask_head import MultitaskHead
-from ..fusion_layers import FusionViTCNN, FusionHRNet
+from ..fusion_layers import FusionViTCNN, FusionHRNet, EarlyFusionViTCNN
 from ..hrnet import HighResolutionNet as HRNet48v2
 from .afm_module.afm_op import afm
 from .polygon import get_pred_junctions, generate_polygon
@@ -321,6 +321,8 @@ class HiSupModel(torch.nn.Module):
                 encoder = FusionHRNet(self.cfg,local_rank=local_rank)
             elif self.cfg.encoder.name == "fusion_vit_cnn":
                 encoder = FusionViTCNN(self.cfg,local_rank=local_rank)
+            elif self.cfg.encoder.name == "early_fusion_vit_cnn":
+                encoder = EarlyFusionViTCNN(self.cfg,local_rank=local_rank)
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
             
