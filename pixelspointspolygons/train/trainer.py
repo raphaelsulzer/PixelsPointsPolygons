@@ -134,9 +134,9 @@ class Trainer:
             checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "best_val_loss.pth")
             self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
 
-        if val_metrics_dict.get('iou',0.0) > self.cfg.best_val_iou and self.cfg.save_best:
+        if val_metrics_dict.get('IoU',0.0) > self.cfg.best_val_iou and self.cfg.save_best:
 
-            self.cfg.best_val_iou = val_metrics_dict['iou']
+            self.cfg.best_val_iou = val_metrics_dict['IoU']
             checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "best_val_iou.pth")
             self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
 
