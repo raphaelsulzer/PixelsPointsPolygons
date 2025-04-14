@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --account=cso@v100
-#SBATCH --job-name=image_vit_cnn_bs4x8  # Job name
-#SBATCH --output=./slurm/runs/image_hisup_vit_cnn.log       # Standard output and error log
-#SBATCH --error=./slurm/runs/image_hisup_vit_cnn.log         # Error log
+#SBATCH --job-name=image_hisup_vit_cnn # Job name
+#SBATCH --output=./slurm/runs/image_hisup_vit_cnn.out       # Standard output and error log
+#SBATCH --error=./slurm/runs/image_hisup_vit_cnn.err        # Error log
 #SBATCH --nodes=1 # reserve 1 node
 #SBATCH --ntasks=4 # reserve 4 tasks (or processes)
 #SBATCH --gres=gpu:4              # Request 2 GPUs
@@ -34,4 +34,4 @@ set -x
 
 # Run your Python script
 
-torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=null model.batch_size=16 experiment_name=v3_image_vit_cnn_bs4x16 model=hisup encoder=vit_cnn
+torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=null model.batch_size=12 experiment_name=v3_image_vit_cnn_bs4x12 model=hisup encoder=vit_cnn
