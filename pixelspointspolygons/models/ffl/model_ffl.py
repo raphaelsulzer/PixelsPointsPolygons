@@ -36,17 +36,6 @@ class EncoderDecoder(torch.nn.Module):
             "Model has to compute at least one of those:\n" \
             "\t- segmentation\n" \
             "\t- cross-field"
-        # if cfg.use_images and not cfg.use_lidar:
-        #     assert isinstance(encoder, _SimpleSegmentationModel), \
-        #         "backbone should be an instance of _SimpleSegmentationModel"
-        # elif cfg.use_lidar and not cfg.use_images:
-        #     assert isinstance(encoder, PointPillarsEncoder), \
-        #         "backbone should be an instance of PointPillarsEncoder"
-        # elif cfg.use_images and cfg.use_lidar:
-        #     assert isinstance(encoder, torch.nn.Module), \
-        #         "backbone should be an instance of torch.nn.Module"
-        # else:
-        #     raise ValueError("At least one of use_image or use_lidar must be True")
         
         self.cfg = cfg
         self.encoder = encoder
@@ -110,7 +99,7 @@ class EncoderDecoder(torch.nn.Module):
         # TODO: the passing through of xb is a bit useless now since I removed the augmentations from the forward pass.
         # should be removed
         
-        final_outputs = self.inference(xb["image"], xb["lidar"])
+        final_outputs = self.inference(xb.get("image",None), xb.get("lidar",None))
         return final_outputs, xb
 
 

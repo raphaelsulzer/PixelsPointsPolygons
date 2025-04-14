@@ -28,7 +28,7 @@ class PointPillarsViTCNN(nn.Module):
         
         x = self.pp_vit(points)
         
-        x = x[:, 1:,:] # drop CLS token
+        # x = x[:, 1:,:] # drop CLS token
         
         B, N, C = x.shape
         H = W = int(N ** 0.5)
