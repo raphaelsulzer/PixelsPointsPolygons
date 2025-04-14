@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --account=cso@v100
-#SBATCH --job-name=image_vit_cnn_bs4x8  # Job name
+#SBATCH --job-name=image_ffl_vit_cnn  # Job name
 #SBATCH --output=./slurm/runs/image_ffl_vit_cnn.log       # Standard output and error log
 #SBATCH --error=./slurm/runs/image_ffl_vit_cnn.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
