@@ -1,12 +1,13 @@
 defaults:
   # - encoder: convnext
   # - encoder: pointpillars
-  - encoder: pointpillars_vit_cnn
+  # - encoder: pointpillars_vit_cnn
   # - encoder: vit_cnn
   # - encoder: vit
   # - encoder: pointpillars_vit
   # - encoder: fusion_vit
   # - encoder: fusion_vit_cnn
+  - encoder: early_fusion_vit_cnn
   # - encoder: fusion_hrnet
   # - model: ffl
   - model: hisup

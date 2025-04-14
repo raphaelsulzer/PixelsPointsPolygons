@@ -9,7 +9,7 @@ from ..pointpillars import *
 from ..vision_transformer import *
 from ..hrnet import HighResolutionNet as HRNet48v2
 from ..unetresnet.unet_resnet import UNetResNetBackbone
-from ..fusion_layers import FusionViTCNN
+from ..fusion_layers import FusionViTCNN, EarlyFusionViTCNN
 
 def get_out_channels(module):
     if hasattr(module, "out_channels"):
@@ -115,6 +115,8 @@ class FFLModel(torch.nn.Module):
             
             if self.cfg.encoder.name == "fusion_vit_cnn":
                 encoder = FusionViTCNN(self.cfg,local_rank=local_rank)
+            elif self.cfg.encoder.name == "early_fusion_vit_cnn":
+                encoder = EarlyFusionViTCNN(self.cfg,local_rank=local_rank)
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
             
