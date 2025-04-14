@@ -1,7 +1,7 @@
 name: hisup
 
 decoder:
-    in_feature_size: ${...encoder.out_feature_size}
+    in_feature_size: 224
     in_feature_width: ${.in_feature_size}
     in_feature_height: ${.in_feature_size}
 
