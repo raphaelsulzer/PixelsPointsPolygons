@@ -37,13 +37,6 @@ class EarlyFusionViTCNN(torch.nn.Module):
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
 
         ###### LiDAR encoder #######
-        self.pp_vit = timm.create_model(
-            model_name=cfg.encoder.type,
-            num_classes=0,
-            global_pool='',
-            pretrained=cfg.encoder.pretrained,
-            checkpoint_path=cfg.encoder.checkpoint_file
-        )
         
         #### replace VisionTransformer patch embedding with LiDAR encoder        
         output_shape = [cfg.encoder.patch_feature_width, cfg.encoder.patch_feature_height]
