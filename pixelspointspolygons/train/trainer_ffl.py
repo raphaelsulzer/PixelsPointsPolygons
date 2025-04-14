@@ -192,7 +192,6 @@ class FFLTrainer(Trainer):
         if self.cfg.checkpoint is not None or self.cfg.checkpoint_file is not None:
             self.load_checkpoint()
 
-        best_loss = float('inf')
         iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
         epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
 
@@ -246,28 +245,13 @@ class FFLTrainer(Trainer):
                 for k, v in val_loss_dict.items():
                     wandb_dict[f"val_{k}"] = v
 
-                validation_best = False
-                # Save best validation loss epoch.
-                if val_loss_dict['total_loss'] < best_loss and self.cfg.save_best:
-                    validation_best = True
-                    best_loss = val_loss_dict['total_loss']
-                    checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "validation_best.pth")
-                    self.save_checkpoint(checkpoint_file, epoch=epoch)
-
-                # Save latest checkpoint every epoch.
-                if self.cfg.save_latest:
-                    checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "latest.pth")
-                    self.save_checkpoint(checkpoint_file, epoch=epoch)
-
-
-                if (epoch + 1) % self.cfg.save_every == 0:
-                    checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
-                    self.save_checkpoint(checkpoint_file, epoch=epoch)
+                self.save_best_and_latest_checkpoint(epoch=epoch,val_loss_dict=val_loss_dict)
 
             
             #############################################
             ############## COCO Evaluation ##############
             #############################################
+            val_metrics_dict = {}
             if (epoch + 1) % self.cfg.val_every == 0:
 
                 self.logger.info("Predict validation set with latest model...")
@@ -299,29 +283,30 @@ class FFLTrainer(Trainer):
                     with open(prediction_outfile, "w") as fp:
                         fp.write(json.dumps(coco_predictions))
                     self.logger.info(f"Saved predictions to {prediction_outfile}")
-                    if validation_best:
-                        best_prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", "validation_best.json")
-                        shutil.copyfile(prediction_outfile, best_prediction_outfile)
-                        self.logger.info(f"Copied predictions to {best_prediction_outfile}")
 
                     evaluator.load_predictions(prediction_outfile)
                     val_metrics_dict = evaluator.evaluate()
                     evaluator.print_dict_results(val_metrics_dict)
                     
+                    if val_metrics_dict['iou'] > self.cfg.best_val_iou:
+                        best_prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", "best_val_iou.json")
+                        shutil.copyfile(prediction_outfile, best_prediction_outfile)
+                        self.logger.info(f"Copied predictions to {best_prediction_outfile}")
+                        
                     for metric, value in val_metrics_dict.items():
                         wandb_dict[f"val_{metric}"] = value
-                        
-                # else:
-                #     self.logger.info(f"Rank {self.local_rank} waiting until coco evaluation is done...")
+                    
 
-            self.logger.info("Validation finished...\n")
-                
-            # Sync all processes before next epoch
-            if self.is_ddp:
-                dist.barrier()
+                if self.local_rank == 0:
+                    self.save_best_and_latest_checkpoint(epoch, val_loss_dict, val_metrics_dict)
+                    for k,v in wandb_dict.items():
+                        self.logger.debug(f"{k}: {v}")
+                        if self.cfg.log_to_wandb:
+                            wandb.log(wandb_dict)
+                            
+                # Sync all processes before next epoch
+                if self.cfg.multi_gpu:
+                    dist.barrier()
 
-            if self.cfg.log_to_wandb and self.local_rank == 0:
-                for k,v in wandb_dict.items():
-                    self.logger.debug(f"{k}: {v}")
-                wandb.log(wandb_dict)
+
         
