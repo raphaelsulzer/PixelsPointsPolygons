@@ -3,6 +3,7 @@ import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.nn as nn
 from torchvision.models.segmentation._utils import _SimpleSegmentationModel
+from transformers import ConvNextV2Model
 
 from ..pointpillars import *
 from ..vision_transformer import *
@@ -125,6 +126,12 @@ class FFLModel(torch.nn.Module):
             elif self.cfg.encoder.name == "unetresnet101":
                 encoder = UNetResNetBackbone(self.cfg)
                 encoder = _SimpleSegmentationModel(encoder, classifier=torch.nn.Identity())
+            elif self.cfg.encoder.name == "convnext":
+                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
+            elif self.cfg.encoder.name == "convnext_v2":
+                # all this needs is to be made into a class and put an upsampling function in the forwards pass
+                encoder = ConvNextV2Model.from_pretrained(self.cfg.encoder.convnext.checkpoint_file)
+                
             elif self.cfg.encoder.name == "vit_cnn":
                 encoder = ViTCNN(self.cfg,local_rank=local_rank)
             else:

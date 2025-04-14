@@ -14,7 +14,7 @@ point_pillars:
 # training
 batch_size: 16
 start_epoch: 0
-num_epochs: 100
+num_epochs: 200
 milestone: 0
 learning_rate: 1e-4
 weight_decay: 1e-4

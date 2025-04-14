@@ -26,7 +26,7 @@ perm_loss_weight: 10.0
 # training
 batch_size: 32
 start_epoch: 0
-num_epochs: 100
+num_epochs: 200
 milestone: 0
-learning_rate: 4e-4
+learning_rate: 3e-4
 weight_decay: 1e-4

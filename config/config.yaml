@@ -1,16 +1,16 @@
 defaults:
-  - encoder: hrnet
+  # - encoder: convnext
   # - encoder: pointpillars
   # - encoder: pointpillars_vit_cnn
-  # - encoder: vit_cnn
+  - encoder: vit_cnn
   # - encoder: vit
   # - encoder: pointpillars_vit
   # - encoder: fusion_vit
   # - encoder: fusion_vit_cnn
   # - encoder: fusion_hrnet
-  # - model: ffl
+  - model: ffl
+  # - model: hisup
   # - model: pix2poly
-  - model: hisup
   - polygonization: asm_acm
   - dataset: lidarpoly
   - run_type: release
@@ -67,10 +67,11 @@ eval:
   experiments:
     - model: ffl
       experiment_name:
-      - 224/v3_lidar_pp_vit_cnn_bs2x16
       - 224/image_vit_cnn_bs2x16
-      - 512/v3_lidar_pp_o3d_bs2x16
-      - 512/image_bs2x8
+      - 224/v3_lidar_pp_vit_cnn_bs2x16
+      - 224/fusion_vit_cnn_bs16
+    #   - 512/v3_lidar_pp_o3d_bs2x16
+    #   - 512/image_bs2x8
     - model: hisup
       experiment_name:
       - 512/image_bs2x12

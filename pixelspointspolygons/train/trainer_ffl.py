@@ -245,9 +245,6 @@ class FFLTrainer(Trainer):
                 for k, v in val_loss_dict.items():
                     wandb_dict[f"val_{k}"] = v
 
-                self.save_best_and_latest_checkpoint(epoch=epoch,val_loss_dict=val_loss_dict)
-
-            
             #############################################
             ############## COCO Evaluation ##############
             #############################################
