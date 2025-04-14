@@ -1,9 +1,3 @@
 ,IoU,C-IoU,NR
-ffl/512/image_bs2x8,0.769,0.622,0.797
-ffl/512/v3_lidar_pp_o3d_bs2x16,0.798,0.54,0.64
-hisup/512/image_bs2x12,0.811,0.676,0.822
-hisup/224/v3_lidar_ppori_vit_cnn_bs2x12,0.836,0.653,0.744
-hisup/512/both_nogn_nocj_bs16,0.812,0.64,0.769
-pix2poly/224/image_only_bs4x16,0.73,0.633,0.794
-pix2poly/224/lidar_only_bs2x16,0.798,0.713,0.855
-pix2poly/224/fusion_simple_bs4x32,0.788,0.698,0.838
+ffl/224/v3_lidar_pp_vit_cnn_bs2x16,0.854,0.628,0.715
+ffl/224/image_vit_cnn_bs2x16,0.81,0.604,0.73

@@ -28,9 +28,9 @@ loss:
   multi:
     epoch_thresholds: [0, 5, 10]  # From 0 to 5: gradually go from coefs[0] to coefs[1] for list coefs
     weights:
-      seg: 4
+      seg: 1
       crossfield_align: 1
-      crossfield_align90: 0.2
+      crossfield_align90: 0.5
       crossfield_smooth: 0.005
       seg_interior_crossfield: [0, 0, 0.2]
       seg_edge_crossfield: [0, 0, 0.2]
@@ -49,7 +49,7 @@ loss:
 # training
 batch_size: 32
 start_epoch: 0
-num_epochs: 300
+num_epochs: 200
 milestone: 0
 learning_rate: 1e-4
 weight_decay: 0.0
