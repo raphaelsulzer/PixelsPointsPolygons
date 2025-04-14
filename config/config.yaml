@@ -8,8 +8,8 @@ defaults:
   # - encoder: fusion_vit
   # - encoder: fusion_vit_cnn
   # - encoder: fusion_hrnet
-  - model: ffl
-  # - model: hisup
+  # - model: ffl
+  - model: hisup
   # - model: pix2poly
   - polygonization: asm_acm
   - dataset: lidarpoly
