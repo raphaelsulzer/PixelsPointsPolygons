@@ -14,6 +14,7 @@ import logging
 import torch
 
 import torch.distributed as dist
+import numpy as np
 
 from tqdm import tqdm
 from omegaconf import OmegaConf
@@ -125,6 +126,33 @@ class Trainer:
         
         self.logger.info(f"Save model {os.path.split(outfile)[-1]} to {outfile}")
 
+    def save_best_and_latest_checkpoint(self, epoch, val_loss_dict, val_metrics_dict):
+        
+        # Save best validation loss/iou epoch.
+        if val_loss_dict['total_loss'] < self.cfg.best_val_loss and self.cfg.save_best:
+            self.cfg.best_val_loss = val_loss_dict['total_loss']
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "best_val_loss.pth")
+            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
+
+        if val_metrics_dict.get('iou',0.0) > self.cfg.best_val_iou and self.cfg.save_best:
+
+            self.cfg.best_val_iou = val_metrics_dict['iou']
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "best_val_iou.pth")
+            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
+
+        # Save latest checkpoint every epoch.
+        if self.cfg.save_latest:
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "latest.pth")
+            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
+
+
+        if (epoch + 1) % self.cfg.save_every == 0:
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
+            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
+    
+    
+
+    
     def load_checkpoint(self):
         """Load checkpoint from file. This is a generic function that loads the model, optimizer and scheduler state dicts."""
         
@@ -180,12 +208,13 @@ class Trainer:
         """This is just an example of how to use the Trainer class. The actual train_val_loop slighlty varies for different architectures."""
 
         if self.cfg.checkpoint is not None:
-            self.load_checkpoint()
+            best_val_loss, best_val_iou = self.load_checkpoint()
+        else:
+            best_val_loss = np.float('inf')
+            best_val_iou = np.float('-inf')
             
         if self.cfg.log_to_wandb and self.local_rank == 0:
             self.setup_wandb()
-
-        best_loss = float('inf')
 
         iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
         epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
