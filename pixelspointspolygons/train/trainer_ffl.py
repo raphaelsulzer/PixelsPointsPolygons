@@ -288,7 +288,7 @@ class FFLTrainer(Trainer):
                     val_metrics_dict = evaluator.evaluate()
                     evaluator.print_dict_results(val_metrics_dict)
                     
-                    if val_metrics_dict['iou'] > self.cfg.best_val_iou:
+                    if val_metrics_dict['IoU'] > self.cfg.best_val_iou:
                         best_prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", "best_val_iou.json")
                         shutil.copyfile(prediction_outfile, best_prediction_outfile)
                         self.logger.info(f"Copied predictions to {best_prediction_outfile}")

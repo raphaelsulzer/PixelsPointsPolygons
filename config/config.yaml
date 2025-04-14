@@ -60,8 +60,8 @@ eval:
   modes:
     # - coco
     - iou
-    - polis
-    - mta
+    # - polis
+    # - mta
     # - stats
     # - topdig
   experiments:
