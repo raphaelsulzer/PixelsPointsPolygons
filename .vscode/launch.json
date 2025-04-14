@@ -36,13 +36,17 @@
             "program": "${workspaceFolder}/scripts/predict.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=debug",
+                "run_type=release",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
-                "polygonization.method=[asm]"
-                // "checkpoint=validation_best",
+                "polygonization.method=[acm]",
+                "checkpoint=validation_best",
+                "experiment_name=v3_lidar_pp_vit_cnn_bs2x16",
+                // "experiment_name=image_vit_cnn_bs2x16",
+                "model=ffl",
+                "encoder=pointpillars_vit_cnn"
             ],
             "justMyCode": false,
             "env": {

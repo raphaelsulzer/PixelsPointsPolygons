@@ -55,12 +55,10 @@ class PointPillarsViT(torch.nn.Module):
         }
         self.vit.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
         
-        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_feature_dim)
-
-        
         
     def forward(self, x):
         """Extract features from points."""
         
-        x = self.vit(x)
-        return self.bottleneck(x[:, 1:,:])
+        # x = self.vit(x)
+        # return self.bottleneck(x[:, 1:,:])
+        return self.vit(x)[:, 1:,:] # drop CLS token

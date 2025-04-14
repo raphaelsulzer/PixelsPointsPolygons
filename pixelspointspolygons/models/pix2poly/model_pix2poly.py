@@ -231,6 +231,8 @@ class EncoderDecoder(nn.Module):
         self.scorenet1 = ScoreNet(self.n_vertices)
         self.scorenet2 = ScoreNet(self.n_vertices)
         self.bin_score = torch.nn.Parameter(torch.tensor(1.0))
+        
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_feature_dim)
 
     def forward(self, x_images, x_lidar, y):
         
@@ -242,7 +244,9 @@ class EncoderDecoder(nn.Module):
             features = self.encoder(x_images, x_lidar)
         else:
             raise ValueError("At least one of use_images or use_lidar must be True")
-                
+        
+        # TODO: go through bottleneck layer here if necessary
+        
         preds, feats = self.decoder(features, y)
         perm_mat1 = self.scorenet1(feats)
         perm_mat2 = self.scorenet2(feats)

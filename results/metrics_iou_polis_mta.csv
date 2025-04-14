@@ -1,6 +1,8 @@
 ,POLIS,MTA,IoU,C-IoU,NR
+ffl/224/v3_lidar_pp_vit_cnn_bs2x16,2.8,48,0.796,0.542,0.634
+ffl/224/image_vit_cnn_bs2x16,3.84,38.3,0.787,0.644,0.784
+ffl/512/v3_lidar_pp_o3d_bs2x16,3.82,44.2,0.797,0.485,0.573
 ffl/512/image_bs2x8,5.47,36.1,0.769,0.622,0.797
-ffl/512/v3_lidar_pp_o3d_bs2x16,3.61,37.4,0.798,0.54,0.64
 hisup/512/image_bs2x12,4.09,43.1,0.811,0.676,0.822
 hisup/224/v3_lidar_ppori_vit_cnn_bs2x12,2.23,41.8,0.836,0.653,0.744
 hisup/512/both_nogn_nocj_bs16,3.98,44.3,0.812,0.64,0.769

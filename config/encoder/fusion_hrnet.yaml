@@ -1,0 +1,51 @@
+name: fusion_hrnet
+
+use_images: true
+use_lidar: true
+
+#############################
+####### Point Pillars #######
+#############################
+
+in_size: 224
+in_height: ${.in_size}
+in_width: ${.in_size}
+
+# in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56, or 512/128
+in_voxel_size: 
+    x: 8 # i.e. 2m
+    y: 8 # i.e. 2m
+    z: 100
+
+max_num_points_per_voxel: 128 # this should be something around points_per_tile (~200k) / num_voxels_per_tile (here: 784), however, I find that half of that val is enough
+
+max_num_voxels: # here: (224/8)**2
+    train: 784 # (${.encoder.in_size} // ${.encoder.patch_size})**2
+    test: 784 # (${.encoder.in_size} // ${.encoder.patch_size})**2
+
+out_feature_width: 28 # ${model.encoder.in_width} // ${model.encoder.patch_size}
+out_feature_height: 28 # ${model.encoder.in_height} // ${model.encoder.patch_size}
+
+
+
+##############################
+########### HRNet ############
+##############################
+type: HRNet48v2
+pretrained: True
+checkpoint_file: ${..host.data_root}/checkpoints/backbones/hrnetv2_w48_imagenet_pretrained.pth
+
+# in_size: 512
+# in_height: ${.in_size}
+# in_width: ${.in_size}
+
+out_feature_size: 128 # for HRNet this is always in_size / 4
+out_feature_height: ${.out_feature_size}
+out_feature_width: ${.out_feature_size}
+
+out_feature_dim: ${..model.decoder.in_feature_dim}
+
+# for compatibility with pretrained HRNet weights
+image_mean: [108.9177, 114.1638, 100.8611]
+image_std: [49.3129, 45.7661, 48.6514]
+image_max_pix_value: 1.0
