@@ -16,7 +16,7 @@ from lydorn_utils import python_utils
 
 def network_inference(model, batch, device):
     batch = local_utils.batch_to_cuda(batch,device=device)
-    pred, batch = model(batch)
+    pred = model(batch)
     return pred, batch
 
 

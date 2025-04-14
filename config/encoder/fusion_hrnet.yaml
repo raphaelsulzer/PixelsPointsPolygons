@@ -3,6 +3,11 @@ name: fusion_hrnet
 use_images: true
 use_lidar: true
 
+
+########################################################################
+############################# lidar encoder ############################
+########################################################################
+
 #############################
 ####### Point Pillars #######
 #############################
@@ -23,23 +28,39 @@ max_num_voxels: # here: (224/8)**2
     train: 784 # (${.encoder.in_size} // ${.encoder.patch_size})**2
     test: 784 # (${.encoder.in_size} // ${.encoder.patch_size})**2
 
-out_feature_width: 28 # ${model.encoder.in_width} // ${model.encoder.patch_size}
-out_feature_height: 28 # ${model.encoder.in_height} // ${model.encoder.patch_size}
+# out_feature_width: 28 # ${model.encoder.in_width} // ${model.encoder.patch_size}
+# out_feature_height: 28 # ${model.encoder.in_height} // ${model.encoder.patch_size}
 
 
+##############################
+##### Vision Transformer #####
+##############################
+vit:
+    type: vit_small_patch${..patch_size}_${..in_size}.dino
+    checkpoint_file: ${...host.data_root}/checkpoints/backbones/dino_deitsmall8_pretrain.pth
+    pretrained: True
+
+patch_size: 8
+
+patch_feature_size: 28
+patch_feature_height: ${.patch_feature_size}
+patch_feature_width: ${.patch_feature_size}
+
+patch_feature_dim: 384
+
+########################################################################
+############################# image encoder ############################
+########################################################################
 
 ##############################
 ########### HRNet ############
 ##############################
-type: HRNet48v2
-pretrained: True
-checkpoint_file: ${..host.data_root}/checkpoints/backbones/hrnetv2_w48_imagenet_pretrained.pth
+hrnet:
+    type: HRNet48v2
+    pretrained: True
+    checkpoint_file: ${...host.data_root}/checkpoints/backbones/hrnetv2_w48_imagenet_pretrained.pth
 
-# in_size: 512
-# in_height: ${.in_size}
-# in_width: ${.in_size}
-
-out_feature_size: 128 # for HRNet this is always in_size / 4
+out_feature_size: ${divide:${.in_size},4} # for HRNet this is always in_size / 4
 out_feature_height: ${.out_feature_size}
 out_feature_width: ${.out_feature_size}
 
@@ -48,4 +69,11 @@ out_feature_dim: ${..model.decoder.in_feature_dim}
 # for compatibility with pretrained HRNet weights
 image_mean: [108.9177, 114.1638, 100.8611]
 image_std: [49.3129, 45.7661, 48.6514]
-image_max_pix_value: 1.0
+image_max_pixel_value: 1.0
+
+augmentations:
+    - D4
+    # - Resize
+    - ColorJitter
+    - GaussNoise
+    - Normalize

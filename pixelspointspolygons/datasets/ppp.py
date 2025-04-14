@@ -19,8 +19,7 @@ def affine_transform(pt, t):
     new_pt = np.dot(t, new_pt)
     return new_pt[:2]
 
-
-class DefaultDataset(Dataset):
+class PPPDataset(Dataset):
     def __init__(self, cfg, split,
                  transform=None,
                  **kwargs):
@@ -534,3 +533,13 @@ class DefaultDataset(Dataset):
             ann['juncs_index'] = np.asarray([0])
 
         return ann
+    
+    
+    
+class ValDataset(PPPDataset):
+    def __init__(self,cfg,**kwargs):
+        super().__init__(cfg,'val',**kwargs)
+
+class TrainDataset(PPPDataset):
+    def __init__(self,cfg,**kwargs):
+        super().__init__(cfg,'train',**kwargs)

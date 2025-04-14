@@ -66,7 +66,7 @@ class FFLTrainer(Trainer):
 
         batch = next(iter(loader))
         batch = batch_to_cuda(batch, device=self.cfg.device)
-        pred, batch = self.model(batch)
+        pred = self.model(batch)
         
         outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
         os.makedirs(outpath, exist_ok=True)
@@ -138,7 +138,7 @@ class FFLTrainer(Trainer):
         for batch in loader:
             
             batch = batch_to_cuda(batch, device=self.cfg.device)
-            pred, batch = self.model(batch)
+            pred = self.model(batch)
             loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch, normalize=False)
 
             loss_dict_reduced = {k:v.item() for k,v in loss_dict.items()}
@@ -163,7 +163,7 @@ class FFLTrainer(Trainer):
         for batch in loader:
             
             batch = batch_to_cuda(batch, device=self.cfg.device)
-            pred, batch = self.model(batch)
+            pred = self.model(batch)
             loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch, normalize=False)
                 
             with torch.no_grad():                

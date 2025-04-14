@@ -8,10 +8,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Subset
 from torch.utils.data.distributed import DistributedSampler
 
-from .dataset_train import TrainDataset
-from .dataset_val import ValDataset
+from .ppp import ValDataset, TrainDataset
 from .collate_funcs import collate_fn_pix2poly, collate_fn_hisup, collate_fn_ffl
-
 
 def get_collate_fn(model):
     
@@ -146,7 +144,7 @@ def get_val_loader_lidarpoly(cfg,tokenizer,logger=None):
 
 
 def get_train_loader_inria(cfg,tokenizer,logger=None):
-    from ..datasets.dataset_inria_coco import InriaCocoDatasetTrain, collate_fn
+    from .inria_coco import InriaCocoDatasetTrain, collate_fn
 
     ### ORIGINAL Pix2Poly Augmentations
     ## in my experiment this does not perform any better than D4+ColorJitter+GaussNoise
@@ -196,7 +194,7 @@ def get_train_loader_inria(cfg,tokenizer,logger=None):
 
 def get_val_loader_inria(cfg,tokenizer,logger=None):
     
-    from ..datasets.dataset_inria_coco import InriaCocoDatasetVal, collate_fn
+    from .inria_coco import InriaCocoDatasetVal, collate_fn
     
     val_transforms = A.Compose(
         [

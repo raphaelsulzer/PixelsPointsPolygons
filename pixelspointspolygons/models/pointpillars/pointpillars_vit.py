@@ -36,11 +36,11 @@ class PointPillarsViT(torch.nn.Module):
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
 
         self.vit = timm.create_model(
-            model_name=cfg.encoder.type,
+            model_name=cfg.encoder.vit.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.encoder.pretrained,
-            checkpoint_path=cfg.encoder.checkpoint_file
+            pretrained=cfg.encoder.vit.pretrained,
+            checkpoint_path=cfg.encoder.vit.checkpoint_file
         )
         
         #### replace VisionTransformer patch embedding with LiDAR encoder        
