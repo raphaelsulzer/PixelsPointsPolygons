@@ -195,7 +195,7 @@ class Trainer:
         
         self.model = smart_load_state_dict(self.model, checkpoint["model"], self.logger, strict=True)
 
-        self.optimizer.load_state_dict(checkpoint["optimizer"])
+        # self.optimizer.load_state_dict(checkpoint["optimizer"])
         self.lr_scheduler.load_state_dict(checkpoint.get("scheduler",checkpoint.get("lr_scheduler")))
         if "loss_func" in checkpoint:
             self.loss_func.load_state_dict(checkpoint["loss_func"])
