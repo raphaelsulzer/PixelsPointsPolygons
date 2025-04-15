@@ -1,0 +1,37 @@
+name: pointpillars
+
+use_images: false
+use_lidar: true
+
+type: pointpillars_o3d
+pretrained: false
+checkpoint_file: null
+
+#############################
+####### Point Pillars #######
+#############################
+
+in_size: 512
+in_height: ${.in_size}
+in_width: ${.in_size}
+
+# in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56, or 512/128
+in_voxel_size: 
+    x: 2 # i.e. 2m
+    y: 2 # i.e. 2m
+    z: 100
+
+max_num_points_per_voxel: 4 # this should be something around points_per_tile (~200k) / num_voxels_per_tile (here: 784), however, I find that half of that val is enough
+
+max_num_voxels: # here: (224/8)**2
+    train: 64000 # (${.encoder.in_size} // ${.encoder.patch_size})**2
+    test: 64000 # (${.encoder.in_size} // ${.encoder.patch_size})**2
+
+out_feature_dim: ${..model.decoder.in_feature_dim}
+
+out_feature_size: ${..model.decoder.in_feature_size} # 128
+out_feature_height: ${.out_feature_size}
+out_feature_width: ${.out_feature_size}
+
+augmentations:
+    - D4

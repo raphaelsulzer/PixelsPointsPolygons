@@ -1,0 +1,15 @@
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llHccccc}
+\toprule
+\textbf{Method} & \textbf{Modality} & Unnamed: 0 & \textbf{IoU} $\uparrow$ & \textbf{C-IoU} $\uparrow$ & \textbf{NR=1} \\
+\midrule
+\cellcolor{green!10}\textbf{FFL} \cite{ffl} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{ffl/224/v3_lidar_pp_vit_cnn_bs2x16} & \cellcolor{blue!25} 0.854 & \cellcolor{blue!25} 0.628 & \cellcolor{blue!10} 0.715 \\
+\cellcolor{yellow!10}\textbf{FFL} \cite{ffl} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{ffl/224/image_vit_cnn_bs2x16} & \cellcolor{blue!10} 0.81 & \cellcolor{blue!10} 0.604 & \cellcolor{blue!25} 0.73 \\
+\bottomrule
+\end{tabular}
+}
+\caption{\textbf{Quantitative results of patch prediction on our dataset}. We compare the baseline models trained and tested on different modalities. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores.}
+\label{tab:patch}
+\end{table}

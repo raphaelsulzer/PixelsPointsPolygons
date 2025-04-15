@@ -25,10 +25,19 @@ dependencies = [
     "scikit-image",
     "scikit-learn",
     "shapely",
+    "tensorboard",
     "timm",
     "torchmetrics",
     "transformers==4.32",
-    "wandb"
+    "wandb",
+    # only for hisup
+    "Cython",
+    # only for FFL preprocessing
+    "kornia",
+    "skan",
+    "jsmin",
+    # ffl asm polygonization
+    # "torch-scatter", has to be specified in requirements-torch-cuda for specific cuda version
 ]
 
 

@@ -1,53 +1,93 @@
 defaults:
-  - model: pix2poly   # Default model
-  - dataset: lidarpoly   # Default dataset
-  - run_type: release   # Default run_type
+  # - encoder: convnext
+  # - encoder: pointpillars
+  # - encoder: pointpillars_vit_cnn
+  # - encoder: vit_cnn
+  # - encoder: vit
+  # - encoder: pointpillars_vit
+  # - encoder: fusion_vit
+  # - encoder: fusion_vit_cnn
+  - encoder: early_fusion_vit_cnn
+  # - encoder: fusion_hrnet
+  # - model: ffl
+  - model: hisup
+  # - model: pix2poly
+  - polygonization: asm_acm
+  - dataset: lidarpoly
+  - run_type: release
   - host: gin
   - _self_
+hydra:
+  run:
+    dir: ${...output_dir}
 
-# experiment_name: images_only
-# experiment_name: debug
-# experiment_name: inria_D4_aug
-experiment_name: lidar_only_bs32
+output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.encoder.in_size}/${.experiment_name}
+checkpoint: null
+checkpoint_file: null
+# checkpoint_file: null # override for loading a specific checkpoint file not in the output_dir
+# checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly/512/v1_lidar_LROnP/model_best_backup.pth
+# checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly_hisup_ori/v1_image_only_bs8/model_00062.pth
+
+experiment_name: debug
+group_name: v2_${.model.name}
 multi_gpu: false
 device: cuda
 log_to_wandb: ${.run_type.log_to_wandb}
+num_workers: ${.run_type.num_workers}
+update_pbar_every: ${.host.update_pbar_every}
 
-output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.experiment_name}
-
-model:
-  batch_size: ${..run_type.batch_size}
 dataset:
   train_subset: ${..run_type.train_subset}
   val_subset: ${..run_type.val_subset}
-num_workers: ${.run_type.num_workers}
+  size: ${..encoder.in_size}
 
-use_lidar: true
-use_images: true
+model:
+  batch_size: ${..run_type.batch_size}
 
-debug_vis: false
-
-checkpoint: null
-checkpoint_file: null # override for loading a specific checkpoint file
-
-eval:
-  gt_file: ${..dataset.annotations.val}
-  pred_file: ${..output_dir}/predictions/${..checkpoint}.json
-  out_file: ${..output_dir}/eval/${..checkpoint}.csv
-  modes:
-    - coco
-    - iou
-    - polis
-    # - mta
-    # - topdig
+use_lidar: ${.encoder.use_lidar}
+use_images: ${.encoder.use_images}
 
 save_best: true
 save_latest: true
 save_every: 10
 val_every: 1
+best_val_loss: 10000000.0
+best_val_iou: 0.0
 
-hydra:
-  run:
-    dir: ${...output_dir}
+eval:
+  gt_file: ${..dataset.annotations.val}
+  pred_file: ${..output_dir}/predictions/${..checkpoint}.json
+  # pred_file: ${..output_dir}/predictions/test.json
+  modes:
+    # - coco
+    - iou
+    # - polis
+    # - mta
+    # - stats
+    # - topdig
+  experiments:
+    - model: ffl
+      experiment_name:
+      - 224/image_vit_cnn_bs2x16
+      - 224/v3_lidar_pp_vit_cnn_bs2x16
+      - 224/fusion_vit_cnn_bs16
+    #   - 512/v3_lidar_pp_o3d_bs2x16
+    #   - 512/image_bs2x8
+    - model: hisup
+      experiment_name:
+      - 512/image_bs2x12
+      - 224/v3_lidar_ppori_vit_cnn_bs2x12
+      - 512/both_nogn_nocj_bs16
+    - model: pix2poly
+      experiment_name:
+      - 224/image_only_bs4x16
+      - 224/lidar_only_bs2x16
+      - 224/fusion_simple_bs4x32
+  # eval_file: ${..host.data_root}/${..dataset.name}/metrics.csv
+  eval_file: results/metrics
 
-update_pbar_every: ${.host.update_pbar_every}
+
+
+
+
+

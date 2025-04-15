@@ -14,18 +14,13 @@ import logging
 import torch
 
 import torch.distributed as dist
+import numpy as np
 
-from torch.nn.parallel import DistributedDataParallel as DDP
 from tqdm import tqdm
 from omegaconf import OmegaConf
-from torch import nn
-from torch import optim
-from transformers import get_linear_schedule_with_warmup
 
-from ..models.tokenizer import Tokenizer
-from ..misc import make_logger, is_main_process, AverageMeter, get_lr, get_tile_names_from_dataloader, plot_pix2poly, seed_everything
+from ..misc import make_logger, get_lr, seed_everything, smart_load_state_dict
 from ..datasets import get_train_loader, get_val_loader
-from ..models.pix2poly import EncoderDecoder, ImageEncoder, LiDAREncoder, MultiEncoder, Decoder
 from ..predict import Predictor
 from ..eval import Evaluator
 
@@ -59,6 +54,9 @@ class Trainer:
         
         self.is_ddp = self.cfg.multi_gpu
         
+        import matplotlib
+        matplotlib.use('Agg')  # Use non-GUI backend
+        
         
     def progress_bar(self,item):
         
@@ -72,24 +70,6 @@ class Trainer:
                       leave=True)
     
         return pbar
-    
-    def setup_ddp(self):
-
-        # Initializes the distributed backend which will take care of synchronizing nodes/GPUs.
-        dist_url = "env://"  # default
-
-        dist.init_process_group(
-            backend="nccl",
-            init_method=dist_url,
-            world_size=self.world_size,
-            rank=int(os.environ["RANK"])
-        )
-        
-        # this will make all .cuda() calls work properly.
-        torch.cuda.set_device(self.local_rank)
-
-        # synchronizes all threads to reach this point before moving on.
-        dist.barrier()
         
     def setup_wandb(self):
     
@@ -105,7 +85,7 @@ class Trainer:
             # set the wandb project where this run will be logged
             project="HiSup",
             name=self.cfg.experiment_name,
-            group="v1_pix2poly",
+            group=self.cfg.group_name,
             # track hyperparameters and run metadata
             config=cfg_container,
             dir=self.cfg.output_dir,
@@ -114,83 +94,31 @@ class Trainer:
         log_outfile = os.path.join(self.cfg.output_dir, 'wandb.log')
         wandb.run.log_code(log_outfile)
 
-    def cleanup(self):
-        dist.destroy_process_group()
+    def average_across_gpus(self, meter):
+        
+        if not self.is_ddp:
+            return meter.global_avg
+        
+        tensor = torch.tensor([meter.global_avg], device=self.device)
+        dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
+        tensor /= self.world_size
+        return tensor.item()
 
-    def setup_tokenizer(self):
-        self.tokenizer = Tokenizer(num_classes=1,
-            num_bins=self.cfg.model.tokenizer.num_bins,
-            width=self.cfg.model.encoder.input_width,
-            height=self.cfg.model.encoder.input_height,
-            max_len=self.cfg.model.tokenizer.max_len
-        )
     
-    def setup_dynamic_cfg_vars(self):
-    
-        self.cfg.model.tokenizer.pad_idx = self.tokenizer.PAD_code
-        self.cfg.model.tokenizer.max_len = self.cfg.model.tokenizer.n_vertices*2+2
-        self.cfg.model.tokenizer.generation_steps = self.cfg.model.tokenizer.n_vertices*2+1
-        self.cfg.model.encoder.num_patches = int((self.cfg.model.encoder.input_size // self.cfg.model.encoder.patch_size) ** 2)
-    
-    def setup_model(self):
-        
-        if self.cfg.use_images and self.cfg.use_lidar:
-            encoder = MultiEncoder(self.cfg)
-        elif self.cfg.use_images:
-            encoder = ImageEncoder(self.cfg)
-        elif self.cfg.use_lidar: 
-            encoder = LiDAREncoder(self.cfg)
-        else:
-            raise ValueError("At least one of use_image or use_lidar must be True")
-        
-        decoder = Decoder(
-            vocab_size=self.tokenizer.vocab_size,
-            encoder_len=self.cfg.model.encoder.num_patches,
-            dim=self.cfg.model.encoder.out_dim,
-            num_heads=8,
-            num_layers=6,
-            max_len=self.cfg.model.tokenizer.max_len,
-            pad_idx=self.cfg.model.tokenizer.pad_idx,
-        )
-        model = EncoderDecoder(
-            encoder=encoder,
-            decoder=decoder,
-            cfg=self.cfg
-        )
-        model.to(self.cfg.device)
-        
-        if self.is_ddp:
-            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model = DDP(model, device_ids=[self.local_rank])
-        
-        self.model = model
-
     def setup_dataloader(self):
-        self.train_loader = get_train_loader(self.cfg,tokenizer=self.tokenizer)
-        self.val_loader = get_val_loader(self.cfg,tokenizer=self.tokenizer)
-
-    def setup_optimizer(self):
-        # Get optimizer
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
-
-        # Get scheduler
-        num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
-        num_warmup_steps = int(0.05 * num_training_steps)
-        self.lr_scheduler = get_linear_schedule_with_warmup(
-            self.optimizer,
-            num_training_steps=num_training_steps,
-            num_warmup_steps=num_warmup_steps
-        )
+        self.train_loader = get_train_loader(self.cfg,logger=self.logger)
+        self.val_loader = get_val_loader(self.cfg,logger=self.logger)
 
     def save_checkpoint(self, outfile, **kwargs):
+        """Save checkpoint to file. This is a generic function that saves the model, optimizer and scheduler state dicts."""
         
         os.makedirs(os.path.dirname(outfile), exist_ok=True)
-            
+        
         checkpoint = {
             "cfg": self.cfg,
             "model": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
-            "scheduler": self.lr_scheduler.state_dict(),
+            "lr_scheduler": self.lr_scheduler.state_dict(),
             **kwargs
         }
         
@@ -198,190 +126,95 @@ class Trainer:
         
         self.logger.info(f"Save model {os.path.split(outfile)[-1]} to {outfile}")
 
-    def load_checkpoint(self):
+    def save_best_and_latest_checkpoint(self, epoch, val_loss_dict, val_metrics_dict):
         
-        map_location = {'cuda:%d' % 0: 'cuda:%d' % self.local_rank}
-        checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
-        if not os.path.isfile(checkpoint_file):
-            raise FileExistsError(f"Checkpoint file {checkpoint_file} does not exist.")
+        # Save best validation loss/iou epoch.
+        if val_loss_dict['total_loss'] < self.cfg.best_val_loss and self.cfg.save_best:
+            self.cfg.best_val_loss = val_loss_dict['total_loss']
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "best_val_loss.pth")
+            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
 
-        self.logger.info(f"Load checkpoint {self.cfg.checkpoint} from {checkpoint_file}...")
+        if val_metrics_dict.get('IoU',0.0) > self.cfg.best_val_iou and self.cfg.save_best:
+
+            self.cfg.best_val_iou = val_metrics_dict['IoU']
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "best_val_iou.pth")
+            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
+
+        # Save latest checkpoint every epoch.
+        if self.cfg.save_latest:
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "latest.pth")
+            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
+
+
+        if (epoch + 1) % self.cfg.save_every == 0:
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
+            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
+    
+    
+
+    
+    def load_checkpoint(self):
+        """Load checkpoint from file. This is a generic function that loads the model, optimizer and scheduler state dicts."""
         
-        checkpoint = torch.load(checkpoint_file, map_location=map_location)
-        self.model.load_state_dict(checkpoint.get("model",checkpoint.get("state_dict")))
+        ## get the file
+        if self.cfg.checkpoint_file is not None:
+            checkpoint_file = self.cfg.checkpoint_file
+            self.cfg.checkpoint = os.path.basename(checkpoint_file).split(".")[0]+"_overwrite"
+        else:
+            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
+        if not os.path.isfile(checkpoint_file):
+            raise FileExistsError(f"Checkpoint file {checkpoint_file} not found.")
+        self.logger.info(f"Loading model from checkpoint: {checkpoint_file}")
+        
+        ## load the checkpoint
+        checkpoint = torch.load(checkpoint_file, map_location=self.cfg.device)
+        
+        temp = {}
+        for k,v in checkpoint.items():
+            if "_state_dict" in k:
+                temp[k.replace("_state_dict","")] = v
+            else:
+                temp[k] = v
+        checkpoint = temp
+        del temp
+        
+        ## check for correct model type
+        cfg = checkpoint.get("cfg",None)
+        if cfg is not None:
+            if not cfg.use_lidar == self.cfg.use_lidar:
+                self.logger.error(f"Model checkpoint was trained with use_lidar={cfg.use_lidar}, but current config is use_lidar={self.cfg.use_lidar}.")
+                raise ValueError("Model checkpoint and current config do not match.")
+            if not cfg.use_images == self.cfg.use_images:
+                self.logger.error(f"Model checkpoint was trained with use_images={cfg.use_images}, but current config is use_images={self.cfg.use_images}.")
+                raise ValueError("Model checkpoint and current config do not match.")
+            
+            if hasattr(cfg, "model.fusion") and isattr(self.cfg.model, "fusion"):
+                if not cfg.model.fusion == self.cfg.model.fusion:
+                    self.logger.error(f"Model checkpoint was trained with fusion={cfg.model.fusion}, but current config is fusion={self.cfg.model.fusion}.")
+                    raise ValueError("Model checkpoint and current config do not match.")   
+        
+        self.model = smart_load_state_dict(self.model, checkpoint["model"], self.logger, strict=True)
+
         self.optimizer.load_state_dict(checkpoint["optimizer"])
-        self.lr_scheduler.load_state_dict(checkpoint["scheduler"])
+        self.lr_scheduler.load_state_dict(checkpoint.get("scheduler",checkpoint.get("lr_scheduler")))
+        if "loss_func" in checkpoint:
+            self.loss_func.load_state_dict(checkpoint["loss_func"])
         
         start_epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))
         self.cfg.model.start_epoch = start_epoch + 1
 
-    def average_across_gpus(self, meter):
-        
-        if not self.is_ddp:
-            return meter.avg
-        
-        tensor = torch.tensor([meter.avg], device=self.device)
-        dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
-        tensor /= self.world_size
-        return tensor.item()
-    
-    def setup_loss_fn_dict(self):
-        
-        # Get loss functions
-        weight = torch.ones(self.cfg.model.tokenizer.pad_idx + 1, device=self.cfg.device)
-        weight[self.tokenizer.num_bins:self.tokenizer.BOS_code] = 0.0
-        self.loss_fn_dict["vertex"] = nn.CrossEntropyLoss(ignore_index=self.cfg.model.tokenizer.pad_idx, label_smoothing=self.cfg.model.label_smoothing, weight=weight)
-        self.loss_fn_dict["perm"] = nn.BCELoss()
-        
-        
-    def valid_one_epoch(self):
-
-        self.logger.info("Validate...")
-        self.model.eval()
-        self.loss_fn_dict["vertex"].eval()
-        self.loss_fn_dict["perm"].eval()
-
-        loss_meter = AverageMeter()
-        vertex_loss_meter = AverageMeter()
-        perm_loss_meter = AverageMeter()
-
-        loader = self.progress_bar(self.val_loader)
-
-        with torch.no_grad():
-            for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
-                
-                batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
-                
-                if self.cfg.use_images:
-                    x_image = x_image.to(self.cfg.device, non_blocking=True)
-                if self.cfg.use_lidar:
-                    x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)    
-                
-                y_sequence = y_sequence.to(self.cfg.device, non_blocking=True)
-                y_perm = y_perm.to(self.cfg.device, non_blocking=True)
-
-                y_input = y_sequence[:, :-1]
-                y_expected = y_sequence[:, 1:]
-
-                preds, perm_mat = self.model(x_image, x_lidar, y_input)
-
-
-                vertex_loss_weight = self.cfg.model.vertex_loss_weight
-                perm_loss_weight = self.cfg.model.perm_loss_weight
-                
-                vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
-                perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
-
-                loss = vertex_loss + perm_loss
-
-                loss_meter.update(loss.item(), batch_size)
-                vertex_loss_meter.update(vertex_loss.item(), batch_size)
-                perm_loss_meter.update(perm_loss.item(), batch_size)
-
-
-        self.logger.debug(f"Validation loss: {loss_meter.avg:.3f}")
-        loss_dict = {
-            'total_loss': self.average_across_gpus(loss_meter),
-            'vertex_loss': self.average_across_gpus(vertex_loss_meter),
-            'perm_loss': self.average_across_gpus(perm_loss_meter),
-        }
-        self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
-
-        return loss_dict
-
-
-    def train_one_epoch(self, epoch, iter_idx):
-        
-        self.logger.info(f"Train epoch {epoch}...")
-        
-        self.model.train()
-        self.loss_fn_dict["vertex"].train()
-        self.loss_fn_dict["perm"].train()
-
-        loss_meter = AverageMeter()
-        vertex_loss_meter = AverageMeter()
-        perm_loss_meter = AverageMeter()
-
-        
-        loader = self.progress_bar(self.train_loader)
-
-        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids in loader:
-                        
-            batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
-            
-            # ### debug vis
-            if self.cfg.debug_vis:
-                file_names = get_tile_names_from_dataloader(self.train_loader.dataset.coco.imgs, tile_ids)
-                # plot_pix2poly(image_batch=x_image,lidar_batch=x_lidar,mask_batch=y_mask,corner_image_batch=y_corner_mask,tile_names=file_names)        
-                plot_pix2poly(image_batch=x_image,lidar_batch=x_lidar,corner_image_batch=y_corner_mask,tile_names=file_names)        
-            
-            if self.cfg.use_images:
-                x_image = x_image.to(self.cfg.device, non_blocking=True)
-            if self.cfg.use_lidar:
-                x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
-            
-            y_sequence = y_sequence.to(self.cfg.device, non_blocking=True)
-            y_perm = y_perm.to(self.cfg.device, non_blocking=True)
-
-            y_input = y_sequence[:, :-1]
-            y_expected = y_sequence[:, 1:]
-
-            preds, perm_mat = self.model(x_image, x_lidar, y_input)
-
-            if epoch < self.cfg.model.milestone:
-                vertex_loss_weight = self.cfg.model.vertex_loss_weight
-                perm_loss_weight = 0.0
-            else:
-                vertex_loss_weight = self.cfg.model.vertex_loss_weight
-                perm_loss_weight = self.cfg.model.perm_loss_weight
-
-            vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
-            perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
-
-            loss = vertex_loss + perm_loss
-
-            self.optimizer.zero_grad(set_to_none=True)
-            loss.backward()
-            self.optimizer.step()
-
-            self.lr_scheduler.step()
-
-            loss_meter.update(loss.item(), batch_size)
-            vertex_loss_meter.update(vertex_loss.item(), batch_size)
-            perm_loss_meter.update(perm_loss.item(), batch_size)
-
-            lr = get_lr(self.optimizer)
-
-            loader.set_postfix(train_loss=loss_meter.avg, lr=f"{lr:.5f}")
-
-            iter_idx += 1
-
-            # if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
-            #     break
-            
-        
-        self.logger.debug(f"Train loss: {loss_meter.avg:.3f}")
-        loss_dict = {
-            'total_loss': self.average_across_gpus(loss_meter),
-            'vertex_loss': self.average_across_gpus(vertex_loss_meter),
-            'perm_loss': self.average_across_gpus(perm_loss_meter),
-        }
-        
-        self.logger.info(f"Train loss: {loss_dict['total_loss']:.3f}")
-
-        return loss_dict, iter_idx
-
-
 
     def train_val_loop(self):
+        """This is just an example of how to use the Trainer class. The actual train_val_loop slighlty varies for different architectures."""
 
         if self.cfg.checkpoint is not None:
-            self.load_checkpoint()
+            best_val_loss, best_val_iou = self.load_checkpoint()
+        else:
+            best_val_loss = np.float('inf')
+            best_val_iou = np.float('-inf')
             
         if self.cfg.log_to_wandb and self.local_rank == 0:
             self.setup_wandb()
-
-        best_loss = float('inf')
 
         iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
         epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
@@ -398,7 +231,6 @@ class Trainer:
             ############################################
             ################# Training #################
             ############################################
-            
             # important to shuffle the data differently for each epoch
             # see: https://pytorch.org/docs/stable/data.html#torch.utils.data.distributed.DistributedSampler
             if self.is_ddp:
@@ -503,15 +335,18 @@ class Trainer:
                 if self.local_rank == 0:
                     wandb.log(wandb_dict)
 
+    def setup_model(self):
+        pass
+    def setup_optimizer(self):
+        pass
+    def setup_loss_fn_dict(self):
+        pass
     
-
-
+    def cleanup(self):
+        dist.destroy_process_group()
+        
     def train(self):
         seed_everything(42)
-        if self.is_ddp:
-            self.setup_ddp()
-        self.setup_tokenizer()
-        self.setup_dynamic_cfg_vars()
         self.setup_model()
         self.setup_dataloader()
         self.setup_optimizer()

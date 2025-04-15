@@ -1,1 +1,28 @@
 name: hisup
+
+decoder:
+    in_feature_size: 224
+    in_feature_width: ${.in_feature_size}
+    in_feature_height: ${.in_feature_size}
+
+    in_feature_dim: 256
+
+point_pillars:
+    out_channels: [128, 128, 128]
+    upsample_strides: [1, 2, 4]
+
+# training
+batch_size: 16
+start_epoch: 0
+num_epochs: 200
+milestone: 0
+learning_rate: 1e-4
+weight_decay: 1e-4
+
+loss_weights:
+    loss_joff: 0.25    # joff  regression
+    loss_jloc: 8.0     # jloc  classification
+    loss_mask: 1.0
+    loss_afm : 0.1
+    loss_remask : 1.0
+

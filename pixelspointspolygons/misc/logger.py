@@ -1,7 +1,46 @@
-import logging, colorlog, sys
+import logging
+import colorlog
+import sys
+import torch
 
-def make_logger(name="MyLogger",level=logging.INFO,
-                filepath=None):
+from collections import defaultdict
+
+from .shared_utils import SmoothedValue
+
+
+class MetricLogger:
+    def __init__(self, delimiter="\t"):
+        self.meters = defaultdict(SmoothedValue)
+        self.delimiter = delimiter
+
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            if isinstance(v, torch.Tensor):
+                v = v.item()
+            assert isinstance(v, (float, int))
+            self.meters[k].update(v)
+
+    def __getattr__(self, attr):
+        if attr in self.meters:
+            return self.meters[attr]
+        if attr in self.__dict__:
+            return self.__dict__[attr]
+        raise AttributeError("'{}' object has no attribute '{}'".format(
+                    type(self).__name__, attr))
+
+    def __str__(self):
+        loss_str = []
+        keys = sorted(self.meters)
+        # for name, meter in self.meters.items():
+        for name in keys:
+            meter = self.meters[name]
+            loss_str.append(
+                "{}: {:.4f} ({:.4f})".format(name, meter.median, meter.global_avg)
+            )
+        return self.delimiter.join(loss_str)
+
+
+def make_logger(name, level=logging.INFO, local_rank=0, filepath=None):
     """
     Attach a stream handler to all loggers.
 
@@ -25,6 +64,9 @@ def make_logger(name="MyLogger",level=logging.INFO,
     # make sure we log warnings from the warnings module
     # logging.captureWarnings(capture_warnings)
 
+    if local_rank is not None:
+        name = f"{name} rank {local_rank}"
+
     formatter = colorlog.ColoredFormatter(
         "%(log_color)s[%(name)s] [%(asctime)s] [(%(filename)s:%(lineno)3s)] [%(levelname)s] %(message)s",
         datefmt="%H:%M:%S",
@@ -45,6 +87,12 @@ def make_logger(name="MyLogger",level=logging.INFO,
 
     # if no handler was passed use a StreamHandler
     logger = logging.getLogger(name)
+    
+    # if in multiprocessing there a different processed and the logging level is set to INFO, do not print for every process but only for main.
+    # however, do print if there is a warning or if in debug mode
+    if level == logging.INFO and local_rank != 0:
+        level = logging.WARNING
+        
     logger.setLevel(level)
     logger.propagate = 0
 

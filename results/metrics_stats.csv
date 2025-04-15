@@ -1,0 +1,11 @@
+,#images,GT #images w/ polys,Pred #images w/ polys,GT #polygons,Pred #polygons,GT #vertices,Pred #vertices
+ffl/224/v3_lidar_pp_vit_cnn_bs2x16,529,453,427,1134,1075,9844,22826
+ffl/224/image_vit_cnn_bs2x16,529,453,443,1134,1067,9844,13671
+ffl/512/v3_lidar_pp_o3d_bs2x16,100,98,98,599,865,7003,16967
+ffl/512/image_bs2x8,100,98,97,599,674,7003,9035
+hisup/512/image_bs2x12,100,98,98,599,592,7003,9545
+hisup/224/v3_lidar_ppori_vit_cnn_bs2x12,529,453,451,1134,1337,9844,18652
+hisup/512/both_nogn_nocj_bs16,100,98,96,599,612,7003,10601
+pix2poly/224/image_only_bs4x16,529,453,428,1134,1106,9844,9422
+pix2poly/224/lidar_only_bs2x16,529,453,448,1134,1069,9844,9399
+pix2poly/224/fusion_simple_bs4x32,529,453,442,1134,1094,9844,9392

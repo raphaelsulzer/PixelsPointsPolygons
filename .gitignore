@@ -10,6 +10,7 @@ __pycache__
 **/*.dylib
 **/*.dll
 
+
 *.egg-info/
 *.egg
 
@@ -27,6 +28,8 @@ wandb/*
 *.png
 *.tar.xz
 *.gif
+*.pth
+*.o
 
 # Files ignore
 !media/teaser.jpg
