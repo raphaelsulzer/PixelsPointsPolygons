@@ -73,7 +73,7 @@ pip install .
 
 ## Configuration
 
-The project supports hydra configuration which allows to modify any parameter from the command line.
+The project supports hydra configuration which allows to modify any parameter from the command line, such as the model and encoder types from the table above.
 To view all available options run
 ```
 python train.py --help
