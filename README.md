@@ -67,9 +67,9 @@ pip install .
 | HiSup                     |\<hisup>   | Vision Transformer (ViT)  | \<vit_cnn>            | ✅    |       | 0.85  | 0.90      |
 | HiSup                     |\<hisup>   | PointPillars (PP) + ViT   | \<pp_vit_cnn>         |       | ✅    | 0.80  | 0.88      |
 | HiSup                     |\<hisup>   | PP+ViT \& ViT             | \<fusion_vit>         | ✅    |✅     | 0.78  | 0.85      |
-| Pix2Poly                  |\<pix2poly>| Vision Transformer (ViT)  | \<vit_cnn>            | ✅    |       | 0.85  | 0.90      |
+| Pix2Poly                  |\<pix2poly>| Vision Transformer (ViT)  | \<vit>                | ✅    |       | 0.85  | 0.90      |
 | Pix2Poly                  |\<pix2poly>| PointPillars (PP) + ViT   | \<pp_vit>             |       | ✅    | 0.80  | 0.88      |
-| Model D                   |\<pix2poly>| PP+ViT \& ViT             | \<fusion_vit>         | ✅    |✅     | 0.78  | 0.85      |
+| Pix2Poly                  |\<pix2poly>| PP+ViT \& ViT             | \<fusion_vit>         | ✅    |✅     | 0.78  | 0.85      |
 
 ## Configuration
 
