@@ -7,6 +7,8 @@ https://oar.imag.fr/docs/2.5/user/quickstart.html
 oarsub -S ./oar/job.sh
 ## to see status run
 oarstat -fj $JOBID
+## to see status run
+oarstat | grep "rsulzer"
 ## kill a job
 oardel $JOBID
 
