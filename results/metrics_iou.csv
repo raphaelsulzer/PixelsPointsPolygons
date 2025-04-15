@@ -1,3 +1,3 @@
 ,IoU,C-IoU,NR
-ffl/224/v3_lidar_pp_vit_cnn_bs2x16,0.854,0.628,0.715
-ffl/224/image_vit_cnn_bs2x16,0.81,0.604,0.73
+ffl/224/acm.tol_1/v3_image_vit_cnn_bs4x16,0.823,0.657,0.781
+ffl/224/asm.tol_1/v3_image_vit_cnn_bs4x16,0.809,0.67,0.8
