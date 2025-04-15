@@ -9,8 +9,8 @@
 #SBATCH --gres=gpu:4              # Request 2 GPUs
 #SBATCH --constraint v100-32g
 #SBATCH --cpus-per-task=16         # Request 8 CPU cores
-#SBATCH --qos=qos_gpu-t3 # QoS
-#SBATCH --time=24:00:00           # Time limit (hh:mm:ss)
+#SBATCH --qos=qos_gpu-t4 # QoS
+#SBATCH --time=48:00:00           # Time limit (hh:mm:ss)
 #SBATCH --mail-user=raphael.sulzer.1@gmail.com  # Email for notifications
 #SBATCH --mail-type=ALL           # When to receive emails (BEGIN, END, FAIL, ALL)
 
