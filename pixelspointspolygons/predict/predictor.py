@@ -5,9 +5,6 @@ import os
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
 import logging
-import time
-import json
-import cv2
 import torch
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
@@ -16,9 +13,6 @@ import numpy as np
 from tqdm import tqdm
 
 from ..misc import *
-from ..models.tokenizer import Tokenizer
-from ..datasets import get_val_loader
-from ..models import get_model
 
 class Predictor:
     def __init__(self, cfg, local_rank=0, world_size=1):
@@ -26,21 +20,20 @@ class Predictor:
         
         self.local_rank = local_rank
         self.world_size = world_size
-        
+
+        self.device = torch.device(f"cuda:{local_rank}")
+
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
-        if verbosity == logging.INFO and local_rank != 0:
-            verbosity = logging.WARNING
+        self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
+
         self.verbosity = verbosity
         self.update_pbar_every = cfg.update_pbar_every
 
-        self.logger = make_logger(f"Predictor (rank {local_rank})",level=verbosity)
         self.logger.log(logging.INFO, f"Init Predictor on rank {local_rank} in world size {world_size}...")
         self.logger.info(f"Create output directory {cfg.output_dir}")
         if self.local_rank == 0:
             os.makedirs(cfg.output_dir, exist_ok=True)
-            
-        self.is_ddp = cfg.multi_gpu
-        
+                           
     def progress_bar(self,item):
         
         disable = self.verbosity >= logging.WARNING
@@ -55,21 +48,9 @@ class Predictor:
     
         return pbar
     
-    def get_pixel_mask_from_prediction(self, x, batch_polygons):
-        B, C, H, W = x.shape
-
-        polygons_mask = np.zeros((B, 1, H, W))
-        for b in range(len(batch_polygons)):
-            for c in range(len(batch_polygons[b])):
-                poly = batch_polygons[b][c]
-                poly = poly[poly[:, 0] != self.cfg.model.tokenizer.pad_idx]
-                cnt = np.flip(np.int32(poly.cpu()), 1)
-                if len(cnt) > 0:
-                    cv2.fillPoly(polygons_mask[b, 0], pts=[cnt], color=1.)
-        return torch.from_numpy(polygons_mask)
-    
-    def load_checkpoint(self, model):
+    def load_checkpoint(self):
         
+        ## get the file
         if self.cfg.checkpoint_file is not None:
             checkpoint_file = self.cfg.checkpoint_file
             self.cfg.checkpoint = os.path.basename(checkpoint_file).split(".")[0]+"_overwrite"
@@ -78,92 +59,32 @@ class Predictor:
         if not os.path.isfile(checkpoint_file):
             raise FileExistsError(f"Checkpoint file {checkpoint_file} not found.")
         self.logger.info(f"Loading model from checkpoint: {checkpoint_file}")
+        
+        ## load the checkpoint
         checkpoint = torch.load(checkpoint_file, map_location=self.cfg.device)
-        single_gpu_state_dict = {k.replace("module.", ""): v for k, v in checkpoint["state_dict"].items()}
-        # single_gpu_state_dict = {k.replace("encoder.image_encoder", "encoder.encoder"): v for k, v in checkpoint["state_dict"].items()}
+        for k in checkpoint.keys():
+            if "_state_dict" in k:
+                checkpoint[k.replace("_state_dict","")] = checkpoint.pop(k)
         
-        # single_gpu_state_dict = checkpoint["state_dict"]
-        model.load_state_dict(single_gpu_state_dict)
-        epoch = checkpoint['epochs_run']
+        ## check for correct model type
+        cfg = checkpoint.get("cfg",None)
+        if cfg is not None:
+            if not cfg.use_lidar == self.cfg.use_lidar:
+                self.logger.error(f"Model checkpoint was trained with use_lidar={cfg.use_lidar}, but current config is use_lidar={self.cfg.use_lidar}.")
+                raise ValueError("Model checkpoint and current config do not match.")
+            if not cfg.use_images == self.cfg.use_images:
+                self.logger.error(f"Model checkpoint was trained with use_images={cfg.use_images}, but current config is use_images={self.cfg.use_images}.")
+                raise ValueError("Model checkpoint and current config do not match.")
+            
+            if hasattr(cfg, "model.fusion") and isattr(self.cfg.model, "fusion"):
+                if not cfg.model.fusion == self.cfg.model.fusion:
+                    self.logger.error(f"Model checkpoint was trained with fusion={cfg.model.fusion}, but current config is fusion={self.cfg.model.fusion}.")
+                    raise ValueError("Model checkpoint and current config do not match.")   
+        
+        # self.model.load_state_dict(model_state_dict)
+        self.model = smart_load_state_dict(self.model, checkpoint["model"], self.logger, strict=True)
+        epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))
+        
         self.logger.info(f"Model loaded from epoch: {epoch}")
-    
-    
-    def predict_from_loader(self, model, tokenizer, loader):
         
-        if isinstance(loader.dataset, torch.utils.data.Subset):
-            self.logger.warning("You are predicting only a subset of the dataset. Your coco evaluation will not be very useful.")
         
-        model.eval()
-        
-        coco_predictions = []
-        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in self.progress_bar(loader):
-            
-            if self.cfg.use_images:
-                x_image = x_image.to(self.cfg.device, non_blocking=True)
-            if self.cfg.use_lidar:
-                x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
-
-            batch_preds, batch_confs, perm_preds = test_generate(
-                model,x_image,x_lidar,tokenizer,
-                max_len=self.cfg.model.tokenizer.generation_steps,top_k=0,top_p=1)
-            
-            
-            vertex_coords, _ = postprocess(batch_preds, batch_confs, tokenizer)
-
-            coords = []
-            for i in range(len(vertex_coords)):
-                if vertex_coords[i] is not None:
-                    coord = torch.from_numpy(vertex_coords[i])
-                else:
-                    coord = torch.tensor([])
-                padd = torch.ones((self.cfg.model.tokenizer.n_vertices - len(coord), 2)).fill_(self.cfg.model.tokenizer.pad_idx)
-                coord = torch.cat([coord, padd], dim=0)
-                coords.append(coord)
-                
-            batch_polygons = permutations_to_polygons(perm_preds, coords, out='torch')  # [0, 224]     
-
-            batch_polygons_processed = []
-            for i, pp in enumerate(batch_polygons):
-                polys = []
-                for p in pp:
-                    p = torch.fliplr(p)
-                    p = p[p[:, 0] != self.cfg.model.tokenizer.pad_idx]
-                    if len(p) > 0:
-                        polys.append(p)
-                batch_polygons_processed.append(polys)
-                coco_predictions.extend(generate_coco_ann(polys,image_ids[i].item()))
-
-            if self.cfg.debug_vis:
-                polygons_mask = self.get_pixel_mask_from_prediction(x_image,batch_polygons)
-                file_names = get_tile_name_from_dataloader(loader.dataset.coco.imgs, image_ids)
-                file_names = None
-                plot_pix2poly(image_batch=x_image, tile_names=file_names, mask_batch=polygons_mask, polygon_batch=batch_polygons_processed)
-                
-        return coco_predictions
-    
-
-    def predict(self):
-
-        tokenizer = Tokenizer(
-            num_classes=1,
-            num_bins=self.cfg.model.tokenizer.num_bins,
-            width=self.cfg.model.encoder.input_width,
-            height=self.cfg.model.encoder.input_height,
-            max_len=self.cfg.model.tokenizer.max_len
-        )
-        
-        compute_dynamic_cfg_vars(self.cfg,tokenizer)
-
-        val_loader = get_val_loader(self.cfg,tokenizer)
-        # val_loader = get_train_loader(self.cfg,tokenizer)
-        model = get_model(self.cfg,tokenizer=tokenizer)
-        self.load_checkpoint(model)
-
-        with torch.no_grad():
-            t0 = time.time()
-            coco_predictions = self.predict_from_loader(model,tokenizer,val_loader)
-            self.logger.debug("Average model speed: ", (time.time() - t0) / len(val_loader.dataset), " [s / image]")
-
-        prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", f"{self.cfg.checkpoint}.json")
-        with open(prediction_outfile, "w") as fp:
-            fp.write(json.dumps(coco_predictions))

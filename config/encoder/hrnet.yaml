@@ -1,0 +1,31 @@
+name: hrnet
+
+use_images: true
+use_lidar: false
+
+hrnet:
+    type: HRNet48v2
+    pretrained: True
+    checkpoint_file: ${...host.data_root}/checkpoints/backbones/hrnetv2_w48_imagenet_pretrained.pth
+
+in_size: 224
+in_height: ${.in_size}
+in_width: ${.in_size}
+
+out_feature_size: ${divide:${.in_size},4} # for HRNet this is always in_size / 4
+out_feature_height: ${.out_feature_size}
+out_feature_width: ${.out_feature_size}
+
+out_feature_dim: ${..model.decoder.in_feature_dim}
+
+# for compatibility with pretrained HRNet weights
+image_mean: [108.9177, 114.1638, 100.8611]
+image_std: [49.3129, 45.7661, 48.6514]
+image_max_pixel_value: 1.0
+
+augmentations:
+    - D4
+    # - Resize
+    - ColorJitter
+    - GaussNoise
+    - Normalize

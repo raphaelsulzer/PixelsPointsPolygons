@@ -1,0 +1,62 @@
+name: ffl
+
+
+# Inherit the base encoder configuration and override specific parameters
+encoder:
+  compute_seg: True
+  compute_crossfield: True
+  seg:
+    compute_interior: True
+    compute_edge: False
+    compute_vertex: False
+
+decoder:
+    in_feature_size: ${...encoder.in_size} # FFL basically has a feature size equal to input image size
+    in_feature_width: ${.in_feature_size}
+    in_feature_height: ${.in_feature_size}
+
+    in_feature_dim: ${if:${eq:${.in_feature_size},512}, 32, 256}  # if in_feature_size is 512, set in_feature_dim to 32, otherwise (=224) set it to 256
+
+point_pillars:
+    out_channels: 
+     - ${...decoder.in_feature_dim}
+     - ${...decoder.in_feature_dim}
+     - ${...decoder.in_feature_dim}]
+    upsample_strides: [4, 8, 16]
+
+loss:
+  multi:
+    epoch_thresholds: [0, 5, 10]  # From 0 to 5: gradually go from coefs[0] to coefs[1] for list coefs
+    weights:
+      seg: 1
+      crossfield_align: 1
+      crossfield_align90: 0.5
+      crossfield_smooth: 0.005
+      seg_interior_crossfield: [0, 0, 0.2]
+      seg_edge_crossfield: [0, 0, 0.2]
+      seg_edge_interior: [0, 0, 0.2]
+  seg:
+    bce_coef: 1.0
+    dice_coef: 0.2
+    use_freq: false # Frequency weights per pixel class, e.g. weight building interior higher
+    use_dist: false  # Dist weights as in the original U-Net paper
+    use_size: false  # Size weights increasing importance of smaller buildings
+    w0: 50  # From original U-Net paper: distance weight to increase loss between objects
+    sigma: 10  # From original U-Net paper: distance weight to increase loss between objects
+    type: bool # or bool
+
+
+# training
+batch_size: 32
+start_epoch: 0
+num_epochs: 200
+milestone: 0
+learning_rate: 1e-4
+weight_decay: 0.0
+gamma: 0.95
+
+
+eval:
+  patch_size: null
+  patch_overlap: 200
+  seg_threshold: 0.5

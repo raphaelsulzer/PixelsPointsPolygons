@@ -52,11 +52,26 @@ or, if you want to manage the environment yourself run
 pip install -r requirements-torch-cuda.txt
 pip install .
 ```
-⚠️ **Warning**: the implementation for the lidar point cloud encoder uses Open3D-ML. Currently, Open3D-ML officially only supports the PyTorch version specified in `requirements-torch-cuda.txt`.
+⚠️ **Warning**: The implementation of the LiDAR point cloud encoder uses Open3D-ML. Currently, Open3D-ML officially only supports the PyTorch version specified in `requirements-torch-cuda.txt`.
 
+
+
+## Model Zoo
+
+
+| Model                     | \<model>  | Encoder                   | \<encoder>            |Image  |LiDAR  | IoU   | C-IoU     |
+|---------------            |----       |---------------            |---------------        |---    |---    |----   |----       |
+| Frame Field Learning      |\<ffl>     | Vision Transformer (ViT)  | \<vit_cnn>            | ✅    |       | 0.85  | 0.90      |
+| Frame Field Learning      |\<ffl>     | PointPillars (PP) + ViT   | \<pp_vit_cnn>         |       | ✅    | 0.80  | 0.88      |
+| Frame Field Learning      |\<ffl>     | PP+ViT \& ViT             | \<fusion_vit_cnn>     | ✅    |✅     | 0.78  | 0.85      |
+| HiSup                     |\<hisup>   | Vision Transformer (ViT)  | \<vit_cnn>            | ✅    |       | 0.85  | 0.90      |
+| HiSup                     |\<hisup>   | PointPillars (PP) + ViT   | \<pp_vit_cnn>         |       | ✅    | 0.80  | 0.88      |
+| HiSup                     |\<hisup>   | PP+ViT \& ViT             | \<fusion_vit>         | ✅    |✅     | 0.78  | 0.85      |
+| Pix2Poly                  |\<pix2poly>| Vision Transformer (ViT)  | \<vit_cnn>            | ✅    |       | 0.85  | 0.90      |
+| Pix2Poly                  |\<pix2poly>| PointPillars (PP) + ViT   | \<pp_vit>             |       | ✅    | 0.80  | 0.88      |
+| Model D                   |\<pix2poly>| PP+ViT \& ViT             | \<fusion_vit>         | ✅    |✅     | 0.78  | 0.85      |
 
 ## Configuration
-
 
 The project supports hydra configuration which allows to modify any parameter from the command line.
 To view all available options run
@@ -64,36 +79,35 @@ To view all available options run
 python train.py --help
 ```
 
-
 ## Training
 
 Start training with the following command:
 
 ```
-torchrun --nproc_per_node=<num GPUs> train.py model=<pix2poly,hisup,ffl> use_lidar=<true,false> use_images=<true,false> model.batch_size=<batch size> ...
+torchrun --nproc_per_node=<num GPUs> train.py model=<model> encoder=<encoder> model.batch_size=<batch size> ...
 
 ```
 
 ## Prediction
 
 ```
-torchrun --nproc_per_node=<num GPUs> predict.py model=<pix2poly,hisup,ffl> checkpoint=validation_best ...
+torchrun --nproc_per_node=<num GPUs> predict.py model=<model> checkpoint=best_val_iou ...
 
 ```
 
 ## Evaluation
 
 ```
-python evaluate.py model=<pix2poly,hisup,ffl> checkpoint=validation_best
+python evaluate.py model=<model> checkpoint=best_val_iou
 ```
-## Trained models
+<!-- ## Trained models
 
-asd
+asd -->
 
 
-## Results
+<!-- ## Results
 
-#TODO Put paper main results table here
+#TODO Put paper main results table here -->
 
 
 ## Citation

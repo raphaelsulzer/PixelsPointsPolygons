@@ -76,36 +76,28 @@ conda activate ${ENV_NAME}
 echo "________________ Install Required Packages _______________"
 echo
 
-# pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+export TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5;8.0;8.6"
+
+# install a cudatoolkit 12.1 to match the version specified in requirements-torch-cuda.txt
+conda install -c nvidia/label/cuda-12.1.1 cuda-toolkit=12.1.1 -y
 
 pip install -r requirements-torch-cuda.txt
 
-# pip install transformers==4.32
-# pip install pycocotools
-# pip install torchmetrics
-# pip install wandb
-# pip install timm
-# pip install matplotlib
-# pip install albumentations
-# pip install shapely
-# pip install hydra-core
-# pip install pandas
-
-# # # problem with torch:tms? do this:
-# # # https://github.com/huggingface/diffusers/issues/8958#issuecomment-2253055261
-
-# # ## for inria_to_coco.py
-# # conda install conda-forge::imagecodecs -y
-
-# # ## for lidar_poly_dataloader
-# # conda install conda-forge::gcc_linux-64=10 conda-forge::gxx_linux-64=10 -y # otherwise copclib install bugs
-# pip install laspy[laszip]
-# pip install colorlog
-# pip install descartes==1.1.0
-# pip install scikit-image
-# pip3 install -U scikit-learn
-
 pip install -e .
+
+echo "________________ Install Pytorch_Lydorn and Lydorn_Utils for FFL _______________"
+cd ./ffl_submodules/lydorn_utils
+pip install -e .
+cd ../pytorch_lydorn
+pip install -e .
+cd ../..
+
+### take this out of the script because it doesn't work on the front end of g5k and probably jz too, because cuda is not properly installed there
+### instead run this inside the job submission script
+## make the afm module for hisup
+echo "________________ Install AFM module for HiSup _______________"
+cd ./pixelspointspolygons/models/hisup/afm_module
+make
 
 echo "________________ Installation Completed Successfully _______________"
 echo "Run 'conda activate ${ENV_NAME}' to activate the environment."

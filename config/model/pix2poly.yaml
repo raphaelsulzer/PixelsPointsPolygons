@@ -1,17 +1,14 @@
 name: pix2poly
-encoder:
-    input_size: 224
-    input_height: ${.input_size}
-    input_width: ${.input_size}
-    type: vit_small_patch${.patch_size}_${.input_size}.dino
-    patch_size: 8
-    num_patches: null
-    patch_embed_dim: 384
-    out_dim: 256
-    pretrained: True
+
+decoder:
+    in_feature_size: ${...encoder.patch_feature_size}
+    in_feature_width: ${.in_feature_size}
+    in_feature_height: ${.in_feature_size}
+
+    in_feature_dim: 256
 
 tokenizer: 
-    num_bins: ${..encoder.input_size}
+    num_bins: ${...encoder.in_size}
     shuffle_tokens: false
     n_vertices: 192
     max_len: null
@@ -29,11 +26,7 @@ perm_loss_weight: 10.0
 # training
 batch_size: 32
 start_epoch: 0
-num_epochs: 100
+num_epochs: 200
 milestone: 0
-learning_rate: 4e-4
+learning_rate: 3e-4
 weight_decay: 1e-4
-
-
-defaults:
-    - lidar_encoder: pointpillars

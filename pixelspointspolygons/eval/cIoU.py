@@ -39,8 +39,9 @@ def compute_IoU_cIoU(input_json, gti_annotations, pbar_disable=False):
     coco_gt = COCO(gti_annotations)
 
     # load predicted annotations
-    submission_file = json.loads(open(input_json).read())
-    coco_dt = coco_gt.loadRes(submission_file)
+    with open(input_json, 'r') as f:
+        data = json.load(f)
+    coco_dt = coco_gt.loadRes(data)
 
     ## get all gt images that have an annotation
     # image_ids = coco_gt.getImgIds(catIds=coco_gt.getCatIds())

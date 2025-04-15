@@ -1,5 +1,68 @@
 import torch
 from torch.nn.utils.rnn import pad_sequence
+from collections import defaultdict
+
+def collate_fn_ffl(batch, cfg):
+    
+    batch_dict = defaultdict(list)
+    
+    for sample in batch:
+        for key,val in sample.items():
+            batch_dict[key].append(val)
+            
+    if cfg.use_images:
+        assert (len(batch_dict["image"]) > 0), "Image batch is empty"
+        batch_dict["image"] = torch.stack(batch_dict["image"])
+    else:
+        del batch_dict["image"]
+    
+    if cfg.use_lidar:
+        assert (len(batch_dict["lidar"]) > 0), "LiDAR batch is empty"
+        batch_dict["lidar"] = torch.nested.nested_tensor(batch_dict["lidar"], layout=torch.jagged)
+    # else:
+    #     batch_dict["lidar"] = None
+    
+    batch_dict["image_id"] = torch.stack(batch_dict["image_id"])
+    batch_dict["distances"] = torch.stack(batch_dict["distances"])
+    batch_dict["sizes"] = torch.stack(batch_dict["sizes"])
+    batch_dict["gt_crossfield_angle"] = torch.stack(batch_dict["gt_crossfield_angle"])
+    batch_dict["gt_polygons_image"] = torch.stack(batch_dict["gt_polygons_image"])
+    batch_dict["class_freq"] = torch.stack(batch_dict["class_freq"])
+    
+    return dict(batch_dict)
+
+
+
+def collate_fn_hisup(batch, cfg):
+    
+    image_batch, lidar_batch, annotations_batch, tile_id_batch = [], [], [], []
+    for image, lidar, ann, tile_id in batch:
+        if cfg.use_images:
+            image_batch.append(image)
+        if cfg.use_lidar:
+            # lidar_pcd_id = torch.full((len(lidar),), i, dtype=torch.long)
+            # lidar_pcd_id_batch.append(lidar_pcd_id)
+            lidar_batch.append(lidar)
+        
+        annotations_batch.append(ann)
+        tile_id_batch.append(tile_id)
+
+    if cfg.use_images:
+        image_batch = torch.stack(image_batch)
+    else:
+        image_batch = None
+        
+    if cfg.use_lidar:
+        lidar_batch = torch.nested.nested_tensor(lidar_batch, layout=torch.jagged)
+    else:
+        lidar_batch = None
+        
+    # annotations_batch = torch.stack(annotations_batch)
+    tile_id_batch = torch.stack(tile_id_batch)
+    
+    return image_batch, lidar_batch, annotations_batch, tile_id_batch
+
+
 
 
 def collate_fn_pix2poly(batch, cfg):
