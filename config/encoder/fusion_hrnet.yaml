@@ -22,7 +22,7 @@ in_voxel_size:
     y: 8 # i.e. 2m
     z: 100
 
-max_num_points_per_voxel: 128 # this should be something around points_per_tile (~200k) / num_voxels_per_tile (here: 784), however, I find that half of that val is enough
+max_num_points_per_voxel: 64 # this should be something around points_per_tile (~200k) / num_voxels_per_tile (here: 784), however, I find that half of that val is enough
 
 max_num_voxels: # here: (224/8)**2
     train: 784 # (${.encoder.in_size} // ${.encoder.patch_size})**2

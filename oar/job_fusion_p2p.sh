@@ -3,8 +3,9 @@
 #OAR -q production 
 #OAR -l host=1/gpu=2,walltime=24
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
-#OAR -O oar/runs/fusion_p2p_pp_vit.out
-#OAR -E oar/runs/fusion_p2p_pp_vit.out
+#OAR -O oar/runs/p2p_e_fusion_mnv64.out
+#OAR -E oar/runs/p2p_e_fusion_mnv64.out
+#OAR -n p2p_e_fusion_mnv64
 
 # display some information about attributed resources
 hostname 
@@ -22,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=fusion_bs2x16 checkpoint=null model.batch_size=16 encoder=fusion_vit model=pix2poly model.num_epochs=200
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=early_fusion_bs2x16_mnv64 checkpoint=null model.batch_size=16 encoder=early_fusion_vit model=pix2poly

@@ -5,6 +5,7 @@
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
 #OAR -O oar/runs/lidar_p2p_pp_vit.out
 #OAR -E oar/runs/lidar_p2p_pp_vit.out
+#OAR -n p2p_lidar_mnv64
 
 # display some information about attributed resources
 hostname 
@@ -22,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=lidar_pp_vit_bs2x16 checkpoint=null model.batch_size=16 encoder=pointpillars_vit model=pix2poly model.num_epochs=200
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=lidar_pp_vit_bs2x16_mnv64 checkpoint=null model.batch_size=16 encoder=pointpillars_vit model=pix2poly model.num_epochs=200

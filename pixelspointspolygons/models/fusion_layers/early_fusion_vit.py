@@ -9,7 +9,7 @@ from ..pointpillars.pointpillars_o3d import PointPillarsEncoder
 
 from ...misc.logger import make_logger
 
-class EarlyFusionViTCNN(torch.nn.Module):
+class EarlyFusionViT(torch.nn.Module):
     
     """Object detection model. Based on the PointPillars architecture
     https://github.com/nutonomy/second.pytorch.
@@ -51,11 +51,11 @@ class EarlyFusionViTCNN(torch.nn.Module):
         
         ###### Image encoder #######
         self.vit = timm.create_model(
-            model_name=cfg.encoder.type,
+            model_name=cfg.encoder.vit.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.encoder.pretrained,
-            checkpoint_path=cfg.encoder.checkpoint_file
+            pretrained=cfg.encoder.vit.pretrained,
+            checkpoint_path=cfg.encoder.vit.checkpoint_file
         )
         
         self.image_embed = self.vit.patch_embed
@@ -68,14 +68,8 @@ class EarlyFusionViTCNN(torch.nn.Module):
             nn.BatchNorm2d(self.cfg.encoder.patch_feature_dim),
             nn.ReLU(inplace=True)
         )
-
-        self.proj = nn.Sequential(
-            nn.Upsample(size=self.cfg.encoder.out_feature_size, mode='bilinear', align_corners=False),
-            nn.Conv2d(self.cfg.encoder.patch_feature_dim, self.cfg.model.decoder.in_feature_dim, kernel_size=3, padding=1),
-            nn.BatchNorm2d(self.cfg.model.decoder.in_feature_dim),
-            nn.ReLU(inplace=True)
-        )
-
+        
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_feature_dim)
         
         
     def forward(self, x_image, x_lidar):
@@ -87,12 +81,8 @@ class EarlyFusionViTCNN(torch.nn.Module):
         
         x = self.fusion_layer(x).flatten(2).transpose(1, 2)
         
-        x = self.vit(x)
+        x = self.vit(x)[:, 1:,:]
         
-        x = x[:, 1:,:] # drop CLS token        
-        B, N, C = x.shape
-        H = W = int(N ** 0.5)
-        x = x.permute(0, 2, 1).view(B, C, H, W)
-        x = self.proj(x)
+        x = self.bottleneck(x)
         
         return x
