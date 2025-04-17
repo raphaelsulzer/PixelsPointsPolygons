@@ -18,7 +18,7 @@ in_voxel_size:
     y: 8 # i.e. 2m
     z: 100
 
-max_num_points_per_voxel: 128 # this should be something around points_per_tile (~200k) / num_voxels_per_tile (here: 784), however, I find that half of that val is enough
+max_num_points_per_voxel: 64 # this should be something around points_per_tile (~200k) / num_voxels_per_tile (here: 784), however, I find that half of that val is enough
 
 max_num_voxels: # here: (224/8)**2
     train: 784 # (${.encoder.in_size} // ${.encoder.patch_size})**2
@@ -36,9 +36,10 @@ out_feature_dim: ${..model.decoder.in_feature_dim}
 ##############################
 ##### Vision Transformer #####
 ##############################
-type: vit_small_patch${.patch_size}_${.in_size}.dino
-checkpoint_file: ${..host.data_root}/checkpoints/backbones/dino_deitsmall8_pretrain.pth
-pretrained: True
+vit:
+    type: vit_small_patch${..patch_size}_${..in_size}.dino
+    checkpoint_file: ${...host.data_root}/checkpoints/backbones/dino_deitsmall8_pretrain.pth
+    pretrained: True
 
 patch_size: 8
 

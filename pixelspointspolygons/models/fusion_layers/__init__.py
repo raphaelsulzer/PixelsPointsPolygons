@@ -2,3 +2,4 @@ from .fusion_vit import FusionViT
 from .fusion_vit_cnn import FusionViTCNN
 from .fusion_hrnet import FusionHRNet
 from .early_fusion_vit_cnn import EarlyFusionViTCNN
+from .early_fusion_vit import EarlyFusionViT

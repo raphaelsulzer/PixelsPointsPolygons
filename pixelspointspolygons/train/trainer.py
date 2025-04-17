@@ -201,6 +201,9 @@ class Trainer:
         
         start_epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))
         self.cfg.model.start_epoch = start_epoch + 1
+        
+        self.cfg.best_val_loss = checkpoint.get("best_val_loss",self.cfg.best_val_loss)
+        self.cfg.best_val_iou = checkpoint.get("best_val_iou",self.cfg.best_val_iou)
 
 
     def train_val_loop(self):

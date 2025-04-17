@@ -238,12 +238,12 @@ class FFLTrainer(Trainer):
                 ################ Validation ################
                 ############################################
                 val_loss_dict = self.valid_one_epoch(epoch)
-                
-                
-            # take this out of no grad because polygonization of FFL requires grads
-            if self.local_rank == 0:
-                for k, v in val_loss_dict.items():
-                    wandb_dict[f"val_{k}"] = v
+                if self.local_rank == 0:
+                    for k, v in val_loss_dict.items():
+                        wandb_dict[f"val_{k}"] = v
+
+
+            ### take the following out of no grad because polygonization of FFL requires grads
 
             #############################################
             ############## COCO Evaluation ##############

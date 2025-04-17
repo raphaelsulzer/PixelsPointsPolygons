@@ -7,7 +7,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from ..pointpillars import PointPillarsViT
 from ..vision_transformer import ViT
-from ..fusion_layers.fusion_vit import FusionViT
+from ..fusion_layers import FusionViT, EarlyFusionViT
 
 def generate_square_subsequent_mask(sz,device):
     mask = (
@@ -278,6 +278,8 @@ class Pix2PolyModel(torch.nn.Module):
         if self.cfg.use_images and self.cfg.use_lidar:
             if self.cfg.encoder.name == "fusion_vit":
                 encoder = FusionViT(self.cfg,local_rank=local_rank)
+            elif self.cfg.encoder.name == "early_fusion_vit":
+                encoder = EarlyFusionViT(self.cfg,local_rank=local_rank)
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
             
