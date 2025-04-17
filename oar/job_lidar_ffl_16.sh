@@ -5,6 +5,7 @@
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
 #OAR -O oar/runs/lidar_ffl_pp_vit_cnn_mnv16.out
 #OAR -E oar/runs/lidar_ffl_pp_vit_cnn_mnv16.out 
+#OAR -n ffl_lidar_mnv16
 
 ## display some information about attributed resources
 hostname 
