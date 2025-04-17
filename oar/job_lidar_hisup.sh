@@ -3,8 +3,9 @@
 #OAR -q production 
 #OAR -l host=1/gpu=2,walltime=20
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
-#OAR -O oar/runs/lidar_hisup_pp_vit_cnn.out
-#OAR -E oar/runs/lidar_hisup_pp_vit_cnn.out 
+#OAR -O oar/runs/hisup_lidar_mnv64.out
+#OAR -E oar/runs/hisup_lidar_mnv64.out 
+#OAR -n hisup_lidar_mnv64
 
 ## display some information about attributed resources
 hostname 
@@ -22,5 +23,5 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=v3_lidar_pp_vit_cnn_bs2x16 checkpoint=null model.batch_size=16 encoder=pointpillars_vit_cnn model=hisup
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=lidar_pp_vit_cnn_bs2x16_mnv64 checkpoint=null model.batch_size=16 encoder=pointpillars_vit_cnn model=hisup
 
