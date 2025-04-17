@@ -3,8 +3,8 @@
 #OAR -q production 
 #OAR -l host=1/gpu=2,walltime=24
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
-#OAR -O oar/runs/lidar_p2p_pp_vit.out
-#OAR -E oar/runs/lidar_p2p_pp_vit.out
+#OAR -O oar/runs/p2p_lidar_mnv64.out
+#OAR -E oar/runs/p2p_lidar_mnv64.out
 #OAR -n p2p_lidar_mnv64
 
 # display some information about attributed resources
