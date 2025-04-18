@@ -3,8 +3,8 @@ defaults:
   # - encoder: pointpillars
   # - encoder: pointpillars_vit_cnn
   # - encoder: vit_cnn
-  - encoder: vit
-  # - encoder: pointpillars_vit
+  # - encoder: vit
+  - encoder: pointpillars_vit
   # - encoder: fusion_vit
   # - encoder: fusion_vit_cnn
   # - encoder: fusion_hrnet
@@ -12,7 +12,7 @@ defaults:
   # - encoder: early_fusion_vit
   - model: pix2poly
   # - model: hisup
-  # - model: ffl
+  # - model: pix2poly
   - polygonization: asm_acm
   - dataset: lidarpoly
   - run_type: release
@@ -30,7 +30,7 @@ checkpoint_file: null
 # checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly_hisup_ori/v1_image_only_bs8/model_00062.pth
 
 experiment_name: debug
-group_name: NZ_${.model.name}
+group_name: v2_${.model.name}
 multi_gpu: false
 device: cuda
 log_to_wandb: ${.run_type.log_to_wandb}
@@ -41,12 +41,7 @@ dataset:
   train_subset: ${..run_type.train_subset}
   val_subset: ${..run_type.val_subset}
   size: ${..encoder.in_size}
-  annotations:
-    train: ${..path}/annotations_NZ_train.json
-    val: ${..path}/annotations_NZ_val.json
-    test: ${..path}/annotations_NZ_test.json
 
-    
 model:
   batch_size: ${..run_type.batch_size}
 
