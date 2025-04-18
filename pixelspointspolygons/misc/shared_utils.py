@@ -187,21 +187,29 @@ def plot_model_architecture(model, input_shape=(16,3,224,224), outfile="/data/rs
     model_graph.visual_graph.render()  # render the graph to a file
     
     
-def setup_ddp(world_size, local_rank):
+def setup_ddp(cfg):
     """Init multi-gpu training or prediction"""
     
-    # Initializes the distributed backend which will take care of synchronizing nodes/GPUs.
-    dist_url = "env://"  # default
-
-    dist.init_process_group(
-        backend="nccl",
-        init_method=dist_url,
-        world_size=world_size,
-        rank=int(os.environ["RANK"])
-    )
+    if not cfg.multi_gpu:
+        return 0,1
+    else:
+        world_size = torch.cuda.device_count()
+        local_rank = int(os.environ['LOCAL_RANK'])
     
-    # this will make all .cuda() calls work properly.
-    torch.cuda.set_device(local_rank)
+        # Initializes the distributed backend which will take care of synchronizing nodes/GPUs.
+        dist_url = "env://"  # default
 
-    # synchronizes all threads to reach this point before moving on.
-    dist.barrier()
+        dist.init_process_group(
+            backend="nccl",
+            init_method=dist_url,
+            world_size=world_size,
+            rank=int(os.environ["RANK"])
+        )
+        
+        # this will make all .cuda() calls work properly.
+        torch.cuda.set_device(local_rank)
+
+        # synchronizes all threads to reach this point before moving on.
+        dist.barrier()
+        
+        return local_rank, world_size

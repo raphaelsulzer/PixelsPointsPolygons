@@ -4,19 +4,12 @@ import hydra
 from omegaconf import OmegaConf
 from pixelspointspolygons.train import FFLTrainer, HiSupTrainer, Pix2PolyTrainer
 
-from pixelspointspolygons.misc.shared_utils import setup_ddp
-
-# torch.autograd.set_detect_anomaly(True)
-# import warnings
-# warnings.filterwarnings("error")
+from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_omegaconf
 
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
-    OmegaConf.register_new_resolver("eq", lambda a, b: str(a) == str(b))
-    OmegaConf.register_new_resolver("if", lambda cond, a, b: a if cond == "True" else b)
-    OmegaConf.register_new_resolver("divide", lambda a, b: int(a) // int(b))
     
-    OmegaConf.resolve(cfg)
+    setup_omegaconf(cfg)
 
     if cfg.multi_gpu:
         world_size = torch.cuda.device_count()
