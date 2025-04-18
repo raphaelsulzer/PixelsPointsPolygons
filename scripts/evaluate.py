@@ -2,14 +2,12 @@ import hydra
 from omegaconf import OmegaConf
 
 from pixelspointspolygons.eval import Evaluator
-
+from pixelspointspolygons.misc.shared_utils import setup_omegaconf
 
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
-    OmegaConf.register_new_resolver("eq", lambda a, b: str(a) == str(b))
-    OmegaConf.register_new_resolver("if", lambda cond, a, b: a if cond == "True" else b)
-    OmegaConf.register_new_resolver("divide", lambda a, b: int(a) // int(b))
-    OmegaConf.resolve(cfg)
+    setup_omegaconf(cfg)
+
     
     print("\nConfiguration:")
     print(OmegaConf.to_yaml(cfg))
