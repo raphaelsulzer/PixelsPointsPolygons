@@ -9,6 +9,17 @@ import torch.distributed as dist
 
 from copy import deepcopy
 from collections import deque, OrderedDict
+from omegaconf import OmegaConf
+
+
+def setup_omegaconf(cfg):
+    """Setup OmegaConf to allow for dot notation and auto-completion"""
+
+    OmegaConf.register_new_resolver("eq", lambda a, b: str(a) == str(b))
+    OmegaConf.register_new_resolver("if", lambda cond, a, b: a if cond == "True" else b)
+    OmegaConf.register_new_resolver("divide", lambda a, b: int(a) // int(b))
+    OmegaConf.resolve(cfg)
+
 
 @contextlib.contextmanager
 def suppress_stdout():

@@ -2,15 +2,12 @@ import hydra
 import torch
 import os
 
-from omegaconf import OmegaConf
 
 from pixelspointspolygons.predict import FFLPredictor, HiSupPredictor, Pix2PolyPredictor
-from pixelspointspolygons.misc.shared_utils import setup_ddp
+from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_omegaconf
 
 
-@hydra.main(config_path="../config", config_name="config", version_base="1.3")
-def main(cfg):
-
+def predict_all(cfg):
     
     if cfg.multi_gpu:
         world_size = torch.cuda.device_count()
@@ -19,6 +16,7 @@ def main(cfg):
     else:
         world_size = 1
         local_rank = 0
+    
     
     
     if cfg.model.name == "ffl":
@@ -30,6 +28,21 @@ def main(cfg):
     else:
         raise ValueError(f"Unknown model name: {cfg.model.name}")
     predictor.predict_dataset()
+    
+    
+
+
+
+
+
+
+@hydra.main(config_path="../config", config_name="config", version_base="1.3")
+def main(cfg):
+    
+    setup_omegaconf(cfg)
+    
+    predict_all(cfg)
+
     
         
 if __name__ == "__main__":
