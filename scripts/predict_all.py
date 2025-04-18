@@ -9,16 +9,9 @@ from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_omegaconf
 
 def predict_all(cfg):
     
-    if cfg.multi_gpu:
-        world_size = torch.cuda.device_count()
-        local_rank = int(os.environ['LOCAL_RANK'])        
-        setup_ddp(world_size, local_rank)
-    else:
-        world_size = 1
-        local_rank = 0
     
-    
-    
+    local_rank, world_size = setup_ddp(cfg)
+
     if cfg.model.name == "ffl":
         predictor = FFLPredictor(cfg, local_rank, world_size)
     elif cfg.model.name == "hisup":
@@ -38,7 +31,7 @@ def predict_all(cfg):
 
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
-    
+        
     setup_omegaconf(cfg)
     
     predict_all(cfg)
