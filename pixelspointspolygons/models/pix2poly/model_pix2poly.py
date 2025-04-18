@@ -286,14 +286,14 @@ class Pix2PolyModel(torch.nn.Module):
         elif self.cfg.use_images:
             
             if self.cfg.encoder.name == "vit":
-                encoder = ViT(self.cfg,local_rank=local_rank)
+                encoder = ViT(self.cfg,bottleneck=True,local_rank=local_rank)
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
             
         elif self.cfg.use_lidar: 
             
             if self.cfg.encoder.name == "pointpillars_vit":
-                encoder = PointPillarsViT(self.cfg,local_rank=local_rank)
+                encoder = PointPillarsViT(self.cfg,bottleneck=True,local_rank=local_rank)
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
             

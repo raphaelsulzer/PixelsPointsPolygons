@@ -28,7 +28,7 @@ class PointPillarsViT(torch.nn.Module):
         head: Config of anchor head module.
     """
 
-    def __init__(self, cfg, local_rank=0):
+    def __init__(self, cfg, bottleneck=False, local_rank=0):
         super().__init__()
         
         self.cfg = cfg        
@@ -55,10 +55,14 @@ class PointPillarsViT(torch.nn.Module):
         }
         self.vit.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
         
+        if bottleneck:
+            self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_feature_dim)
+        else:
+            self.bottleneck = nn.Identity()
         
     def forward(self, x):
         """Extract features from points."""
         
-        # x = self.vit(x)
-        # return self.bottleneck(x[:, 1:,:])
-        return self.vit(x)[:, 1:,:] # drop CLS token
+        x = self.vit(x)
+        x = self.bottleneck(x[:, 1:,:])
+        return x
