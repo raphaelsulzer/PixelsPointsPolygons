@@ -51,11 +51,11 @@ class EarlyFusionViTCNN(torch.nn.Module):
         
         ###### Image encoder #######
         self.vit = timm.create_model(
-            model_name=cfg.encoder.type,
+            model_name=cfg.encoder.vit.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.encoder.pretrained,
-            checkpoint_path=cfg.encoder.checkpoint_file
+            pretrained=cfg.encoder.vit.pretrained,
+            checkpoint_path=cfg.encoder.vit.checkpoint_file
         )
         
         self.image_embed = self.vit.patch_embed

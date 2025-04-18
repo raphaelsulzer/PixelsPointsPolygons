@@ -8,7 +8,7 @@ from ...misc import make_logger
 
 class ViT(nn.Module):
     
-    def __init__(self, cfg, local_rank=0) -> None:
+    def __init__(self, cfg, bottleneck=False, local_rank=0) -> None:
         super().__init__()
         self.cfg = cfg
         
@@ -22,9 +22,15 @@ class ViT(nn.Module):
             pretrained=cfg.encoder.pretrained,
             checkpoint_path=cfg.encoder.checkpoint_file
         )
-        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_feature_dim)
+        
+        if bottleneck:
+            self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_feature_dim)
+        else:
+            self.bottleneck = nn.Identity()
+            
     
     def forward(self, x):
         
         x = self.vit(x)
-        return self.bottleneck(x[:, 1:,:])
+        x = self.bottleneck(x[:, 1:,:])
+        return x

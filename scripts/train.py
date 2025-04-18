@@ -10,14 +10,7 @@ from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_omegaconf
 def main(cfg):
     
     setup_omegaconf(cfg)
-
-    if cfg.multi_gpu:
-        world_size = torch.cuda.device_count()
-        local_rank = int(os.environ['LOCAL_RANK'])
-        setup_ddp(world_size, local_rank)
-    else:
-        world_size = 1
-        local_rank = 0
+    local_rank, world_size = setup_ddp(cfg)
     
     if cfg.model.name == "ffl":
         trainer = FFLTrainer(cfg, local_rank, world_size)
