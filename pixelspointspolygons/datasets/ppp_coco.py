@@ -535,7 +535,11 @@ class PPPDataset(Dataset):
         return ann
     
     
-    
+
+class TestDataset(PPPDataset):
+    def __init__(self,cfg,**kwargs):
+        super().__init__(cfg,'test',**kwargs)
+
 class ValDataset(PPPDataset):
     def __init__(self,cfg,**kwargs):
         super().__init__(cfg,'val',**kwargs)

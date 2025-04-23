@@ -1,0 +1,13 @@
+experiments:
+  - name: v3_lidar_pp_vit_cnn_bs2x16_mnv4
+    encoder: pointpillars_vit_cnn
+    
+
+  - model: ffl
+  - model: ffl
+    experiment_name:
+    - 224/v3_lidar_pp_vit_cnn_bs2x16_mnv4
+    - 224/v3_lidar_pp_vit_cnn_bs2x16_mnv16
+    - 224/v3_lidar_pp_vit_cnn_bs2x16_mnv32
+    - 224/v3_lidar_pp_vit_cnn_bs2x16_mnv64    
+    - 224/v3_lidar_pp_vit_cnn_bs2x16

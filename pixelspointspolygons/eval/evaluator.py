@@ -12,7 +12,7 @@ from pycocotools.cocoeval import COCOeval
 from copy import deepcopy
 from tqdm import tqdm
 
-from ..misc import suppress_stdout, make_logger
+from ..misc import suppress_stdout, make_logger, get_experiment_type
 
 from .angle_eval import compute_max_angle_error
 from .cIoU import compute_IoU_cIoU
@@ -259,20 +259,16 @@ class Evaluator:
         
         
     def check_if_predictions_exist(self):
-        for model in self.cfg.eval.experiments:
+        
+        for item in self.cfg.experiments:
             
-            for exp in model.experiment_name:
+            for exp in item.experiment_name:
                 
-                name = exp.split('/')
-                if len(name) == 3:
-                    img_dim, polygonization_method, name = name
-                elif len(name) == 2:
-                    img_dim, name = name
-                    polygonization_method = ""
+                name, img_dim, polygonization_method = get_experiment_type(exp)
                                                 
                 pred = self.cfg.checkpoint
                 pred_file = os.path.join(self.cfg.host.data_root,
-                                         f"{model.model}_outputs",self.cfg.dataset.name,
+                                         f"{item.model}_outputs",self.cfg.dataset.name,
                                          img_dim,name,
                                          "predictions",polygonization_method,f"{pred}.json")
                 if not os.path.isfile(pred_file):
@@ -291,23 +287,18 @@ class Evaluator:
         
         res_dict = {}
         
-        for model in self.cfg.eval.experiments:
+        for item in self.cfg.experiments:
             
-            for exp in model.experiment_name:
+            for exp in item.experiment_name:
                 
-                name = exp.split('/')
-                if len(name) == 3:
-                    img_dim, polygonization_method, name = name
-                elif len(name) == 2:
-                    img_dim, name = name
-                    polygonization_method = ""
-                    
+                name, img_dim, polygonization_method = get_experiment_type(exp)
+
                 pred = self.cfg.checkpoint
 
-                self.logger.info(f"Evaluate {model.model}/{exp}/{pred}")
+                self.logger.info(f"Evaluate {item.model}/{exp}/{pred}")
                 
                 pred_file = os.path.join(self.cfg.host.data_root,
-                                         f"{model.model}_outputs",self.cfg.dataset.name,
+                                         f"{item.model}_outputs",self.cfg.dataset.name,
                                          img_dim,name,
                                          "predictions",polygonization_method,f"{pred}.json")                
                 if not os.path.isfile(pred_file):
@@ -320,7 +311,7 @@ class Evaluator:
                 self.load_gt(gt_file)
                 self.load_predictions(pred_file)
                 
-                res_dict[f"{model.model}/{exp}"]=self.evaluate()
+                res_dict[f"{item.model}/{exp}"]=self.evaluate()
 
         
         df = pd.DataFrame.from_dict(res_dict, orient='index')
