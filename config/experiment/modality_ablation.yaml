@@ -1,0 +1,22 @@
+experiments:
+  - model: ffl
+    experiment_name:
+    - 224/v3_image_vit_cnn_bs4x16
+    # - 224/asm.tol_1/v3_image_vit_cnn_bs4x16
+    - 224/v3_lidar_pp_vit_cnn_bs2x16
+    # - 224/asm.tol_1/v3_lidar_pp_vit_cnn_bs2x16
+    - 224/fusion_vit_cnn_bs16
+  - model: hisup
+    experiment_name:
+    # - 512/image_bs2x12
+    - 224/v3_image_hrnet224_bs4x16
+    - 224/v3_lidar_pp_vit_cnn_bs2x16
+    - 224/early_fusion_vit_cnn_bs16
+  - model: pix2poly
+    experiment_name:
+    - 224/image_only_bs4x16
+    # - 224/v3_image_vit_bs4x16
+    - 224/lidar_only_bs2x16
+    # - 224/lidar_pp_vit_bs2x16
+    # - 224/fusion_simple_bs4x32
+    - 224/fusion_bs2x16

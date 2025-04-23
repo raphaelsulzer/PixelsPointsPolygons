@@ -71,6 +71,21 @@
             "justMyCode": false
         },
         {
+            "name": "predict_all",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/predict_all.py",
+            "console": "integratedTerminal",
+            "args": [
+                "run_type=debug",
+                "host=gin",
+                "device=cuda",
+                "log_to_wandb=false",
+                "multi_gpu=false"
+            ],
+            "justMyCode": false
+        },
+        {
             "name": "evaluate",
             "type": "debugpy",
             "request": "launch",
