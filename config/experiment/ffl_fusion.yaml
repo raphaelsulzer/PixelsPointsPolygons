@@ -3,7 +3,7 @@ defaults:
   - /model: ffl
   - _self_
 
-name: v4_fusion_bs16_mnv64
+name: v4_fusion_bs4x16_mnv64
 group_name: v2_${.model.name}
 
 encoder:

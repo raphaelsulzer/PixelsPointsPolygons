@@ -14,15 +14,15 @@ class ViTCNN(nn.Module):
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
 
-        with suppress_stdout():
-            self.vit = timm.create_model(
-                model_name=cfg.experiment.encoder.type,
-                num_classes=0,
-                global_pool='',
-                pretrained=cfg.experiment.encoder.pretrained,
-                checkpoint_path=cfg.experiment.encoder.checkpoint_file
-            )
-        
+        logging.getLogger('timm').setLevel(logging.WARNING)
+        self.vit = timm.create_model(
+            model_name=cfg.experiment.encoder.type,
+            num_classes=0,
+            global_pool='',
+            pretrained=cfg.experiment.encoder.pretrained,
+            checkpoint_path=cfg.experiment.encoder.checkpoint_file
+        )
+    
         self.proj = nn.Sequential(
             nn.Upsample(size=self.cfg.experiment.encoder.out_feature_size, mode='bilinear', align_corners=False),
             nn.Conv2d(self.cfg.experiment.encoder.patch_feature_dim, self.cfg.experiment.model.decoder.in_feature_dim, kernel_size=3, padding=1),

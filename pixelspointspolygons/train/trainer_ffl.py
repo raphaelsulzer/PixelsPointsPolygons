@@ -20,7 +20,7 @@ from ..misc import get_lr, MetricLogger, get_tile_names_from_dataloader, denorma
 from ..models.ffl.losses import build_combined_loss
 from ..models.ffl.local_utils import batch_to_cuda
 from ..models.ffl.model_ffl import FFLModel
-from ..predict.ffl.predictor_ffl import FFLPredictor as Predictor
+from ..predict.predictor_ffl import FFLPredictor as Predictor
 from ..eval import Evaluator
 
 from ..misc.coco_conversions import coco_anns_to_shapely_polys

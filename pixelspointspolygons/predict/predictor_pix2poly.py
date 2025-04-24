@@ -52,19 +52,22 @@ class Pix2PolyPredictor(Predictor):
         
         self.logger.info(f"Predicting on {len(self.loader)} batches...")
         
-
         with torch.no_grad():
             t0 = time.time()
             coco_predictions = self.predict_from_loader(self.model,self.tokenizer,self.loader)
 
-        # prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", f"{self.cfg.checkpoint}.json")
+        self.logger.info(f"Average prediction speed: {(time.time() - t0) / len(self.loader.dataset):.2f} [s / image]")
+        time_dict = {}
+        time_dict["prediction_time"] = (time.time() - t0) / len(self.loader.dataset)
+        
         prediction_outfile = self.cfg.eval.pred_file
         self.logger.info(f"Saving predictions to {prediction_outfile}")
         os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
         with open(prediction_outfile, "w") as fp:
             fp.write(json.dumps(coco_predictions))
+        
 
-        self.logger.info(f"Average prediction speed: {(time.time() - t0) / len(self.loader.dataset):.2f} [s / image]")
+        return time_dict
 
     
     def predict_from_loader(self, model, tokenizer, loader):
