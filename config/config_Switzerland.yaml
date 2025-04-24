@@ -1,38 +1,36 @@
 defaults:
   # - encoder: convnext
   # - encoder: pointpillars
-  - encoder: pointpillars_vit_cnn
+  # - encoder: pointpillars_vit_cnn
   # - encoder: vit_cnn
   # - encoder: vit
-  # - encoder: pointpillars_vit
+  - encoder: pointpillars_vit
   # - encoder: fusion_vit
   # - encoder: fusion_vit_cnn
   # - encoder: fusion_hrnet
   # - encoder: early_fusion_vit_cnn
   # - encoder: early_fusion_vit
-  # - model: pix2poly
+  - model: pix2poly
   # - model: hisup
-  - model: ffl
+  # - model: pix2poly
   - polygonization: asm_acm
   - dataset: lidarpoly
   - run_type: release
   - host: gin
-  - experiments: lidar_density_ablation
   - _self_
-
 hydra:
   run:
     dir: ${...output_dir}
 
 output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.encoder.in_size}/${.experiment_name}
-checkpoint: best_val_iou
+checkpoint: null
 checkpoint_file: null
 # checkpoint_file: null # override for loading a specific checkpoint file not in the output_dir
 # checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly/512/v1_lidar_LROnP/model_best_backup.pth
 # checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly_hisup_ori/v1_image_only_bs8/model_00062.pth
 
 experiment_name: debug
-group_name: NZ_${.model.name}
+group_name: v2_${.model.name}
 multi_gpu: false
 device: cuda
 log_to_wandb: ${.run_type.log_to_wandb}
@@ -43,12 +41,7 @@ dataset:
   train_subset: ${..run_type.train_subset}
   val_subset: ${..run_type.val_subset}
   size: ${..encoder.in_size}
-  # annotations:
-  #   train: ${..path}/annotations_NZ_train.json
-  #   val: ${..path}/annotations_NZ_val.json
-  #   test: ${..path}/annotations_NZ_test.json
 
-    
 model:
   batch_size: ${..run_type.batch_size}
 
@@ -63,7 +56,7 @@ best_val_loss: 10000000.0
 best_val_iou: 0.0
 
 eval:
-  gt_file: ${..dataset.annotations.test}
+  gt_file: ${..dataset.annotations.val}
   pred_file: ${..output_dir}/predictions/${..checkpoint}.json
   # pred_file: ${..output_dir}/predictions/test.json
   modes:
@@ -73,6 +66,28 @@ eval:
     # - mta
     # - stats
     # - topdig
+  experiments:
+    - model: ffl
+      experiment_name:
+      - 224/v3_image_vit_cnn_bs4x16
+      # - 224/asm.tol_1/v3_image_vit_cnn_bs4x16
+      - 224/v3_lidar_pp_vit_cnn_bs2x16
+      # - 224/asm.tol_1/v3_lidar_pp_vit_cnn_bs2x16
+      - 224/fusion_vit_cnn_bs16
+    - model: hisup
+      experiment_name:
+      # - 512/image_bs2x12
+      - 224/v3_image_hrnet224_bs4x16
+      - 224/v3_lidar_pp_vit_cnn_bs2x16
+      - 224/early_fusion_vit_cnn_bs16
+    - model: pix2poly
+      experiment_name:
+      - 224/image_only_bs4x16
+      # - 224/v3_image_vit_bs4x16
+      - 224/lidar_only_bs2x16
+      # - 224/lidar_pp_vit_bs2x16
+      # - 224/fusion_simple_bs4x32
+      - 224/fusion_bs2x16
   # eval_file: ${..host.data_root}/${..dataset.name}/metrics.csv
   eval_file: results/metrics
 

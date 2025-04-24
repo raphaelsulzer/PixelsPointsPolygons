@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --account=cso@v100
-#SBATCH --job-name=image_p2p_vit_bs4x8  # Job name
-#SBATCH --output=./slurm/runs/image_p2p_vit_bs4x16.log       # Standard output and error log
-#SBATCH --error=./slurm/runs/image_p2p_vit_bs4x16.log         # Error log
+#SBATCH --job-name=image_p2p_bs4x16_NZ  # Job name
+#SBATCH --output=./slurm/runs/image_p2p_bs4x16_NZ.log       # Standard output and error log
+#SBATCH --error=./slurm/runs/image_p2p_bs4x16_NZ.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
 #SBATCH --ntasks=4 # reserve 4 tasks (or processes)
 #SBATCH --gres=gpu:4              # Request 2 GPUs
@@ -34,4 +34,4 @@ set -x
 
 # Run your Python script
 
-torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=null model.batch_size=16 experiment_name=v3_image_vit_bs4x16 model=pix2poly encoder=vit model.num_epochs=200
+torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=null model.batch_size=16 experiment_name=image_NZ_4x16 model=pix2poly encoder=vit model.num_epochs=200

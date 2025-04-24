@@ -11,6 +11,17 @@ from copy import deepcopy
 from collections import deque, OrderedDict
 from omegaconf import OmegaConf
 
+def get_experiment_type(experiment):
+    name = experiment.split('/')
+    if len(name) == 3:
+        img_dim, polygonization_method, name = name
+    elif len(name) == 2:
+        img_dim, name = name
+        polygonization_method = ""
+    
+    return name, img_dim, polygonization_method
+
+
 
 def setup_omegaconf(cfg):
     """Setup OmegaConf to allow for dot notation and auto-completion"""
