@@ -84,8 +84,8 @@ class Trainer:
         wandb.init(
             # set the wandb project where this run will be logged
             project="HiSup",
-            name=self.cfg.experiment_name,
-            group=self.cfg.group_name,
+            name=self.cfg.experiment.name,
+            group=self.cfg.experiment.group_name,
             # track hyperparameters and run metadata
             config=cfg_container,
             dir=self.cfg.output_dir,

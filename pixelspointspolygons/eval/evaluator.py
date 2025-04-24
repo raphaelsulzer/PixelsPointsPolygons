@@ -30,8 +30,10 @@ class Evaluator:
         
         self.cfg = cfg
         
-        self.gt_file = cfg.eval.gt_file
-        self.pred_file = cfg.eval.pred_file
+        # self.gt_file = cfg.eval.gt_file
+        # self.pred_file = cfg.eval.pred_file
+        self.gt_file = None
+        self.pred_file = None
         
         self.cocoGt = None
         self.cocoDt = None
@@ -55,14 +57,14 @@ class Evaluator:
     
         return pbar
     
-    def load_gt(self, gt_file=None):
+    def load_gt(self, gt_file):
         
-        if gt_file is None:
-            gt_file = self.gt_file
-        else:
-            if not os.path.isfile(gt_file):
-                raise FileExistsError(f"File {gt_file} does not exist.")
-            self.gt_file = gt_file
+        # if gt_file is None:
+        #     gt_file = self.gt_file
+        # else:
+        if not os.path.isfile(gt_file):
+            raise FileExistsError(f"File {gt_file} does not exist.")
+        self.gt_file = gt_file
         
         self.logger.info(f"Loading ground truth from {gt_file}")
         with suppress_stdout():
@@ -252,7 +254,7 @@ class Evaluator:
         df = pd.DataFrame.from_dict(res_dict, orient='index').transpose()
         
         # Set the row name
-        df.index = [self.cfg.experiment_name]
+        df.index = [self.cfg.experiment.name]
         
         # Pretty print the DataFrame
         print(df)

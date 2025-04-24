@@ -52,7 +52,7 @@ best_val_loss: 10000000.0
 best_val_iou: 0.0
 
 eval:
-  gt_file: ${..dataset.annotations.test}
+  # gt_file: ${..dataset.annotations.val}
   pred_file: ${..output_dir}/predictions/${..checkpoint}.json
   # pred_file: ${..output_dir}/predictions/test.json
   modes:
