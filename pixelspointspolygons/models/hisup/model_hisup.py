@@ -65,8 +65,8 @@ class ECA(nn.Module):
 
 class AnnotationEncoder:
     def __init__(self, cfg):
-        self.target_h = cfg.encoder.in_height
-        self.target_w = cfg.encoder.in_width
+        self.target_h = cfg.experiment.encoder.in_height
+        self.target_w = cfg.experiment.encoder.in_width
 
     def __call__(self, annotations):
         targets = []
@@ -129,16 +129,16 @@ class EncoderDecoder(nn.Module):
 
         self.encoder = encoder
         
-        self.pred_height = cfg.encoder.out_feature_height
-        self.pred_width = cfg.encoder.out_feature_width
-        self.origin_height = cfg.encoder.in_height
-        self.origin_width = cfg.encoder.in_width
+        self.pred_height = cfg.experiment.encoder.out_feature_height
+        self.pred_width = cfg.experiment.encoder.out_feature_width
+        self.origin_height = cfg.experiment.encoder.in_height
+        self.origin_width = cfg.experiment.encoder.in_width
 
-        dim_in = cfg.model.decoder.in_feature_dim
+        dim_in = cfg.experiment.model.decoder.in_feature_dim
         self.mask_head = self._make_conv(dim_in, dim_in, dim_in)
         self.jloc_head = self._make_conv(dim_in, dim_in, dim_in)
         self.afm_head = self._make_conv(dim_in, dim_in, dim_in)
-        self.joff_head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+        self.joff_head = MultitaskHead(self.cfg.experiment.model.decoder.in_feature_dim, 2, head_size=[[2]])
 
         self.a2m_att = ECA(dim_in)
         self.a2j_att = ECA(dim_in)
@@ -262,7 +262,7 @@ class EncoderDecoder(nn.Module):
         batch_juncs = []
 
         for b in range(remask_pred.size(0)):
-            mask_pred_per_im = cv2.resize(remask_pred[b][0].cpu().numpy(), (self.origin_width, self.origin_height))
+            mask_pred_per_im = cv2.resize(remask_pred[b][0].detach().cpu().numpy(), (self.origin_width, self.origin_height))
             juncs_pred = get_pred_junctions(jloc_concave_pred[b], jloc_convex_pred[b], joff_pred[b])
             juncs_pred[:,0] *= scale_x
             juncs_pred[:,1] *= scale_y
@@ -317,33 +317,33 @@ class HiSupModel(torch.nn.Module):
                 
         if self.cfg.use_images and self.cfg.use_lidar:
             
-            if self.cfg.encoder.name == "fusion_hrnet":
+            if self.cfg.experiment.encoder.name == "fusion_hrnet":
                 encoder = FusionHRNet(self.cfg,local_rank=local_rank)
-            elif self.cfg.encoder.name == "fusion_vit_cnn":
+            elif self.cfg.experiment.encoder.name == "fusion_vit_cnn":
                 encoder = FusionViTCNN(self.cfg,local_rank=local_rank)
-            elif self.cfg.encoder.name == "early_fusion_vit_cnn":
+            elif self.cfg.experiment.encoder.name == "early_fusion_vit_cnn":
                 encoder = EarlyFusionViTCNN(self.cfg,local_rank=local_rank)
             else:
-                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
+                raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
             
         elif self.cfg.use_images:
             
-            if self.cfg.encoder.name == "hrnet":
+            if self.cfg.experiment.encoder.name == "hrnet":
                 encoder = HRNet48v2(self.cfg,local_rank=local_rank)
-            elif self.cfg.encoder.name == "vit_cnn":
+            elif self.cfg.experiment.encoder.name == "vit_cnn":
                 encoder = ViTCNN(self.cfg,local_rank=local_rank)
             else:
-                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
+                raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
         elif self.cfg.use_lidar: 
             
-            if self.cfg.encoder.name == "pointpillars":
+            if self.cfg.experiment.encoder.name == "pointpillars":
                 encoder = PointPillars(self.cfg,local_rank=local_rank)
-            elif self.cfg.encoder.name == "pointpillars_vit_cnn":
+            elif self.cfg.experiment.encoder.name == "pointpillars_vit_cnn":
                 encoder = PointPillarsViTCNN(self.cfg,local_rank=local_rank)
             else:
-                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
+                raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
         else:
             raise ValueError("Please specify either and image or lidar encoder with encoder=<name>. See help for a list of available encoders.")

@@ -1,59 +1,48 @@
 defaults:
-  # - encoder: convnext
-  # - encoder: pointpillars
-  - encoder: pointpillars_vit_cnn
-  # - encoder: vit_cnn
-  # - encoder: vit
-  # - encoder: pointpillars_vit
-  # - encoder: fusion_vit
-  # - encoder: fusion_vit_cnn
-  # - encoder: fusion_hrnet
-  # - encoder: early_fusion_vit_cnn
-  # - encoder: early_fusion_vit
-  # - model: pix2poly
-  # - model: hisup
-  - model: ffl
+  - host: gin
+  - run_type: release
   - polygonization: asm_acm
   - dataset: lidarpoly
-  - run_type: release
-  - host: gin
-  - experiments: lidar_density_ablation
+  - experiment: lidar_density_ablation4
+  # - experiment: lidar_density_ablation4
+  # - experiment: lidar_density_ablation64
+  # - experiment: debug
+  # - experiment: hisup
+  # - experiment: ffl
   - _self_
 
 hydra:
   run:
     dir: ${...output_dir}
 
-output_dir: ${.host.data_root}/${.model.name}_outputs/${.dataset.name}/${.encoder.in_size}/${.experiment_name}
-checkpoint: best_val_iou
-checkpoint_file: null
-# checkpoint_file: null # override for loading a specific checkpoint file not in the output_dir
-# checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly/512/v1_lidar_LROnP/model_best_backup.pth
-# checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly_hisup_ori/v1_image_only_bs8/model_00062.pth
+output_dir: ${.host.data_root}/${.experiment.model.name}_outputs/${.dataset.name}/${.experiment.encoder.in_size}/${.experiment.name}
 
-experiment_name: debug
-group_name: NZ_${.model.name}
+checkpoint: null
+checkpoint_file: null
+
 multi_gpu: false
 device: cuda
 log_to_wandb: ${.run_type.log_to_wandb}
 num_workers: ${.run_type.num_workers}
 update_pbar_every: ${.host.update_pbar_every}
 
+country: Switzerland
+
 dataset:
   train_subset: ${..run_type.train_subset}
   val_subset: ${..run_type.val_subset}
-  size: ${..encoder.in_size}
-  # annotations:
-  #   train: ${..path}/annotations_NZ_train.json
-  #   val: ${..path}/annotations_NZ_val.json
-  #   test: ${..path}/annotations_NZ_test.json
+  size: ${..experiment.encoder.in_size}
+  annotations:
+    train: ${..path}/annotations_${...country}_train.json
+    val: ${..path}/annotations_${...country}_val.json
+    test: ${..path}/annotations_${...country}_test.json
 
-    
-model:
-  batch_size: ${..run_type.batch_size}
+experiment:
+  model:
+    batch_size: ${...run_type.batch_size}
 
-use_lidar: ${.encoder.use_lidar}
-use_images: ${.encoder.use_images}
+use_lidar: ${.experiment.encoder.use_lidar}
+use_images: ${.experiment.encoder.use_images}
 
 save_best: true
 save_latest: true

@@ -37,15 +37,15 @@ class FFLTrainer(Trainer):
         
     def setup_optimizer(self):
         # Get optimizer
-        # self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
+        # self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.experiment.model.learning_rate, weight_decay=self.cfg.experiment.model.weight_decay, betas=(0.9, 0.95))
 
-        self.optimizer = torch.optim.Adam(self.model.parameters(),lr=self.cfg.model.learning_rate,eps=1e-8)
+        self.optimizer = torch.optim.Adam(self.model.parameters(),lr=self.cfg.experiment.model.learning_rate,eps=1e-8)
         # Get scheduler
-        # num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
-        num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
+        # num_training_steps = self.cfg.experiment.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.experiment.model.batch_size // self.world_size)
+        num_training_steps = self.cfg.experiment.model.num_epochs * len(self.train_loader)
         self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
         self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
-        # self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, self.cfg.model.gamma)
+        # self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, self.cfg.experiment.model.gamma)
         num_warmup_steps = 0
         self.lr_scheduler = get_cosine_schedule_with_warmup(
             self.optimizer,
@@ -192,8 +192,8 @@ class FFLTrainer(Trainer):
         if self.cfg.checkpoint is not None or self.cfg.checkpoint_file is not None:
             self.load_checkpoint()
 
-        iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
-        epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
+        iter_idx=self.cfg.experiment.model.start_epoch * len(self.train_loader)
+        epoch_iterator = range(self.cfg.experiment.model.start_epoch, self.cfg.experiment.model.num_epochs)
 
         predictor = Predictor(self.cfg, local_rank=self.local_rank, world_size=self.world_size)
         if self.local_rank == 0:

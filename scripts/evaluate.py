@@ -2,13 +2,13 @@ import hydra
 from omegaconf import OmegaConf
 
 from pixelspointspolygons.eval import Evaluator
-from pixelspointspolygons.misc.shared_utils import setup_omegaconf
+from pixelspointspolygons.misc.shared_utils import setup_hydraconf
 
 
 
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
-    setup_omegaconf(cfg)
+    setup_hydraconf(cfg)
     
     modes_str = "_".join(cfg.eval.modes)
     cfg.eval.eval_file = f"{cfg.eval.eval_file}_{modes_str}.csv"

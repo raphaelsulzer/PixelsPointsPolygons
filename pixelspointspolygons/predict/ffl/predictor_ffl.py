@@ -41,7 +41,7 @@ class FFLPredictor(Predictor):
         
         
         annotations = self.predict_from_loader(self.model, self.loader)
-        
+                
         for k,coco_predictions in annotations.items():
             outfile = os.path.join(os.path.dirname(self.cfg.eval.pred_file), k, f"{self.cfg.checkpoint}.json")
             os.makedirs(os.path.dirname(outfile), exist_ok=True)
@@ -49,12 +49,12 @@ class FFLPredictor(Predictor):
             with open(outfile, "w") as fp:
                 fp.write(json.dumps(coco_predictions))
         
-        self.logger.info(f"Copy asm.tol_1 to predictions/{self.cfg.checkpoint}.json")
-        if "asm.tol_1" in annotations.keys():
+        self.logger.info(f"Copy acm.tol_1 to predictions_{split}/{self.cfg.checkpoint}.json")
+        if "acm.tol_1" in annotations.keys():
             outfile = os.path.join(os.path.dirname(self.cfg.eval.pred_file), f"{self.cfg.checkpoint}.json")
             os.makedirs(os.path.dirname(outfile), exist_ok=True)
             with open(outfile, "w") as fp:
-                fp.write(json.dumps(annotations["asm.tol_1"]))
+                fp.write(json.dumps(annotations["acm.tol_1"]))
         
         
     def predict_from_loader(self, model, loader):
@@ -74,7 +74,7 @@ class FFLPredictor(Predictor):
             batch_size = batch["image"].shape[0] if self.cfg.use_images else batch["lidar"].shape[0]
                         
             # --- Inference, add result to batch_list
-            if self.cfg.model.eval.patch_size is not None:
+            if self.cfg.experiment.model.eval.patch_size is not None:
                 # Cut image into patches for inference
                 batch = inference.inference_with_patching(self.cfg, model, batch)
                 pool = None

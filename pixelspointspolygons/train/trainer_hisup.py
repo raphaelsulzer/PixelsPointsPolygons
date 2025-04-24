@@ -17,7 +17,7 @@ from torch import optim
 from transformers import get_cosine_schedule_with_warmup
 from collections import defaultdict
 
-from ..misc import get_lr, get_tile_names_from_dataloader, MetricLogger, denormalize_image_for_visualization
+from ..misc import get_lr, get_tile_names_from_dataloader, MetricLogger, denormalize_image_for_visualization, to_single_device
 from ..models.hisup import HiSupModel
 from ..eval import Evaluator
 from ..misc.coco_conversions import generate_coco_ann
@@ -31,7 +31,7 @@ from .trainer import Trainer
 class LossReducer:
     
     def __init__(self, cfg):
-        self.loss_weights = dict(cfg.model.loss_weights)
+        self.loss_weights = dict(cfg.experiment.model.loss_weights)
 
     def __call__(self, loss_dict):
         total_loss = sum([self.loss_weights[k] * loss_dict[k]
@@ -41,40 +41,17 @@ class LossReducer:
 
 class HiSupTrainer(Trainer):
     
-    def to_device(self,data,device):
-        if isinstance(data,torch.Tensor):
-            return data.to(device)
-        if isinstance(data, dict):
-    #         import pdb; pdb.set_trace()
-            for key in data:
-                if isinstance(data[key],torch.Tensor):
-                    data[key] = data[key].to(device)
-            return data
-        if isinstance(data,list):
-            return [self.to_device(d,device) for d in data]
-
-    def to_single_device(self,data,device):
-        if isinstance(data, torch.Tensor):
-            return data.to(device)
-        if isinstance(data, dict):
-            for key in data:
-                if isinstance(data[key], torch.Tensor):
-                    data[key] = data[key].to(device)
-            return data
-        if isinstance(data, list):
-            return [self.to_device(d, device) for d in data]
-    
     def setup_model(self):
         self.model = HiSupModel(self.cfg, self.local_rank)
 
 
     def setup_optimizer(self):
         # Get optimizer
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
+        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.experiment.model.learning_rate, weight_decay=self.cfg.experiment.model.weight_decay, betas=(0.9, 0.95))
 
         # Get scheduler
-        # num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
-        num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
+        # num_training_steps = self.cfg.experiment.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.experiment.model.batch_size // self.world_size)
+        num_training_steps = self.cfg.experiment.model.num_epochs * len(self.train_loader)
         self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
         self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
         # num_warmup_steps = int(0.05 * num_training_steps)
@@ -100,10 +77,10 @@ class HiSupTrainer(Trainer):
         if self.cfg.use_lidar:
             x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
             
-        y=self.to_single_device(y,self.cfg.device)
+        y=to_single_device(y,self.cfg.device)
 
         polygon_output, loss_dict = self.model(x_image, x_lidar, y)
-        polygon_output = self.to_single_device(polygon_output, 'cpu')
+        polygon_output = to_single_device(polygon_output, 'cpu')
         
         
         outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
@@ -175,7 +152,7 @@ class HiSupTrainer(Trainer):
             if self.cfg.use_lidar:
                 x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
                 
-            y=self.to_single_device(y,self.cfg.device)
+            y=to_single_device(y,self.cfg.device)
 
             polygon_output, loss_dict = self.model(x_image, x_lidar, y)
             
@@ -186,7 +163,7 @@ class HiSupTrainer(Trainer):
             loss_meter.update(total_loss=loss_reduced, **loss_dict_reduced)
             loader.set_postfix(val_loss=loss_meter.meters["total_loss"].global_avg)
             ## polygon stuff
-            polygon_output = self.to_single_device(polygon_output, 'cpu')
+            polygon_output = to_single_device(polygon_output, 'cpu')
             batch_scores = polygon_output['scores']
             batch_polygons = polygon_output['polys_pred']
 
@@ -223,7 +200,7 @@ class HiSupTrainer(Trainer):
         for x_image, x_lidar, y, tile_ids in loader:
                         
 
-            y=self.to_single_device(y,self.cfg.device)
+            y=to_single_device(y,self.cfg.device)
             
             if self.cfg.use_images:
                 x_image = x_image.to(self.cfg.device, non_blocking=True)
@@ -273,8 +250,8 @@ class HiSupTrainer(Trainer):
         if self.cfg.log_to_wandb and self.local_rank == 0:
             self.setup_wandb()
 
-        iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
-        epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
+        iter_idx=self.cfg.experiment.model.start_epoch * len(self.train_loader)
+        epoch_iterator = range(self.cfg.experiment.model.start_epoch, self.cfg.experiment.model.num_epochs)
 
         if self.local_rank == 0:
             evaluator = Evaluator(self.cfg)

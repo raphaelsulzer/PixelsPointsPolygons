@@ -18,7 +18,7 @@ patch_feature_size: 28
 patch_feature_height: ${.patch_feature_size}
 patch_feature_width: ${.patch_feature_size}
 patch_feature_dim: 384
-num_patches: 784  # int((self.cfg.encoder.in_size // self.cfg.encoder.patch_size) ** 2)
+num_patches: 784  # int((self.cfg.experiment.encoder.in_size // self.cfg.experiment.encoder.patch_size) ** 2)
 
 # out_feature_size: ${..model.decoder.in_feature_size}
 # out_feature_height: ${.out_feature_size}

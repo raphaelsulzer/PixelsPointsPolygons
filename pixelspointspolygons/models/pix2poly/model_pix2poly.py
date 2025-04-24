@@ -226,13 +226,13 @@ class EncoderDecoder(nn.Module):
         self.cfg = cfg
         self.encoder = encoder
         self.decoder = decoder
-        self.n_vertices = cfg.model.tokenizer.n_vertices
-        self.sinkhorn_iterations = cfg.model.sinkhorn_iterations
+        self.n_vertices = cfg.experiment.model.tokenizer.n_vertices
+        self.sinkhorn_iterations = cfg.experiment.model.sinkhorn_iterations
         self.scorenet1 = ScoreNet(self.n_vertices)
         self.scorenet2 = ScoreNet(self.n_vertices)
         self.bin_score = torch.nn.Parameter(torch.tensor(1.0))
         
-        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_feature_dim)
+        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.experiment.encoder.out_feature_dim)
 
     def forward(self, x_images, x_lidar, y):
         
@@ -276,38 +276,38 @@ class Pix2PolyModel(torch.nn.Module):
         self.cfg = cfg
                 
         if self.cfg.use_images and self.cfg.use_lidar:
-            if self.cfg.encoder.name == "fusion_vit":
+            if self.cfg.experiment.encoder.name == "fusion_vit":
                 encoder = FusionViT(self.cfg,local_rank=local_rank)
-            elif self.cfg.encoder.name == "early_fusion_vit":
+            elif self.cfg.experiment.encoder.name == "early_fusion_vit":
                 encoder = EarlyFusionViT(self.cfg,local_rank=local_rank)
             else:
-                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
+                raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
         elif self.cfg.use_images:
             
-            if self.cfg.encoder.name == "vit":
+            if self.cfg.experiment.encoder.name == "vit":
                 encoder = ViT(self.cfg,bottleneck=True,local_rank=local_rank)
             else:
-                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
+                raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
         elif self.cfg.use_lidar: 
             
-            if self.cfg.encoder.name == "pointpillars_vit":
+            if self.cfg.experiment.encoder.name == "pointpillars_vit":
                 encoder = PointPillarsViT(self.cfg,bottleneck=True,local_rank=local_rank)
             else:
-                raise NotImplementedError(f"Encoder {self.cfg.encoder.name} not implemented for {self.__name__}")
+                raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
         else:
             raise ValueError("Please specify either and image or lidar encoder with encoder=<name>. See help for a list of available encoders.")
         
         decoder = Decoder(
             vocab_size=vocab_size,
-            encoder_len=self.cfg.encoder.num_patches,
-            dim=self.cfg.encoder.out_feature_dim,
+            encoder_len=self.cfg.experiment.encoder.num_patches,
+            dim=self.cfg.experiment.encoder.out_feature_dim,
             num_heads=8,
             num_layers=6,
-            max_len=self.cfg.model.tokenizer.max_len,
-            pad_idx=self.cfg.model.tokenizer.pad_idx,
+            max_len=self.cfg.experiment.model.tokenizer.max_len,
+            pad_idx=self.cfg.experiment.model.tokenizer.pad_idx,
         )
         model = EncoderDecoder(
             encoder=encoder,

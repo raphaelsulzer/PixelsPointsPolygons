@@ -371,7 +371,7 @@ class HighResolutionNet(nn.Module):
                 padding=0)
         )
 
-        # self.head = MultitaskHead(self.cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+        # self.head = MultitaskHead(self.cfg.experiment.model.decoder.in_feature_dim, 2, head_size=[[2]])
                 
         ### init weights ###
         # if not cfg.host.name == "jeanzay":
@@ -381,10 +381,10 @@ class HighResolutionNet(nn.Module):
         #         use_auth_token=True  # This is needed for private repos
         #     )
         # else:
-        #     checkpoint_file = cfg.encoder.checkpoint_file
+        #     checkpoint_file = cfg.experiment.encoder.checkpoint_file
         
-        if cfg.encoder.hrnet.pretrained:
-            checkpoint_file = cfg.encoder.hrnet.checkpoint_file
+        if cfg.experiment.encoder.hrnet.pretrained:
+            checkpoint_file = cfg.experiment.encoder.hrnet.checkpoint_file
                 
             if not os.path.isfile(checkpoint_file):
                 raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
@@ -555,7 +555,7 @@ class HighResolutionNet(nn.Module):
 
 def get_seg_model(cfg, **kwargs):
     model = HighResolutionNet(cfg, **kwargs)
-    model.init_weights(cfg.MODEL.PRETRAINED)
+    model.init_weights(cfg.experiment.model.PRETRAINED)
 
     return model
 

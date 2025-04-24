@@ -51,19 +51,19 @@ def get_train_loader(cfg,tokenizer=None,logger=None):
 def get_train_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     
     transforms = []
-    if "D4" in cfg.encoder.augmentations:
+    if "D4" in cfg.experiment.encoder.augmentations:
         transforms.append(A.D4(p=1.0))
-    if "Resize" in cfg.encoder.augmentations:
-        transforms.append(A.Resize(height=cfg.encoder.in_height, width=cfg.encoder.in_width))
-    if "ColorJitter" in cfg.encoder.augmentations:
+    if "Resize" in cfg.experiment.encoder.augmentations:
+        transforms.append(A.Resize(height=cfg.experiment.encoder.in_height, width=cfg.experiment.encoder.in_width))
+    if "ColorJitter" in cfg.experiment.encoder.augmentations:
         transforms.append(A.ColorJitter())
-    if "GaussNoise" in cfg.encoder.augmentations:
+    if "GaussNoise" in cfg.experiment.encoder.augmentations:
         transforms.append(A.GaussNoise())
-    if "Normalize" in cfg.encoder.augmentations:
+    if "Normalize" in cfg.experiment.encoder.augmentations:
         # TODO:
         # check what to do for ImageNet normalization for UNetResNet: https://pytorch.org/vision/stable/models.html
         # and also this has to probably be removed for ViT. or check what is the correct way for that.
-        transforms.append(A.Normalize(mean=cfg.encoder.image_mean, std=cfg.encoder.image_std, max_pixel_value=cfg.encoder.image_max_pixel_value)) 
+        transforms.append(A.Normalize(mean=cfg.experiment.encoder.image_mean, std=cfg.experiment.encoder.image_std, max_pixel_value=cfg.experiment.encoder.image_max_pixel_value)) 
     transforms.append(ToTensorV2())
     train_transforms = A.ReplayCompose(transforms=transforms,
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
@@ -92,8 +92,8 @@ def get_train_loader_lidarpoly(cfg,tokenizer=None,logger=None):
 
     train_loader = DataLoader(
         train_ds,
-        batch_size=cfg.model.batch_size,
-        collate_fn=partial(get_collate_fn(cfg.model.name), cfg=cfg),
+        batch_size=cfg.experiment.model.batch_size,
+        collate_fn=partial(get_collate_fn(cfg.experiment.model.name), cfg=cfg),
         num_workers=cfg.num_workers,
         pin_memory=cfg.run_type.name!='debug',
         drop_last=False,
@@ -101,17 +101,17 @@ def get_train_loader_lidarpoly(cfg,tokenizer=None,logger=None):
         shuffle=(sampler is None)
     )
     if logger is not None:
-        logger.debug(f"Train loader created with {len(train_loader)} batches of size {cfg.model.batch_size}.")
+        logger.debug(f"Train loader created with {len(train_loader)} batches of size {cfg.experiment.model.batch_size}.")
     
     return train_loader
 
 def get_val_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     
     transforms = []
-    if "Resize" in cfg.encoder.augmentations:
-        transforms.append(A.Resize(height=cfg.encoder.in_height, width=cfg.encoder.in_width))
-    if "Normalize" in cfg.encoder.augmentations:
-        transforms.append(A.Normalize(mean=cfg.encoder.image_mean, std=cfg.encoder.image_std, max_pixel_value=cfg.encoder.image_max_pixel_value)) 
+    if "Resize" in cfg.experiment.encoder.augmentations:
+        transforms.append(A.Resize(height=cfg.experiment.encoder.in_height, width=cfg.experiment.encoder.in_width))
+    if "Normalize" in cfg.experiment.encoder.augmentations:
+        transforms.append(A.Normalize(mean=cfg.experiment.encoder.image_mean, std=cfg.experiment.encoder.image_std, max_pixel_value=cfg.experiment.encoder.image_max_pixel_value)) 
     transforms.append(ToTensorV2())
     val_transforms = A.ReplayCompose(transforms=transforms,
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
@@ -138,8 +138,8 @@ def get_val_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     
     val_loader = DataLoader(
         val_ds,
-        batch_size=cfg.model.batch_size,
-        collate_fn=partial(get_collate_fn(cfg.model.name), cfg=cfg),
+        batch_size=cfg.experiment.model.batch_size,
+        collate_fn=partial(get_collate_fn(cfg.experiment.model.name), cfg=cfg),
         num_workers=cfg.num_workers,
         pin_memory=cfg.run_type.name!='debug',
         drop_last=False,
@@ -147,7 +147,7 @@ def get_val_loader_lidarpoly(cfg,tokenizer=None,logger=None):
         shuffle=False
     )
     if logger is not None:
-        logger.debug(f"Val loader created with {len(val_loader)} batches of size {cfg.model.batch_size}.")
+        logger.debug(f"Val loader created with {len(val_loader)} batches of size {cfg.experiment.model.batch_size}.")
     
     return val_loader
 
@@ -156,10 +156,10 @@ def get_val_loader_lidarpoly(cfg,tokenizer=None,logger=None):
 def get_test_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     
     transforms = []
-    if "Resize" in cfg.encoder.augmentations:
-        transforms.append(A.Resize(height=cfg.encoder.in_height, width=cfg.encoder.in_width))
-    if "Normalize" in cfg.encoder.augmentations:
-        transforms.append(A.Normalize(mean=cfg.encoder.image_mean, std=cfg.encoder.image_std, max_pixel_value=cfg.encoder.image_max_pixel_value)) 
+    if "Resize" in cfg.experiment.encoder.augmentations:
+        transforms.append(A.Resize(height=cfg.experiment.encoder.in_height, width=cfg.experiment.encoder.in_width))
+    if "Normalize" in cfg.experiment.encoder.augmentations:
+        transforms.append(A.Normalize(mean=cfg.experiment.encoder.image_mean, std=cfg.experiment.encoder.image_std, max_pixel_value=cfg.experiment.encoder.image_max_pixel_value)) 
     transforms.append(ToTensorV2())
     transforms = A.ReplayCompose(transforms=transforms,
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
@@ -186,8 +186,8 @@ def get_test_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     
     loader = DataLoader(
         ds,
-        batch_size=cfg.model.batch_size,
-        collate_fn=partial(get_collate_fn(cfg.model.name), cfg=cfg),
+        batch_size=cfg.experiment.model.batch_size,
+        collate_fn=partial(get_collate_fn(cfg.experiment.model.name), cfg=cfg),
         num_workers=cfg.num_workers,
         pin_memory=cfg.run_type.name!='debug',
         drop_last=False,
@@ -195,7 +195,7 @@ def get_test_loader_lidarpoly(cfg,tokenizer=None,logger=None):
         shuffle=False
     )
     if logger is not None:
-        logger.debug(f"Test loader created with {len(loader)} batches of size {cfg.model.batch_size}.")
+        logger.debug(f"Test loader created with {len(loader)} batches of size {cfg.experiment.model.batch_size}.")
     
     return loader
 
@@ -212,7 +212,7 @@ def get_train_loader_inria(cfg,tokenizer,logger=None):
     train_transforms = A.Compose(
         [
             A.Affine(rotate=[-360, 360], fit_output=True, p=0.8),  # scaled rotations are performed before resizing to ensure rotated and scaled images are correctly resized.
-            A.Resize(height=cfg.encoder.input_height, width=cfg.encoder.input_width),
+            A.Resize(height=cfg.experiment.encoder.input_height, width=cfg.experiment.encoder.input_width),
             A.RandomRotate90(p=1.),
             A.RandomBrightnessContrast(p=0.5),
             A.ColorJitter(),
@@ -241,8 +241,8 @@ def get_train_loader_inria(cfg,tokenizer,logger=None):
 
     train_loader = DataLoader(
         train_ds,
-        batch_size=cfg.model.batch_size,
-        collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
+        batch_size=cfg.experiment.model.batch_size,
+        collate_fn=partial(collate_fn, max_len=cfg.experiment.model.tokenizer.max_len, pad_idx=cfg.experiment.model.tokenizer.pad_idx),
         num_workers=cfg.num_workers,
         pin_memory=cfg.run_type.name!='debug',
         drop_last=True,
@@ -259,7 +259,7 @@ def get_val_loader_inria(cfg,tokenizer,logger=None):
     
     val_transforms = A.Compose(
         [
-            A.Resize(height=cfg.encoder.input_height, width=cfg.encoder.input_width),
+            A.Resize(height=cfg.experiment.encoder.input_height, width=cfg.experiment.encoder.input_width),
             A.Normalize(
                 mean=[0.0, 0.0, 0.0],
                 std=[1.0, 1.0, 1.0],
@@ -288,8 +288,8 @@ def get_val_loader_inria(cfg,tokenizer,logger=None):
 
     val_loader = DataLoader(
         val_ds,
-        batch_size=cfg.model.batch_size,
-        collate_fn=partial(collate_fn, max_len=cfg.model.tokenizer.max_len, pad_idx=cfg.model.tokenizer.pad_idx),
+        batch_size=cfg.experiment.model.batch_size,
+        collate_fn=partial(collate_fn, max_len=cfg.experiment.model.tokenizer.max_len, pad_idx=cfg.experiment.model.tokenizer.pad_idx),
         num_workers=cfg.num_workers,
         pin_memory=cfg.run_type.name!='debug',
         drop_last=False,

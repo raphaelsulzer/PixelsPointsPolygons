@@ -1,0 +1,10 @@
+defaults:
+  - /encoder: pointpillars_vit_cnn
+  - /model: ffl
+  - _self_
+
+name: v3_lidar_pp_vit_cnn_bs2x16_mnv64
+group_name: v2_${.model.name}
+
+encoder:
+  max_points_per_voxel: 64

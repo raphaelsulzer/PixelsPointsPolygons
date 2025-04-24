@@ -37,13 +37,13 @@ class PointPillarsEncoder(ml3d.models.PointPillars):
         
         # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
         point_cloud_range = [0, 0, 0, 
-                             cfg.encoder.in_width, cfg.encoder.in_height, cfg.encoder.in_voxel_size.z]
-        voxel_size = list(cfg.encoder.in_voxel_size.values())
+                             cfg.experiment.encoder.in_width, cfg.experiment.encoder.in_height, cfg.experiment.encoder.in_voxel_size.z]
+        voxel_size = list(cfg.experiment.encoder.in_voxel_size.values())
         
         voxelize={
-            'max_num_points': cfg.encoder.max_num_points_per_voxel,
+            'max_num_points': cfg.experiment.encoder.max_num_points_per_voxel,
             'voxel_size': voxel_size,
-            'max_voxels': [cfg.encoder.max_num_voxels.train, cfg.encoder.max_num_voxels.test], 
+            'max_voxels': [cfg.experiment.encoder.max_num_voxels.train, cfg.experiment.encoder.max_num_voxels.test], 
         }
         voxel_encoder["voxel_size"] = voxel_size 
         augment={
@@ -75,7 +75,7 @@ class PointPillarsEncoder(ml3d.models.PointPillars):
         # x_lidar = list(torch.unbind(x_lidar, dim=0))
         voxels, num_points, coors = self.voxelize(x_lidar)
         voxel_features = self.voxel_encoder(voxels, num_points, coors)
-        batch_size = x_lidar.shape[0] # WARNING: do not use self.cfg.model.batch_size here, because it can be wrong for truncated batches at the end of the loader in drop_last=False, e.g. in validation and testing
+        batch_size = x_lidar.shape[0] # WARNING: do not use self.cfg.experiment.model.batch_size here, because it can be wrong for truncated batches at the end of the loader in drop_last=False, e.g. in validation and testing
         x = self.middle_encoder(voxel_features, coors, batch_size)
         
         ## flatten patches, NCHW -> NLC. Needed to pass directly to next layer of VisionTransformer (self.vit)
@@ -121,16 +121,16 @@ class PointPillars(ml3d.models.PointPillars):
         
         # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
         point_cloud_range = [0, 0, 0, 
-                             cfg.encoder.in_width, cfg.encoder.in_height, cfg.encoder.in_voxel_size.z]
-        voxel_size = list(cfg.encoder.in_voxel_size.values())
+                             cfg.experiment.encoder.in_width, cfg.experiment.encoder.in_height, cfg.experiment.encoder.in_voxel_size.z]
+        voxel_size = list(cfg.experiment.encoder.in_voxel_size.values())
         
         voxelize={
-            'max_num_points': cfg.encoder.max_num_points_per_voxel,
+            'max_num_points': cfg.experiment.encoder.max_num_points_per_voxel,
             'voxel_size': voxel_size,
-            'max_voxels': [cfg.encoder.max_num_voxels.train, cfg.encoder.max_num_voxels.test], 
+            'max_voxels': [cfg.experiment.encoder.max_num_voxels.train, cfg.experiment.encoder.max_num_voxels.test], 
         }
         ### output shape has to be defined like this!!
-        output_shape = [cfg.encoder.in_width // cfg.encoder.in_voxel_size.x, cfg.encoder.in_height // cfg.encoder.in_voxel_size.y]
+        output_shape = [cfg.experiment.encoder.in_width // cfg.experiment.encoder.in_voxel_size.x, cfg.experiment.encoder.in_height // cfg.experiment.encoder.in_voxel_size.y]
         voxel_encoder={
             'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
             'voxel_size': voxel_size,
@@ -151,8 +151,8 @@ class PointPillars(ml3d.models.PointPillars):
         }
         neck={
             "in_channels": [64, 128, 256],
-            "out_channels": self.cfg.model.point_pillars.out_channels,
-            "upsample_strides": self.cfg.model.point_pillars.upsample_strides,
+            "out_channels": self.cfg.experiment.model.point_pillars.out_channels,
+            "upsample_strides": self.cfg.experiment.model.point_pillars.upsample_strides,
             "use_conv_for_no_stride": False
         }
         
@@ -169,8 +169,8 @@ class PointPillars(ml3d.models.PointPillars):
                     augment=augment)
         
 
-        if sum(cfg.model.point_pillars.out_channels) != cfg.model.decoder.in_feature_dim:
-            self.reduce_dim = nn.Conv2d(in_channels=sum(cfg.model.point_pillars.out_channels), out_channels=cfg.model.decoder.in_feature_dim, kernel_size=1, stride=1, padding=0)
+        if sum(cfg.experiment.model.point_pillars.out_channels) != cfg.experiment.model.decoder.in_feature_dim:
+            self.reduce_dim = nn.Conv2d(in_channels=sum(cfg.experiment.model.point_pillars.out_channels), out_channels=cfg.experiment.model.decoder.in_feature_dim, kernel_size=1, stride=1, padding=0)
             self.reduce_dim = nn.Sequential(
                 self.reduce_dim,
                 nn.ReLU()
@@ -179,8 +179,8 @@ class PointPillars(ml3d.models.PointPillars):
             self.reduce_dim = nn.Identity()
 
         # TODO: the head should go in the decoder
-        # if cfg.model.name != "ffl":
-        #     self.head = MultitaskHead(cfg.model.decoder.in_feature_dim, 2, head_size=[[2]])
+        # if cfg.experiment.model.name != "ffl":
+        #     self.head = MultitaskHead(cfg.experiment.model.decoder.in_feature_dim, 2, head_size=[[2]])
         
         # remove unsused modules from PointPillars
         del self.bbox_head
@@ -195,7 +195,7 @@ class PointPillars(ml3d.models.PointPillars):
         # x_lidar = list(torch.unbind(x_lidar, dim=0))
         voxels, num_points, coors = self.voxelize(x_lidar)
         voxel_features = self.voxel_encoder(voxels, num_points, coors)
-        batch_size = x_lidar.shape[0] # WARNING: do not use self.cfg.model.batch_size here, because it can be wrong for truncated batches at the end of the loader in drop_last=False, e.g. in validation and testing
+        batch_size = x_lidar.shape[0] # WARNING: do not use self.cfg.experiment.model.batch_size here, because it can be wrong for truncated batches at the end of the loader in drop_last=False, e.g. in validation and testing
         # batch_size = coors[-1, 0].item() + 1 ## that is how they do it inside o3d
         x = self.middle_encoder(voxel_features, coors, batch_size)
         

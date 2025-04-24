@@ -37,21 +37,21 @@ class FusionViT(torch.nn.Module):
 
         # ###### LiDAR encoder #######
         # self.pp_vit = timm.create_model(
-        #     model_name=cfg.encoder.type,
+        #     model_name=cfg.experiment.encoder.type,
         #     num_classes=0,
         #     global_pool='',
-        #     pretrained=cfg.encoder.pretrained,
-        #     checkpoint_path=cfg.encoder.checkpoint_file
+        #     pretrained=cfg.experiment.encoder.pretrained,
+        #     checkpoint_path=cfg.experiment.encoder.checkpoint_file
         # )
         
         # #### replace VisionTransformer patch embedding with LiDAR encoder        
-        # output_shape = [cfg.encoder.patch_feature_width, cfg.encoder.patch_feature_height]
+        # output_shape = [cfg.experiment.encoder.patch_feature_width, cfg.experiment.encoder.patch_feature_height]
         # voxel_encoder={
         #     'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
-        #     'feat_channels': [64,cfg.encoder.patch_feature_dim],
+        #     'feat_channels': [64,cfg.experiment.encoder.patch_feature_dim],
         # }
         # scatter={
-        #     "in_channels" : cfg.encoder.patch_feature_dim, 
+        #     "in_channels" : cfg.experiment.encoder.patch_feature_dim, 
         #     "output_shape" : output_shape
         # }
         # self.pp_vit.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
@@ -59,20 +59,20 @@ class FusionViT(torch.nn.Module):
         
         ###### Image encoder #######
         self.vit = timm.create_model(
-            model_name=cfg.encoder.vit.type,
+            model_name=cfg.experiment.encoder.vit.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.encoder.vit.pretrained,
-            checkpoint_path=cfg.encoder.vit.checkpoint_file
+            pretrained=cfg.experiment.encoder.vit.pretrained,
+            checkpoint_path=cfg.experiment.encoder.vit.checkpoint_file
         )
         
         
-        # self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_feature_dim)
+        # self.bottleneck = nn.AdaptiveAvgPool1d(cfg.experiment.encoder.out_feature_dim)
         
         self.fusion_layer = nn.Sequential(
-            nn.Linear(self.cfg.encoder.patch_feature_dim*2, self.cfg.model.decoder.in_feature_dim),  # Linear layer to reduce dimensionality
+            nn.Linear(self.cfg.experiment.encoder.patch_feature_dim*2, self.cfg.experiment.model.decoder.in_feature_dim),  # Linear layer to reduce dimensionality
             nn.ReLU(),            # Non-linearity
-            nn.LayerNorm(self.cfg.model.decoder.in_feature_dim)   # BatchNorm for stabilization (applied to tokens dimension)
+            nn.LayerNorm(self.cfg.experiment.model.decoder.in_feature_dim)   # BatchNorm for stabilization (applied to tokens dimension)
         )
 
         

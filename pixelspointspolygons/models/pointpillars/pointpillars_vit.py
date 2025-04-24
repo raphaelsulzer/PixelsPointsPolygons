@@ -35,28 +35,33 @@ class PointPillarsViT(torch.nn.Module):
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
 
+        # # Redirect timm logs to your logger
+        # logging.getLogger('timm').handlers = []
+        # logging.getLogger('timm').propagate = False
+        # logging.getLogger('timm').addHandler(self.logger.handlers[0])
+        logging.getLogger('timm').setLevel(logging.WARNING)
         self.vit = timm.create_model(
-            model_name=cfg.encoder.vit.type,
+            model_name=cfg.experiment.encoder.vit.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.encoder.vit.pretrained,
-            checkpoint_path=cfg.encoder.vit.checkpoint_file
+            pretrained=cfg.experiment.encoder.vit.pretrained,
+            checkpoint_path=cfg.experiment.encoder.vit.checkpoint_file
         )
         
         #### replace VisionTransformer patch embedding with LiDAR encoder        
-        output_shape = [cfg.encoder.patch_feature_width, cfg.encoder.patch_feature_height]
+        output_shape = [cfg.experiment.encoder.patch_feature_width, cfg.experiment.encoder.patch_feature_height]
         voxel_encoder={
             'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
-            'feat_channels': [64,cfg.encoder.patch_feature_dim],
+            'feat_channels': [64,cfg.experiment.encoder.patch_feature_dim],
         }
         scatter={
-            "in_channels" : cfg.encoder.patch_feature_dim, 
+            "in_channels" : cfg.experiment.encoder.patch_feature_dim, 
             "output_shape" : output_shape
         }
         self.vit.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
         
         if bottleneck:
-            self.bottleneck = nn.AdaptiveAvgPool1d(cfg.encoder.out_feature_dim)
+            self.bottleneck = nn.AdaptiveAvgPool1d(cfg.experiment.encoder.out_feature_dim)
         else:
             self.bottleneck = nn.Identity()
         
