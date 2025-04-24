@@ -1,0 +1,10 @@
+defaults:
+  - /encoder: vit_cnn
+  - /model: ffl
+  - _self_
+
+name: v4_image_bs4x16
+group_name: v2_${.model.name}
+
+model:
+  batch_size: 16
