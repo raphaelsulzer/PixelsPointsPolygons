@@ -8,6 +8,7 @@ annotations:
   test: ${..path}/annotations_test.json
 train_subset: null
 val_subset: null
+test_subset: null
 
 
 

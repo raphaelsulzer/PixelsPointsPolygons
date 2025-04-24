@@ -1,7 +1,7 @@
-,IoU,C-IoU,NR
-pix2poly/v3_image_vit_bs4x16,0.144,0.144,0.177
-pix2poly/lidar_pp_vit_bs2x16_mnv64,0.191,0.185,0.194
-pix2poly/early_fusion_bs2x16_mnv64,0.192,0.185,0.193
-hisup/v3_image_vit_cnn_bs4x12,0.193,0.182,0.189
-hisup/lidar_pp_vit_cnn_bs2x16_mnv64,0.195,0.184,0.189
-hisup/early_fusion_vit_cnn_bs2x16_mnv64,0.194,0.182,0.187
+,IoU,C-IoU,NR,prediction_time
+pix2poly/v3_image_vit_bs4x8,0.188,0.18,0.19,0.667
+pix2poly/lidar_pp_vit_bs2x16_mnv64,0.191,0.185,0.194,0.702
+pix2poly/early_fusion_bs2x16_mnv64,0.192,0.185,0.193,0.71
+hisup/v3_image_vit_cnn_bs4x12,0.193,0.182,0.189,0.0524
+hisup/lidar_pp_vit_cnn_bs2x16_mnv64,0.195,0.184,0.189,0.0723
+hisup/early_fusion_vit_cnn_bs2x16_mnv64,0.194,0.182,0.187,0.078

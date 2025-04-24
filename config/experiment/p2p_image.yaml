@@ -4,5 +4,6 @@ defaults:
   - _self_
 
 # name: v3_image_vit_bs4x16
-name: v4_image_vit_bs4x16
+name: v3_image_vit_bs4x8
+# name: v4_image_vit_bs4x16
 group_name: v2_${.model.name}

@@ -106,7 +106,7 @@ class PPPDataset(Dataset):
     
     def apply_augmentations_to_lidar(self, augmentation_replay, lidar):
         
-        if self.split == 'val':
+        if self.split != 'train':
             return torch.from_numpy(lidar)
     
         d4_transform = augmentation_replay["transforms"][0]

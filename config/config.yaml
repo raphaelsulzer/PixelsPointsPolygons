@@ -29,14 +29,16 @@ update_pbar_every: ${.host.update_pbar_every}
 
 country: Switzerland
 
+## TODO: I do not think this has to be here in the main conf, could just be specified in the dataset conf itself
 dataset:
   train_subset: ${..run_type.train_subset}
   val_subset: ${..run_type.val_subset}
+  test_subset: ${..run_type.test_subset}
   size: ${..experiment.encoder.in_size}
   annotations:
     train: ${..path}/annotations_${...country}_train.json
     val: ${..path}/annotations_${...country}_val.json
-    test: ${..path}/annotations_${...country}_test.json
+    test: ${..path}/annotations_${...country}_test_subset25.json
 
 experiment:
   model:
@@ -53,14 +55,15 @@ best_val_loss: 10000000.0
 best_val_iou: 0.0
 
 eval:
+  split: val
   # gt_file: ${..dataset.annotations.val}
   pred_file: ${..output_dir}/predictions/${..checkpoint}.json
   # pred_file: ${..output_dir}/predictions/test.json
   modes:
     # - coco
     - iou
-    # - polis
-    # - mta
+    - polis
+    - mta
     # - stats
     # - topdig
   # eval_file: ${..host.data_root}/${..dataset.name}/metrics.csv

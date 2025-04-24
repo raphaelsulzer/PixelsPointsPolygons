@@ -4,6 +4,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
+import time
 import torch
 import laspy
 import json
@@ -60,7 +61,8 @@ class HiSupPredictor(Predictor):
         coco_predictions = []
         
         with torch.no_grad():
-        
+            t0 = time.time()
+
             for x_image, x_lidar, y, tile_ids in loader:
                 
                 batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
@@ -87,13 +89,18 @@ class HiSupPredictor(Predictor):
                     image_result = generate_coco_ann(polys, tile_ids[b], scores=scores)
                     if len(image_result) != 0:
                         coco_predictions.extend(image_result)
-
-
+        
+            self.logger.info(f"Average prediction speed: {(time.time() - t0) / len(self.loader.dataset):.2f} [s / image]")
+            time_dict = {}
+            time_dict["prediction_time"] = (time.time() - t0) / len(self.loader.dataset)
+        
             os.makedirs(os.path.dirname(self.cfg.eval.pred_file), exist_ok=True)
             self.logger.info(f"Writing predictions to {self.cfg.eval.pred_file}")
             with open(self.cfg.eval.pred_file, "w") as fp:
                 fp.write(json.dumps(coco_predictions))
-        
+            
+            return time_dict
+
     
     def predict_file(self,img_infile=None,lidar_infile=None,outfile=None):
         

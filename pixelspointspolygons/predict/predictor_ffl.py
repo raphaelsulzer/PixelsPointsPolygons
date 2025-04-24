@@ -4,21 +4,22 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
+import time
 import json
 import torch
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 import torch.distributed as dist
 
-from ...models.ffl.local_utils import batch_to_cpu, split_batch, list_of_dicts_to_dict_of_lists, flatten_dict
-from ...models.ffl.model_ffl import FFLModel
-from ...datasets import get_train_loader, get_val_loader, get_test_loader
+from ..models.ffl.local_utils import batch_to_cpu, split_batch, list_of_dicts_to_dict_of_lists, flatten_dict
+from ..models.ffl.model_ffl import FFLModel
+from ..datasets import get_train_loader, get_val_loader, get_test_loader
 
-from ..predictor import Predictor
+from .predictor import Predictor
 
-from . import inference
-from . import save_utils
-from . import polygonize
+from .ffl import inference
+from .ffl import save_utils
+from .ffl import polygonize
 
 class FFLPredictor(Predictor):
     
@@ -39,9 +40,12 @@ class FFLPredictor(Predictor):
         else:   
             raise ValueError(f"Unknown split {split}.")
         
-        
+        t0 = time.time()
         annotations = self.predict_from_loader(self.model, self.loader)
-                
+        self.logger.info(f"Average prediction speed: {(time.time() - t0) / len(self.loader.dataset):.2f} [s / image]")
+        time_dict = {}
+        time_dict["prediction_time"] = (time.time() - t0) / len(self.loader.dataset)
+        
         for k,coco_predictions in annotations.items():
             outfile = os.path.join(os.path.dirname(self.cfg.eval.pred_file), k, f"{self.cfg.checkpoint}.json")
             os.makedirs(os.path.dirname(outfile), exist_ok=True)
@@ -56,6 +60,8 @@ class FFLPredictor(Predictor):
             with open(outfile, "w") as fp:
                 fp.write(json.dumps(annotations["acm.tol_1"]))
         
+        
+        return time_dict
         
     def predict_from_loader(self, model, loader):
         

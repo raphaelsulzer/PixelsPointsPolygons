@@ -14,7 +14,8 @@ class ViT(nn.Module):
         
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
-        
+    
+        logging.getLogger('timm').setLevel(logging.WARNING)
         self.vit = timm.create_model(
             model_name=cfg.experiment.encoder.type,
             num_classes=0,

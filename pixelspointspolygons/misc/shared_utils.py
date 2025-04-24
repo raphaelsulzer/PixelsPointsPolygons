@@ -249,3 +249,7 @@ def to_single_device(data,device):
         return data
     if isinstance(data, list):
         return [to_device(d, device) for d in data]
+    
+    
+def count_trainable_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)

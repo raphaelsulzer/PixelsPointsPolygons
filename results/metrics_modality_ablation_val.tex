@@ -1,0 +1,20 @@
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llHccccccc}
+\toprule
+\textbf{Method} & \textbf{Modality} & Unnamed: 0 & \textbf{IoU} $\uparrow$ & \textbf{C-IoU} $\uparrow$ & \textbf{NR=1} & prediction_time & num_params \\
+\midrule
+\cellcolor{yellow!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{pix2poly/v3_image_vit_bs4x8} & 0.705 & 0.61 & 0.789 & 0.666 & 31.9 \\
+\cellcolor{green!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{pix2poly/lidar_pp_vit_bs2x16_mnv64} & 0.811 & \cellcolor{blue!10} 0.718 & \cellcolor{blue!10} 0.844 & 0.669 & 31.9 \\
+\cellcolor{magenta!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{pix2poly/early_fusion_bs2x16_mnv64} & \cellcolor{blue!25} 0.857 & \cellcolor{blue!25} 0.772 & \cellcolor{blue!25} 0.875 & 0.672 & 34.6 \\
+\midrule
+\cellcolor{yellow!10}\textbf{HiSup} \cite{hisup} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{hisup/v3_image_vit_cnn_bs4x12} & 0.779 & 0.653 & 0.789 & 0.043 & 30.8 \\
+\cellcolor{green!10}\textbf{HiSup} \cite{hisup} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{hisup/lidar_pp_vit_cnn_bs2x16_mnv64} & 0.825 & 0.689 & 0.789 & 0.0462 & 30.8 \\
+\cellcolor{magenta!10}\textbf{HiSup} \cite{hisup} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{hisup/early_fusion_vit_cnn_bs2x16_mnv64} & \cellcolor{blue!10} 0.835 & 0.712 & 0.814 & 0.0465 & 33.5 \\
+\bottomrule
+\end{tabular}
+}
+\caption{\textbf{Quantitative results of patch prediction on our dataset}. We compare the baseline models trained and tested on different modalities. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores.}
+\label{tab:patch}
+\end{table}
