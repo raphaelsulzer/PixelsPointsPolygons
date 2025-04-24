@@ -12,7 +12,7 @@ import albumentations as A
 def main(cfg):
 
     os.makedirs("augmentation_replay", exist_ok=True)
-    cfg.model.batch_size = 1
+    cfg.experiment.model.batch_size = 1
     loader = get_train_loader(cfg)
     for batch in loader:
         ge = batch["augmentation_replay"][0]

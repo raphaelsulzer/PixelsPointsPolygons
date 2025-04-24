@@ -17,9 +17,12 @@ from shapely.geometry import Polygon
 from sklearn.preprocessing import MinMaxScaler
 
 from ..misc import *
+from ..misc.shared_utils import to_single_device
 from ..models.hisup import HiSupModel
 
 from .predictor import Predictor
+
+from ..datasets import get_train_loader, get_val_loader, get_test_loader
 
 
 class HiSupPredictor(Predictor):
@@ -36,51 +39,60 @@ class HiSupPredictor(Predictor):
         self.model.to(self.cfg.device)
         self.load_checkpoint()
     
-    def predict_dataset(self):
+    def predict_dataset(self, split="val"):
         """This is for predicting the test dataset. Currently just used for debug stuff on val dataset..."""
         
         self.setup_model_and_load_checkpoint()
         
-        loader = self.get_val_loader()
+        if split == "train":
+            self.loader = get_train_loader(self.cfg,logger=self.logger)
+        elif split == "val":
+            self.loader = get_val_loader(self.cfg,logger=self.logger)
+        elif split == "test":
+            self.loader = get_test_loader(self.cfg,logger=self.logger)
+        else:   
+            raise ValueError(f"Unknown split {split}.")
         
-        self.logger.info(f"Predicting on {len(loader)} batches...")
+        self.logger.info(f"Predicting on {len(self.loader)} batches...")
         
-        loader = self.progress_bar(loader)
+        loader = self.progress_bar(self.loader)
 
         coco_predictions = []
         
-        for x_image, x_lidar, y, tile_ids in loader:
-            
-            batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
-            
-            if self.cfg.use_images:
-                x_image = x_image.to(self.cfg.device, non_blocking=True)
-            if self.cfg.use_lidar:
-                x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+        with torch.no_grad():
+        
+            for x_image, x_lidar, y, tile_ids in loader:
                 
-            y=self.to_single_device(y,self.cfg.device)
+                batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
+                
+                if self.cfg.use_images:
+                    x_image = x_image.to(self.cfg.device, non_blocking=True)
+                if self.cfg.use_lidar:
+                    x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+                    
+                y=to_single_device(y,self.cfg.device)
 
-            polygon_output, loss_dict = self.model(x_image, x_lidar, y)
+                polygon_output, loss_dict = self.model(x_image, x_lidar, y)
 
-            ## polygon stuff
-            polygon_output = self.to_single_device(polygon_output, 'cpu')
-            batch_scores = polygon_output['scores']
-            batch_polygons = polygon_output['polys_pred']
+                ## polygon stuff
+                polygon_output = to_single_device(polygon_output, 'cpu')
+                batch_scores = polygon_output['scores']
+                batch_polygons = polygon_output['polys_pred']
 
-            for b in range(batch_size):
+                for b in range(batch_size):
 
-                scores = batch_scores[b]
-                polys = batch_polygons[b]
+                    scores = batch_scores[b]
+                    polys = batch_polygons[b]
 
-                image_result = generate_coco_ann(polys, tile_ids[b], scores=scores)
-                if len(image_result) != 0:
-                    coco_predictions.extend(image_result)
+                    image_result = generate_coco_ann(polys, tile_ids[b], scores=scores)
+                    if len(image_result) != 0:
+                        coco_predictions.extend(image_result)
 
 
-        os.makedirs(os.path.dirname(self.cfg.eval.pred_file), exist_ok=True)
-        self.logger.info(f"Writing predictions to {self.cfg.eval.pred_file}")
-        with open(self.cfg.eval.pred_file, "w") as fp:
-            fp.write(json.dumps(coco_predictions))
+            os.makedirs(os.path.dirname(self.cfg.eval.pred_file), exist_ok=True)
+            self.logger.info(f"Writing predictions to {self.cfg.eval.pred_file}")
+            with open(self.cfg.eval.pred_file, "w") as fp:
+                fp.write(json.dumps(coco_predictions))
         
     
     def predict_file(self,img_infile=None,lidar_infile=None,outfile=None):

@@ -23,13 +23,14 @@ def get_experiment_type(experiment):
 
 
 
-def setup_omegaconf(cfg):
+def setup_hydraconf(cfg=None):
     """Setup OmegaConf to allow for dot notation and auto-completion"""
 
     OmegaConf.register_new_resolver("eq", lambda a, b: str(a) == str(b))
     OmegaConf.register_new_resolver("if", lambda cond, a, b: a if cond == "True" else b)
     OmegaConf.register_new_resolver("divide", lambda a, b: int(a) // int(b))
-    OmegaConf.resolve(cfg)
+    if cfg is not None:
+        OmegaConf.resolve(cfg)
 
 
 @contextlib.contextmanager
@@ -51,9 +52,9 @@ def denormalize_image_for_visualization(image, cfg):
     if isinstance(image, torch.Tensor):
         image = image.permute(1, 2, 0).cpu().numpy()
     
-    std = np.array(cfg.encoder.image_std)
-    mean = np.array(cfg.encoder.image_mean)
-    max_pixel_val = cfg.encoder.image_max_pixel_value
+    std = np.array(cfg.experiment.encoder.image_std)
+    mean = np.array(cfg.experiment.encoder.image_mean)
+    max_pixel_val = cfg.experiment.encoder.image_max_pixel_value
     
     image = image * std * max_pixel_val + (mean * max_pixel_val)
     
@@ -224,3 +225,27 @@ def setup_ddp(cfg):
         dist.barrier()
         
         return local_rank, world_size
+    
+    
+def to_device(data,device):
+    if isinstance(data,torch.Tensor):
+        return data.to(device)
+    if isinstance(data, dict):
+#         import pdb; pdb.set_trace()
+        for key in data:
+            if isinstance(data[key],torch.Tensor):
+                data[key] = data[key].to(device)
+        return data
+    if isinstance(data,list):
+        return [to_device(d,device) for d in data]
+
+def to_single_device(data,device):
+    if isinstance(data, torch.Tensor):
+        return data.to(device)
+    if isinstance(data, dict):
+        for key in data:
+            if isinstance(data[key], torch.Tensor):
+                data[key] = data[key].to(device)
+        return data
+    if isinstance(data, list):
+        return [to_device(d, device) for d in data]

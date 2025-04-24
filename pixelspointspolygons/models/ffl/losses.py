@@ -153,15 +153,15 @@ def compute_seg_loss_weigths(pred_batch, gt_batch, cfg):
     @return:
     """
     device = gt_batch["distances"].device
-    use_freq = cfg.model.loss.seg.use_freq
-    use_dist = cfg.model.loss.seg.use_dist
-    use_size = cfg.model.loss.seg.use_size
-    w0 = cfg.model.loss.seg.w0
-    sigma = cfg.model.loss.seg.sigma
+    use_freq = cfg.experiment.model.loss.seg.use_freq
+    use_dist = cfg.experiment.model.loss.seg.use_dist
+    use_size = cfg.experiment.model.loss.seg.use_size
+    w0 = cfg.experiment.model.loss.seg.w0
+    sigma = cfg.experiment.model.loss.seg.sigma
     # height = gt_batch["image"].shape[2]
     # width = gt_batch["image"].shape[3]
-    height = cfg.encoder.in_height
-    width = cfg.encoder.in_width
+    height = cfg.experiment.encoder.in_height
+    width = cfg.experiment.encoder.in_width
     im_radius = math.sqrt(height * width) / 2
 
     # --- Class imbalance weight (not forgetting background):
@@ -238,62 +238,62 @@ def build_combined_loss(cfg):
     weights = []
     
     # Segment Loss
-    if cfg.model.encoder.compute_seg:
+    if cfg.experiment.model.encoder.compute_seg:
         partial_compute_seg_loss_weigths = partial(compute_seg_loss_weigths, cfg=cfg)
         pre_processes.append(partial_compute_seg_loss_weigths)
         
         gt_channel_selector = [
-            cfg.model.encoder.seg.compute_interior, 
-            cfg.model.encoder.seg.compute_edge, 
-            cfg.model.encoder.seg.compute_vertex
+            cfg.experiment.model.encoder.seg.compute_interior, 
+            cfg.experiment.model.encoder.seg.compute_edge, 
+            cfg.experiment.model.encoder.seg.compute_vertex
         ]
         
         loss_funcs.append(SegLoss(
             cfg=cfg,
             name="seg",
             gt_channel_selector=gt_channel_selector,
-            bce_coef=cfg.model.loss.seg.bce_coef,
-            dice_coef=cfg.model.loss.seg.dice_coef
+            bce_coef=cfg.experiment.model.loss.seg.bce_coef,
+            dice_coef=cfg.experiment.model.loss.seg.dice_coef
         ))
-        weights.append(cfg.model.loss.multi.weights.seg)
+        weights.append(cfg.experiment.model.loss.multi.weights.seg)
 
     # Crossfield Losses
-    if cfg.model.encoder.compute_crossfield:
+    if cfg.experiment.model.encoder.compute_crossfield:
         pre_processes.append(compute_gt_field)
         
         loss_funcs.append(CrossfieldAlignLoss(name="crossfield_align"))
-        weights.append(cfg.model.loss.multi.weights.crossfield_align)
+        weights.append(cfg.experiment.model.loss.multi.weights.crossfield_align)
         
         loss_funcs.append(CrossfieldAlign90Loss(name="crossfield_align90"))
-        weights.append(cfg.model.loss.multi.weights.crossfield_align90)
+        weights.append(cfg.experiment.model.loss.multi.weights.crossfield_align90)
         
         loss_funcs.append(CrossfieldSmoothLoss(name="crossfield_smooth"))
-        weights.append(cfg.model.loss.multi.weights.crossfield_smooth)
+        weights.append(cfg.experiment.model.loss.multi.weights.crossfield_smooth)
 
     # Coupling Losses: Segment and Crossfield
-    if cfg.model.encoder.compute_seg:
+    if cfg.experiment.model.encoder.compute_seg:
         need_seg_grads = False
         pred_channel = -1
         
         # Seg interior <-> Crossfield coupling:
-        if cfg.model.encoder.seg.compute_interior and cfg.model.encoder.compute_crossfield:
+        if cfg.experiment.model.encoder.seg.compute_interior and cfg.experiment.model.encoder.compute_crossfield:
             need_seg_grads = True
             pred_channel += 1
             loss_funcs.append(SegCrossfieldLoss(name="seg_interior_crossfield", pred_channel=pred_channel))
-            weights.append(list(cfg.model.loss.multi.weights.seg_interior_crossfield))
+            weights.append(list(cfg.experiment.model.loss.multi.weights.seg_interior_crossfield))
         
         # Seg edge <-> Crossfield coupling:
-        if cfg.model.encoder.seg.compute_edge and cfg.model.encoder.compute_crossfield:
+        if cfg.experiment.model.encoder.seg.compute_edge and cfg.experiment.model.encoder.compute_crossfield:
             need_seg_grads = True
             pred_channel += 1
             loss_funcs.append(SegCrossfieldLoss(name="seg_edge_crossfield", pred_channel=pred_channel))
-            weights.append(list(cfg.model.loss.multi.weights.seg_edge_crossfield))
+            weights.append(list(cfg.experiment.model.loss.multi.weights.seg_edge_crossfield))
 
         # Seg edge <-> seg interior coupling:
-        if cfg.model.encoder.seg.compute_interior and cfg.model.encoder.seg.compute_edge:
+        if cfg.experiment.model.encoder.seg.compute_interior and cfg.experiment.model.encoder.seg.compute_edge:
             need_seg_grads = True
             loss_funcs.append(SegEdgeInteriorLoss(name="seg_edge_interior"))
-            weights.append(list(cfg.model.loss.multi.weights.seg_edge_interior))
+            weights.append(list(cfg.experiment.model.loss.multi.weights.seg_edge_interior))
 
         # Add gradient computation for segmentation if necessary
         if need_seg_grads:
@@ -303,7 +303,7 @@ def build_combined_loss(cfg):
     combined_loss = MultiLoss(
         loss_funcs,
         weights,
-        epoch_thresholds=cfg.model.loss.multi.epoch_thresholds,
+        epoch_thresholds=cfg.experiment.model.loss.multi.epoch_thresholds,
         pre_processes=pre_processes
     )
     
@@ -341,12 +341,12 @@ class SegLoss(Loss):
         dice = measures.dice_loss(pred_seg, gt_seg)
         mean_dice = torch.mean(dice)
         
-        if self.cfg.model.loss.seg.type == "float":
+        if self.cfg.experiment.model.loss.seg.type == "float":
             pass
-        elif self.cfg.model.loss.seg.type == "bool":
+        elif self.cfg.experiment.model.loss.seg.type == "bool":
             gt_seg = (gt_seg > 0.98).to(torch.float32)
         else:
-            raise NotImplementedError("cfg.model.loss.seg.type has to be either float or bool")
+            raise NotImplementedError("cfg.experiment.model.loss.seg.type has to be either float or bool")
         
         
         ## RS: removing the weighting here. It leads to crazy high seg_loss values. Is it really supposed to be used?

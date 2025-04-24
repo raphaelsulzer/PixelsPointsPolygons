@@ -188,9 +188,9 @@ class Trainer:
                 self.logger.error(f"Model checkpoint was trained with use_images={cfg.use_images}, but current config is use_images={self.cfg.use_images}.")
                 raise ValueError("Model checkpoint and current config do not match.")
             
-            if hasattr(cfg, "model.fusion") and isattr(self.cfg.model, "fusion"):
-                if not cfg.model.fusion == self.cfg.model.fusion:
-                    self.logger.error(f"Model checkpoint was trained with fusion={cfg.model.fusion}, but current config is fusion={self.cfg.model.fusion}.")
+            if hasattr(cfg, "model.fusion") and isattr(self.cfg.experiment.model, "fusion"):
+                if not cfg.experiment.model.fusion == self.cfg.experiment.model.fusion:
+                    self.logger.error(f"Model checkpoint was trained with fusion={cfg.experiment.model.fusion}, but current config is fusion={self.cfg.experiment.model.fusion}.")
                     raise ValueError("Model checkpoint and current config do not match.")   
         
         self.model = smart_load_state_dict(self.model, checkpoint["model"], self.logger, strict=True)
@@ -200,7 +200,7 @@ class Trainer:
             self.loss_func.load_state_dict(checkpoint["loss_func"])
         
         start_epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))
-        self.cfg.model.start_epoch = start_epoch + 1
+        self.cfg.experiment.model.start_epoch = start_epoch + 1
         
         self.cfg.best_val_loss = checkpoint.get("best_val_loss",self.cfg.best_val_loss)
         self.cfg.best_val_iou = checkpoint.get("best_val_iou",self.cfg.best_val_iou)
@@ -218,8 +218,8 @@ class Trainer:
         if self.cfg.log_to_wandb and self.local_rank == 0:
             self.setup_wandb()
 
-        iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
-        epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
+        iter_idx=self.cfg.experiment.model.start_epoch * len(self.train_loader)
+        epoch_iterator = range(self.cfg.experiment.model.start_epoch, self.cfg.experiment.model.num_epochs)
 
         predictor = Predictor(self.cfg,local_rank=self.local_rank,world_size=self.world_size)
 

@@ -20,8 +20,8 @@ class InriaCocoDatasetTrain(Dataset):
 
         self.transform = transform
         self.tokenizer = tokenizer
-        self.shuffle_tokens = cfg.model.tokenizer.shuffle_tokens
-        self.n_vertices = cfg.model.tokenizer.n_vertices
+        self.shuffle_tokens = cfg.experiment.model.tokenizer.shuffle_tokens
+        self.n_vertices = cfg.experiment.model.tokenizer.n_vertices
         # self.images = os.listdir(self.image_dir)
         self.coco = COCO(cfg.dataset.train.annotations)
         # self.image_ids = self.coco.getImgIds(catIds=self.coco.getCatIds())
@@ -197,8 +197,8 @@ class InriaCocoDatasetVal(Dataset):
 
         self.transform = transform
         self.tokenizer = tokenizer
-        self.shuffle_tokens = cfg.model.tokenizer.shuffle_tokens
-        self.n_vertices = cfg.model.tokenizer.n_vertices
+        self.shuffle_tokens = cfg.experiment.model.tokenizer.shuffle_tokens
+        self.n_vertices = cfg.experiment.model.tokenizer.n_vertices
         # self.images = os.listdir(self.image_dir)
         self.coco = COCO(cfg.dataset.val.annotations)
         # self.image_ids = self.coco.getImgIds(catIds=self.coco.getCatIds())

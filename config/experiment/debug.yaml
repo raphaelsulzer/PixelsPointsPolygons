@@ -1,0 +1,7 @@
+defaults:
+  - /encoder: pointpillars_vit_cnn
+  - /model: ffl
+  - _self_
+
+name: debug
+group_name: debug

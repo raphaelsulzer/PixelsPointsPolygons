@@ -24,14 +24,14 @@ class Pix2PolyPredictor(Predictor):
     
     def setup_tokenizer(self):
         self.tokenizer = Tokenizer(num_classes=1,
-            num_bins=self.cfg.model.tokenizer.num_bins,
-            width=self.cfg.encoder.in_width,
-            height=self.cfg.encoder.in_height,
-            max_len=self.cfg.model.tokenizer.max_len
+            num_bins=self.cfg.experiment.model.tokenizer.num_bins,
+            width=self.cfg.experiment.encoder.in_width,
+            height=self.cfg.experiment.encoder.in_height,
+            max_len=self.cfg.experiment.model.tokenizer.max_len
         )
-        self.cfg.model.tokenizer.pad_idx = self.tokenizer.PAD_code
-        self.cfg.model.tokenizer.max_len = self.cfg.model.tokenizer.n_vertices*2+2
-        self.cfg.model.tokenizer.generation_steps = self.cfg.model.tokenizer.n_vertices*2+1
+        self.cfg.experiment.model.tokenizer.pad_idx = self.tokenizer.PAD_code
+        self.cfg.experiment.model.tokenizer.max_len = self.cfg.experiment.model.tokenizer.n_vertices*2+2
+        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.n_vertices*2+1
     
     def predict_dataset(self):
         
@@ -99,7 +99,7 @@ class Pix2PolyPredictor(Predictor):
                 coord = torch.from_numpy(vertex_coords[i])
             else:
                 coord = torch.tensor([])
-            padd = torch.ones((self.cfg.model.tokenizer.n_vertices - len(coord), 2)).fill_(self.cfg.model.tokenizer.pad_idx)
+            padd = torch.ones((self.cfg.experiment.model.tokenizer.n_vertices - len(coord), 2)).fill_(self.cfg.experiment.model.tokenizer.pad_idx)
             coord = torch.cat([coord, padd], dim=0)
             coords.append(coord)
             
@@ -110,7 +110,7 @@ class Pix2PolyPredictor(Predictor):
             polys = []
             for p in pp:
                 p = torch.fliplr(p)
-                p = p[p[:, 0] != self.cfg.model.tokenizer.pad_idx]
+                p = p[p[:, 0] != self.cfg.experiment.model.tokenizer.pad_idx]
                 if len(p) > 0:
                     polys.append(p)
             
@@ -158,7 +158,7 @@ class Pix2PolyPredictor(Predictor):
                     raise ValueError("At least one of use_images or use_lidar must be True")
                 
                 
-            for i in range(self.cfg.model.tokenizer.generation_steps):
+            for i in range(self.cfg.experiment.model.tokenizer.generation_steps):
                 if self.cfg.multi_gpu:
                     preds, feats = self.model.module.predict(features, batch_preds)
                 else:

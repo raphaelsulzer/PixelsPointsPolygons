@@ -76,9 +76,9 @@ class Predictor:
                 self.logger.error(f"Model checkpoint was trained with use_images={cfg.use_images}, but current config is use_images={self.cfg.use_images}.")
                 raise ValueError("Model checkpoint and current config do not match.")
             
-            if hasattr(cfg, "model.fusion") and isattr(self.cfg.model, "fusion"):
-                if not cfg.model.fusion == self.cfg.model.fusion:
-                    self.logger.error(f"Model checkpoint was trained with fusion={cfg.model.fusion}, but current config is fusion={self.cfg.model.fusion}.")
+            if hasattr(cfg, "model.fusion") and isattr(self.cfg.experiment.model, "fusion"):
+                if not cfg.experiment.model.fusion == self.cfg.experiment.model.fusion:
+                    self.logger.error(f"Model checkpoint was trained with fusion={cfg.experiment.model.fusion}, but current config is fusion={self.cfg.experiment.model.fusion}.")
                     raise ValueError("Model checkpoint and current config do not match.")   
         
         # self.model.load_state_dict(model_state_dict)

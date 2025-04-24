@@ -34,11 +34,11 @@ class Pix2PolyTrainer(Trainer):
 
     def setup_optimizer(self):
         # Get optimizer
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
+        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.experiment.model.learning_rate, weight_decay=self.cfg.experiment.model.weight_decay, betas=(0.9, 0.95))
 
         # Get scheduler
-        # num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)                
-        num_training_steps = self.cfg.model.num_epochs * len(self.train_loader)
+        # num_training_steps = self.cfg.experiment.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.experiment.model.batch_size // self.world_size)                
+        num_training_steps = self.cfg.experiment.model.num_epochs * len(self.train_loader)
         self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
         self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
         
@@ -51,14 +51,14 @@ class Pix2PolyTrainer(Trainer):
         
     def setup_tokenizer(self):
         self.tokenizer = Tokenizer(num_classes=1,
-            num_bins=self.cfg.model.tokenizer.num_bins,
-            width=self.cfg.encoder.in_width,
-            height=self.cfg.encoder.in_height,
-            max_len=self.cfg.model.tokenizer.max_len
+            num_bins=self.cfg.experiment.model.tokenizer.num_bins,
+            width=self.cfg.experiment.encoder.in_width,
+            height=self.cfg.experiment.encoder.in_height,
+            max_len=self.cfg.experiment.model.tokenizer.max_len
         )
-        self.cfg.model.tokenizer.pad_idx = self.tokenizer.PAD_code
-        self.cfg.model.tokenizer.max_len = self.cfg.model.tokenizer.n_vertices*2+2
-        self.cfg.model.tokenizer.generation_steps = self.cfg.model.tokenizer.n_vertices*2+1
+        self.cfg.experiment.model.tokenizer.pad_idx = self.tokenizer.PAD_code
+        self.cfg.experiment.model.tokenizer.max_len = self.cfg.experiment.model.tokenizer.n_vertices*2+2
+        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.n_vertices*2+1
     
     def setup_model(self):
         
@@ -73,10 +73,10 @@ class Pix2PolyTrainer(Trainer):
 
     def setup_optimizer(self):
         # Get optimizer
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.model.learning_rate, weight_decay=self.cfg.model.weight_decay, betas=(0.9, 0.95))
+        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.experiment.model.learning_rate, weight_decay=self.cfg.experiment.model.weight_decay, betas=(0.9, 0.95))
 
         # Get scheduler
-        num_training_steps = self.cfg.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.model.batch_size // self.world_size)
+        num_training_steps = self.cfg.experiment.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.experiment.model.batch_size // self.world_size)
         num_warmup_steps = int(0.05 * num_training_steps)
         self.lr_scheduler = get_linear_schedule_with_warmup(
             self.optimizer,
@@ -87,9 +87,9 @@ class Pix2PolyTrainer(Trainer):
     def setup_loss_fn_dict(self):
         
         # Get loss functions
-        weight = torch.ones(self.cfg.model.tokenizer.pad_idx + 1, device=self.cfg.device)
+        weight = torch.ones(self.cfg.experiment.model.tokenizer.pad_idx + 1, device=self.cfg.device)
         weight[self.tokenizer.num_bins:self.tokenizer.BOS_code] = 0.0
-        self.loss_fn_dict["vertex"] = nn.CrossEntropyLoss(ignore_index=self.cfg.model.tokenizer.pad_idx, label_smoothing=self.cfg.model.label_smoothing, weight=weight)
+        self.loss_fn_dict["vertex"] = nn.CrossEntropyLoss(ignore_index=self.cfg.experiment.model.tokenizer.pad_idx, label_smoothing=self.cfg.experiment.model.label_smoothing, weight=weight)
         self.loss_fn_dict["perm"] = nn.BCELoss()
     
     
@@ -196,8 +196,8 @@ class Pix2PolyTrainer(Trainer):
             preds, perm_mat = self.model(x_image, x_lidar, y_input)
 
 
-            vertex_loss_weight = self.cfg.model.vertex_loss_weight
-            perm_loss_weight = self.cfg.model.perm_loss_weight
+            vertex_loss_weight = self.cfg.experiment.model.vertex_loss_weight
+            perm_loss_weight = self.cfg.experiment.model.perm_loss_weight
             
             vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
             perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
@@ -252,12 +252,12 @@ class Pix2PolyTrainer(Trainer):
 
             preds, perm_mat = self.model(x_image, x_lidar, y_input)
 
-            if epoch < self.cfg.model.milestone:
-                vertex_loss_weight = self.cfg.model.vertex_loss_weight
+            if epoch < self.cfg.experiment.model.milestone:
+                vertex_loss_weight = self.cfg.experiment.model.vertex_loss_weight
                 perm_loss_weight = 0.0
             else:
-                vertex_loss_weight = self.cfg.model.vertex_loss_weight
-                perm_loss_weight = self.cfg.model.perm_loss_weight
+                vertex_loss_weight = self.cfg.experiment.model.vertex_loss_weight
+                perm_loss_weight = self.cfg.experiment.model.perm_loss_weight
 
             vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
             perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
@@ -305,8 +305,8 @@ class Pix2PolyTrainer(Trainer):
         if self.cfg.log_to_wandb and self.local_rank == 0:
             self.setup_wandb()
 
-        iter_idx=self.cfg.model.start_epoch * len(self.train_loader)
-        epoch_iterator = range(self.cfg.model.start_epoch, self.cfg.model.num_epochs)
+        iter_idx=self.cfg.experiment.model.start_epoch * len(self.train_loader)
+        epoch_iterator = range(self.cfg.experiment.model.start_epoch, self.cfg.experiment.model.num_epochs)
 
         predictor = Predictor(self.cfg,local_rank=self.local_rank,world_size=self.world_size)
 

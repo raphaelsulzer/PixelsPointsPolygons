@@ -27,7 +27,7 @@ from torch_lydorn.torch.utils.data import __repr__
 
 import data_transforms
 
-from pixelspointspolygons.misc import make_logger
+from pixelspointspolygons.misc import make_logger, setup_hydraconf
 
 class FFLPreprocessing(torch.utils.data.Dataset):
     def __init__(self, cfg, pre_transform, fold="train"):
@@ -38,7 +38,7 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity)
         
-        assert fold in ["train", "val", "test_images"], "Input fold={} should be in [\"train\", \"val\", \"test_images\"]".format(fold)
+        assert fold in ["train", "val", "test"], "Input fold={} should be in [\"train\", \"val\", \"test\"]".format(fold)
 
         self.root = cfg.dataset.path
         self.fold = fold
@@ -59,29 +59,32 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         
         self.logger.info("DatasetPreprocessor initialized with root={}, fold={}, pool_size={}".format(self.root, self.fold, self.pool_size))
         
-        a=5
 
     def load_image_ids(self):
 
         coco = self.get_coco()
-        image_id_list = coco.getImgIds(catIds=coco.getCatIds())
+        # image_id_list = coco.getImgIds(catIds=coco.getCatIds())
+        image_id_list = coco.getImgIds()
 
         return image_id_list
 
     def get_coco(self):
         if self.coco is None:
             
-            annotation_filename = f"annotations_{self.fold}_processed.json"
-            annotations_filepath = os.path.join(self.root, annotation_filename)
-            if os.path.isfile(annotations_filepath):
-                print("There is already a processed annotation file. Using this one.")
-            else:
-                annotation_filename = f"annotations_{self.fold}.json"
-                annotations_filepath = os.path.join(self.root, annotation_filename)
-            if not os.path.isfile(annotations_filepath):
-                raise FileNotFoundError(f"Annotation file {annotations_filepath} not found in {self.root}.")
+            # annotation_filename = f"annotations_{self.fold}_processed.json"
+            # annotations_filepath = os.path.join(self.root, annotation_filename)
+            # if os.path.isfile(annotations_filepath):
+            #     print("There is already a processed annotation file. Using this one.")
+            # else:
+            #     annotation_filename = f"annotations_{self.fold}.json"
+            #     annotations_filepath = os.path.join(self.root, annotation_filename)
+            # if not os.path.isfile(annotations_filepath):
+            #     raise FileNotFoundError(f"Annotation file {annotations_filepath} not found in {self.root}.")
+            self.ann_file = self.cfg.dataset.annotations[self.fold]
+            if not os.path.isfile(self.ann_file):
+                raise FileNotFoundError(f"Annotation file {self.ann_file} does not exist.")
             
-            self.coco = COCO(annotations_filepath)
+            self.coco = COCO(self.ann_file)
         return self.coco
 
     @property
@@ -188,8 +191,9 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         
         coco_ds = deepcopy(coco.dataset)
         coco_ds["images"] = image_info_with_pt_file_list
-        
-        new_annotation_outfile = os.path.join(self.root, f"annotations_ffl_{self.fold}.json")
+
+        new_annotation_outfile = self.ann_file.replace("annotations_","annotations_ffl_")        
+        # new_annotation_outfile = os.path.join(self.root, f"annotations_ffl_{self.fold}.json")
         with open(new_annotation_outfile, 'w') as f_json:
             json.dump(coco_ds, f_json)
 
@@ -298,15 +302,20 @@ def preprocess_one(image_info, pre_transform):
 @hydra.main(config_path="../../config", config_name="config", version_base="1.3")
 def main(cfg):
 
-    OmegaConf.resolve(cfg)
+    setup_hydraconf(cfg)
     
     fold = "train"
     # fold = "val"
+    fold = "test"    
     
-    dataset = FFLPreprocessing(cfg,
-                               pre_transform=data_transforms.get_offline_transform_patch(),
-                               fold=fold)
-    dataset._process()
+    folds = ["train", "val", "test"]
+    
+    for fold in folds:
+        
+        dataset = FFLPreprocessing(cfg,
+                                pre_transform=data_transforms.get_offline_transform_patch(),
+                                fold=fold)
+        dataset._process()
 
 
     # TODO: need to decide how to integrate this into PPP.

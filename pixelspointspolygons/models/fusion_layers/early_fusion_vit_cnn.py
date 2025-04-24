@@ -38,24 +38,24 @@ class EarlyFusionViTCNN(torch.nn.Module):
         ###### LiDAR encoder #######
         
         #### replace VisionTransformer patch embedding with LiDAR encoder        
-        output_shape = [cfg.encoder.patch_feature_width, cfg.encoder.patch_feature_height]
+        output_shape = [cfg.experiment.encoder.patch_feature_width, cfg.experiment.encoder.patch_feature_height]
         voxel_encoder={
             'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
-            'feat_channels': [64,cfg.encoder.patch_feature_dim],
+            'feat_channels': [64,cfg.experiment.encoder.patch_feature_dim],
         }
         scatter={
-            "in_channels" : cfg.encoder.patch_feature_dim, 
+            "in_channels" : cfg.experiment.encoder.patch_feature_dim, 
             "output_shape" : output_shape
         }
         self.lidar_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
         
         ###### Image encoder #######
         self.vit = timm.create_model(
-            model_name=cfg.encoder.vit.type,
+            model_name=cfg.experiment.encoder.vit.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.encoder.vit.pretrained,
-            checkpoint_path=cfg.encoder.vit.checkpoint_file
+            pretrained=cfg.experiment.encoder.vit.pretrained,
+            checkpoint_path=cfg.experiment.encoder.vit.checkpoint_file
         )
         
         self.image_embed = self.vit.patch_embed
@@ -64,15 +64,15 @@ class EarlyFusionViTCNN(torch.nn.Module):
         self.vit.patch_embed = nn.Identity()
         
         self.fusion_layer = nn.Sequential(
-            nn.Conv2d(self.cfg.encoder.patch_feature_dim*2, self.cfg.encoder.patch_feature_dim, kernel_size=3, padding=1),
-            nn.BatchNorm2d(self.cfg.encoder.patch_feature_dim),
+            nn.Conv2d(self.cfg.experiment.encoder.patch_feature_dim*2, self.cfg.experiment.encoder.patch_feature_dim, kernel_size=3, padding=1),
+            nn.BatchNorm2d(self.cfg.experiment.encoder.patch_feature_dim),
             nn.ReLU(inplace=True)
         )
 
         self.proj = nn.Sequential(
-            nn.Upsample(size=self.cfg.encoder.out_feature_size, mode='bilinear', align_corners=False),
-            nn.Conv2d(self.cfg.encoder.patch_feature_dim, self.cfg.model.decoder.in_feature_dim, kernel_size=3, padding=1),
-            nn.BatchNorm2d(self.cfg.model.decoder.in_feature_dim),
+            nn.Upsample(size=self.cfg.experiment.encoder.out_feature_size, mode='bilinear', align_corners=False),
+            nn.Conv2d(self.cfg.experiment.encoder.patch_feature_dim, self.cfg.experiment.model.decoder.in_feature_dim, kernel_size=3, padding=1),
+            nn.BatchNorm2d(self.cfg.experiment.model.decoder.in_feature_dim),
             nn.ReLU(inplace=True)
         )
 

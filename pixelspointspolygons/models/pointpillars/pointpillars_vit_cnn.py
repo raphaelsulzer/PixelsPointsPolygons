@@ -18,9 +18,9 @@ class PointPillarsViTCNN(nn.Module):
         self.pp_vit = PointPillarsViT(cfg, local_rank=local_rank)
                                 
         self.proj = nn.Sequential(
-            nn.Upsample(size=self.cfg.encoder.out_feature_size, mode='bilinear', align_corners=False),
-            nn.Conv2d(self.cfg.encoder.patch_feature_dim, self.cfg.model.decoder.in_feature_dim, kernel_size=3, padding=1),
-            nn.BatchNorm2d(self.cfg.model.decoder.in_feature_dim),
+            nn.Upsample(size=self.cfg.experiment.encoder.out_feature_size, mode='bilinear', align_corners=False),
+            nn.Conv2d(self.cfg.experiment.encoder.patch_feature_dim, self.cfg.experiment.model.decoder.in_feature_dim, kernel_size=3, padding=1),
+            nn.BatchNorm2d(self.cfg.experiment.model.decoder.in_feature_dim),
             nn.ReLU(inplace=True)
         )
 

@@ -35,8 +35,9 @@ class PPPDataset(Dataset):
             raise NotADirectoryError(f"Dataset directory {self.dataset_dir} does not exist")
         
         ## FFL currently still has a specific annotations file which includes the path to the .pt file with the frame field stored
-        if self.cfg.model.name == "ffl":
-            self.ann_file = os.path.join(self.dataset_dir,f"annotations_ffl_{split}.json")
+        if self.cfg.experiment.model.name == "ffl":
+            # self.ann_file = os.path.join(self.dataset_dir,f"annotations_ffl_{split}.json")
+            self.ann_file = self.cfg.dataset.annotations[split].replace("annotations_", "annotations_ffl_")
             self.stats_filepath = os.path.join(self.dataset_dir, "ffl", split, "stats.pt")
             if not os.path.isfile(self.stats_filepath):
                 # TODO: now there is no FFL training data for 224x224 tiles. Just include the FFL training data creation in ppp_dataset now
@@ -58,7 +59,7 @@ class PPPDataset(Dataset):
         self.use_lidar = cfg.use_lidar
         self.use_images = cfg.use_images
         self.transform = transform
-        self.model_type = cfg.model.name
+        self.model_type = cfg.experiment.model.name
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -78,7 +79,7 @@ class PPPDataset(Dataset):
             points[:, 1] = img_info['height'] - points[:, 1]
 
             # scale z vals to [0,100]
-            scaler = MinMaxScaler(feature_range=(0,self.cfg.encoder.in_voxel_size.z))
+            scaler = MinMaxScaler(feature_range=(0,self.cfg.experiment.encoder.in_voxel_size.z))
             points[:, -1] = scaler.fit_transform(points[:, -1].reshape(-1, 1)).squeeze()
             
             points = points.astype(np.float32)
@@ -117,7 +118,7 @@ class PPPDataset(Dataset):
             return torch.from_numpy(lidar)
         
         # translate to center so all the transformations are easily applied around the center
-        center = [self.cfg.encoder.in_width // 2, self.cfg.encoder.in_height // 2]
+        center = [self.cfg.experiment.encoder.in_width // 2, self.cfg.experiment.encoder.in_height // 2]
         lidar[:, :2] -= center
         
         group_element = d4_transform['params']['group_element']
@@ -318,7 +319,7 @@ class PPPDataset(Dataset):
         mask = np.zeros((img_info['width'], img_info['height']))
         corner_coords = []
         corner_mask = np.zeros((img_info['width'], img_info['height']), dtype=np.float32)
-        perm_matrix = np.zeros((self.cfg.model.tokenizer.n_vertices, self.cfg.model.tokenizer.n_vertices), dtype=np.float32)
+        perm_matrix = np.zeros((self.cfg.experiment.model.tokenizer.n_vertices, self.cfg.experiment.model.tokenizer.n_vertices), dtype=np.float32)
         for ins in annotations:
             segmentations = ins['segmentation']
             for i, segm in enumerate(segmentations):
@@ -345,16 +346,16 @@ class PPPDataset(Dataset):
                 points = segm[:-1]
                 for i in range(len(points)):
                     j = (i + 1) % len(points)
-                    if v_count + i > self.cfg.model.tokenizer.n_vertices - 1 or v_count + j > self.cfg.model.tokenizer.n_vertices - 1:
+                    if v_count + i > self.cfg.experiment.model.tokenizer.n_vertices - 1 or v_count + j > self.cfg.experiment.model.tokenizer.n_vertices - 1:
                         break
                     perm_matrix[v_count + i, v_count + j] = 1.
                 v_count += len(points)
 
-        for i in range(v_count, self.cfg.model.tokenizer.n_vertices):
+        for i in range(v_count, self.cfg.experiment.model.tokenizer.n_vertices):
             perm_matrix[i, i] = 1.
 
         # Workaround for open contours:
-        for i in range(self.cfg.model.tokenizer.n_vertices):
+        for i in range(self.cfg.experiment.model.tokenizer.n_vertices):
             row = perm_matrix[i, :]
             col = perm_matrix[:, i]
             if np.sum(row) == 0 or np.sum(col) == 0:
@@ -364,8 +365,8 @@ class PPPDataset(Dataset):
 
         masks = [mask, corner_mask]
 
-        if len(corner_coords) > self.cfg.model.tokenizer.n_vertices:
-            corner_coords = corner_coords[:self.cfg.model.tokenizer.n_vertices]
+        if len(corner_coords) > self.cfg.experiment.model.tokenizer.n_vertices:
+            corner_coords = corner_coords[:self.cfg.experiment.model.tokenizer.n_vertices]
 
         if self.transform is not None: 
             
@@ -379,9 +380,9 @@ class PPPDataset(Dataset):
             corner_mask = augmentations['masks'][1]
             corner_coords = np.array(augmentations['keypoints'])
 
-        coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.model.tokenizer.shuffle_tokens)
+        coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.experiment.model.tokenizer.shuffle_tokens)
         coords_seqs = torch.LongTensor(coords_seqs)
-        if self.cfg.model.tokenizer.shuffle_tokens:
+        if self.cfg.experiment.model.tokenizer.shuffle_tokens:
             perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
 
         return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
@@ -443,7 +444,7 @@ class PPPDataset(Dataset):
         annotations = self.make_hisup_annotations(corner_coords, corner_poly_ids, img_info['height'], img_info['width'])
         annotations["mask"] = augmentations['masks'][0]
         
-        if self.cfg.model.decoder.in_feature_width != img_info['width'] or self.cfg.model.decoder.in_feature_height != img_info['height']:
+        if self.cfg.experiment.model.decoder.in_feature_width != img_info['width'] or self.cfg.experiment.model.decoder.in_feature_height != img_info['height']:
             self.resize_hisup_annotations(annotations)
         else:
             annotations['mask_ori'] = annotations['mask'].clone()
@@ -457,15 +458,15 @@ class PPPDataset(Dataset):
 
     def resize_hisup_annotations(self,ann):
         
-        sx = self.cfg.model.decoder.in_feature_width / ann['width']
-        sy = self.cfg.model.decoder.in_feature_height / ann['height']
+        sx = self.cfg.experiment.model.decoder.in_feature_width / ann['width']
+        sy = self.cfg.experiment.model.decoder.in_feature_height / ann['height']
         ann['junc_ori'] = ann['junctions'].copy()
-        ann['junctions'][:, 0] = np.clip(ann['junctions'][:, 0] * sx, 0, self.cfg.model.decoder.in_feature_width - 1e-4)
-        ann['junctions'][:, 1] = np.clip(ann['junctions'][:, 1] * sy, 0, self.cfg.model.decoder.in_feature_height - 1e-4)
-        ann['width'] = self.cfg.model.decoder.in_feature_width
-        ann['height'] = self.cfg.model.decoder.in_feature_height
+        ann['junctions'][:, 0] = np.clip(ann['junctions'][:, 0] * sx, 0, self.cfg.experiment.model.decoder.in_feature_width - 1e-4)
+        ann['junctions'][:, 1] = np.clip(ann['junctions'][:, 1] * sy, 0, self.cfg.experiment.model.decoder.in_feature_height - 1e-4)
+        ann['width'] = self.cfg.experiment.model.decoder.in_feature_width
+        ann['height'] = self.cfg.experiment.model.decoder.in_feature_height
         ann['mask_ori'] = ann['mask'].clone()
-        ann['mask'] = cv2.resize(np.array(ann['mask']).astype(np.uint8), (int(self.cfg.model.decoder.in_feature_width), int(self.cfg.model.decoder.in_feature_height)))
+        ann['mask'] = cv2.resize(np.array(ann['mask']).astype(np.uint8), (int(self.cfg.experiment.model.decoder.in_feature_width), int(self.cfg.experiment.model.decoder.in_feature_height)))
     
     
     def make_hisup_annotations(self, corner_coords, corner_poly_ids, height, width):

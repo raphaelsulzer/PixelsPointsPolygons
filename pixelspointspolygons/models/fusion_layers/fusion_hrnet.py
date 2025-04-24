@@ -43,15 +43,15 @@ class FusionHRNet(torch.nn.Module):
         self.hrnet = HighResolutionNet(self.cfg,local_rank=local_rank)
         
         self.proj = nn.Sequential(
-            nn.Upsample(size=self.cfg.encoder.out_feature_size, mode='bilinear', align_corners=False),
-            nn.Conv2d(self.cfg.encoder.patch_feature_dim, self.cfg.encoder.patch_feature_dim, kernel_size=3, padding=1),
-            nn.BatchNorm2d(self.cfg.encoder.patch_feature_dim),
+            nn.Upsample(size=self.cfg.experiment.encoder.out_feature_size, mode='bilinear', align_corners=False),
+            nn.Conv2d(self.cfg.experiment.encoder.patch_feature_dim, self.cfg.experiment.encoder.patch_feature_dim, kernel_size=3, padding=1),
+            nn.BatchNorm2d(self.cfg.experiment.encoder.patch_feature_dim),
             nn.ReLU(inplace=True)
         )
         
         self.fusion_layer = nn.Sequential(
-            nn.Conv2d(self.cfg.encoder.patch_feature_dim+self.cfg.encoder.out_feature_dim, self.cfg.model.decoder.in_feature_dim, kernel_size=3, padding=1),
-            nn.BatchNorm2d(self.cfg.model.decoder.in_feature_dim),
+            nn.Conv2d(self.cfg.experiment.encoder.patch_feature_dim+self.cfg.experiment.encoder.out_feature_dim, self.cfg.experiment.model.decoder.in_feature_dim, kernel_size=3, padding=1),
+            nn.BatchNorm2d(self.cfg.experiment.model.decoder.in_feature_dim),
             nn.ReLU(inplace=True)
         )
 

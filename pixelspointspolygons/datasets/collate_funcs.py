@@ -71,8 +71,8 @@ def collate_fn_pix2poly(batch, cfg):
         the sequences will all be padded to that length.
     """
 
-    pad_idx = cfg.model.tokenizer.pad_idx
-    max_len = cfg.model.tokenizer.max_len
+    pad_idx = cfg.experiment.model.tokenizer.pad_idx
+    max_len = cfg.experiment.model.tokenizer.max_len
     
     image_batch, lidar_batch, lidar_pcd_id_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, tile_id_batch = [], [], [], [], [], [], [], []
     for i, (image, lidar, mask, c_mask, seq, perm_mat, idx) in enumerate(batch):
