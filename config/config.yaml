@@ -3,12 +3,12 @@ defaults:
   - run_type: release
   - polygonization: asm_acm
   - dataset: lidarpoly
-  - experiment: lidar_density_ablation4
+  # - experiment: lidar_density_ablation4
   # - experiment: lidar_density_ablation4
   # - experiment: lidar_density_ablation64
   # - experiment: debug
   # - experiment: hisup
-  # - experiment: ffl
+  - experiment: ffl_image
   - _self_
 
 hydra:
