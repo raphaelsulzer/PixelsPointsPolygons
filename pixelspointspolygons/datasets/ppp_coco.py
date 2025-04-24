@@ -43,7 +43,7 @@ class PPPDataset(Dataset):
                 raise FileExistsError(self.stats_filepath)
             self.stats = torch.load(self.stats_filepath)
         else:
-            self.ann_file = os.path.join(self.dataset_dir,f"annotations_{split}.json")
+            self.ann_file = self.cfg.dataset.annotations[split]
         if not os.path.isfile(self.ann_file):
             raise FileNotFoundError(self.ann_file)
 
@@ -535,7 +535,11 @@ class PPPDataset(Dataset):
         return ann
     
     
-    
+
+class TestDataset(PPPDataset):
+    def __init__(self,cfg,**kwargs):
+        super().__init__(cfg,'test',**kwargs)
+
 class ValDataset(PPPDataset):
     def __init__(self,cfg,**kwargs):
         super().__init__(cfg,'val',**kwargs)

@@ -10,12 +10,9 @@ import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 import torch.distributed as dist
 
-from collections import defaultdict
-from multiprocessing import Pool
-
 from ...models.ffl.local_utils import batch_to_cpu, split_batch, list_of_dicts_to_dict_of_lists, flatten_dict
 from ...models.ffl.model_ffl import FFLModel
-from ...datasets import get_val_loader
+from ...datasets import get_train_loader, get_val_loader, get_test_loader
 
 from ..predictor import Predictor
 
@@ -25,7 +22,7 @@ from . import polygonize
 
 class FFLPredictor(Predictor):
     
-    def predict_dataset(self):
+    def predict_dataset(self, split="val"):
         
         self.logger.info(f"Starting prediction and polygonization...")
 
@@ -33,7 +30,16 @@ class FFLPredictor(Predictor):
         self.model = FFLModel(self.cfg, self.local_rank)
         self.load_checkpoint()
         
-        self.loader = get_val_loader(self.cfg,logger=self.logger)
+        if split == "train":
+            self.loader = get_train_loader(self.cfg,logger=self.logger)
+        elif split == "val":
+            self.loader = get_val_loader(self.cfg,logger=self.logger)
+        elif split == "test":
+            self.loader = get_test_loader(self.cfg,logger=self.logger)
+        else:   
+            raise ValueError(f"Unknown split {split}.")
+        
+        
         annotations = self.predict_from_loader(self.model, self.loader)
         
         for k,coco_predictions in annotations.items():

@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Subset
 from torch.utils.data.distributed import DistributedSampler
 
-from .ppp import ValDataset, TrainDataset
+from .ppp_coco import TestDataset, ValDataset, TrainDataset
 from .collate_funcs import collate_fn_pix2poly, collate_fn_hisup, collate_fn_ffl
 
 def get_collate_fn(model):
@@ -22,6 +22,16 @@ def get_collate_fn(model):
     else:
         raise NotImplementedError(f"Collate function for {model} not implemented yet.")
 
+
+def get_test_loader(cfg,tokenizer=None,logger=None):
+    if cfg.dataset.name == 'inria':
+        raise NotImplementedError
+    elif cfg.dataset.name == 'lidarpoly':
+        return get_test_loader_lidarpoly(cfg,tokenizer,logger)
+    else:
+        raise NotImplementedError
+    
+    
 def get_val_loader(cfg,tokenizer=None,logger=None):
     if cfg.dataset.name == 'inria':
         return get_val_loader_inria(cfg,tokenizer,logger)
@@ -38,7 +48,7 @@ def get_train_loader(cfg,tokenizer=None,logger=None):
     else:
         raise NotImplementedError
 
-def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
+def get_train_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     
     transforms = []
     if "D4" in cfg.encoder.augmentations:
@@ -95,7 +105,7 @@ def get_train_loader_lidarpoly(cfg,tokenizer,logger=None):
     
     return train_loader
 
-def get_val_loader_lidarpoly(cfg,tokenizer,logger=None):
+def get_val_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     
     transforms = []
     if "Resize" in cfg.encoder.augmentations:
@@ -143,6 +153,57 @@ def get_val_loader_lidarpoly(cfg,tokenizer,logger=None):
 
 
 
+def get_test_loader_lidarpoly(cfg,tokenizer=None,logger=None):
+    
+    transforms = []
+    if "Resize" in cfg.encoder.augmentations:
+        transforms.append(A.Resize(height=cfg.encoder.in_height, width=cfg.encoder.in_width))
+    if "Normalize" in cfg.encoder.augmentations:
+        transforms.append(A.Normalize(mean=cfg.encoder.image_mean, std=cfg.encoder.image_std, max_pixel_value=cfg.encoder.image_max_pixel_value)) 
+    transforms.append(ToTensorV2())
+    transforms = A.ReplayCompose(transforms=transforms,
+        keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
+    )
+    
+    ds = TestDataset(
+        cfg,
+        transform=transforms,
+        tokenizer=tokenizer
+    )
+    
+    if logger is not None:
+        logger.debug(f"Test dataset created with {len(ds)} samples.")
+    
+    if cfg.dataset.test_subset is not None:
+        indices = list(range(cfg.dataset.test_subset))
+        ann_file = ds.ann_file
+        coco = ds.coco
+        ds = Subset(ds, indices)
+        ds.ann_file = ann_file
+        ds.coco = coco
+
+    sampler = DistributedSampler(dataset=ds, shuffle=False) if cfg.multi_gpu else None
+    
+    loader = DataLoader(
+        ds,
+        batch_size=cfg.model.batch_size,
+        collate_fn=partial(get_collate_fn(cfg.model.name), cfg=cfg),
+        num_workers=cfg.num_workers,
+        pin_memory=cfg.run_type.name!='debug',
+        drop_last=False,
+        sampler=sampler,
+        shuffle=False
+    )
+    if logger is not None:
+        logger.debug(f"Test loader created with {len(loader)} batches of size {cfg.model.batch_size}.")
+    
+    return loader
+
+
+
+####################################################################################################
+############################################ INRIA #################################################
+####################################################################################################
 def get_train_loader_inria(cfg,tokenizer,logger=None):
     from .inria_coco import InriaCocoDatasetTrain, collate_fn
 

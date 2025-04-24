@@ -4,23 +4,33 @@ import os
 
 
 from pixelspointspolygons.predict import FFLPredictor, HiSupPredictor, Pix2PolyPredictor
-from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_omegaconf
+from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_omegaconf, get_experiment_type
 
 
 def predict_all(cfg):
     
     
     local_rank, world_size = setup_ddp(cfg)
+    
+    for item in cfg.experiments.experiments:
 
-    if cfg.model.name == "ffl":
-        predictor = FFLPredictor(cfg, local_rank, world_size)
-    elif cfg.model.name == "hisup":
-        predictor = HiSupPredictor(cfg, local_rank, world_size)
-    elif cfg.model.name == "pix2poly":
-        predictor = Pix2PolyPredictor(cfg, local_rank, world_size)
-    else:
-        raise ValueError(f"Unknown model name: {cfg.model.name}")
-    predictor.predict_dataset()
+        for exp in item.experiment_name:
+            
+            exp_name, img_dim, polygonization_method = get_experiment_type(exp)
+
+            cfg.experiment_name = exp_name
+            cfg.output_dir = 
+            
+            if item.model == "ffl":
+                predictor = FFLPredictor(cfg, local_rank, world_size)
+            elif item.model == "hisup":
+                predictor = HiSupPredictor(cfg, local_rank, world_size)
+            elif item.model == "pix2poly":
+                predictor = Pix2PolyPredictor(cfg, local_rank, world_size)
+            else:
+                raise ValueError(f"Unknown model name: {cfg.model.name}")
+            
+            predictor.predict_dataset(split="test")
     
     
 
