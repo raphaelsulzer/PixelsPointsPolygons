@@ -1,4 +1,2 @@
-,0
-IoU,0.731
-C-IoU,0.539
-NR,0.625
+,IoU,C-IoU,NR
+hisup/early_fusion_vit_cnn_bs2x16_mnv64,0.194,0.182,0.187

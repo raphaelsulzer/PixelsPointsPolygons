@@ -72,6 +72,22 @@
             "justMyCode": false
         },
         {
+            "name": "modality_ablation",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/modality_ablation.py",
+            "console": "integratedTerminal",
+            "args": [
+                "run_type=debug",
+                // "run_type=debug",
+                "host=gin",
+                "device=cuda",
+                "log_to_wandb=false",
+                "multi_gpu=false"
+            ],
+            "justMyCode": false
+        },
+        {
             "name": "evaluate",
             "type": "debugpy",
             "request": "launch",

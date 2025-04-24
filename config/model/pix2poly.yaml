@@ -24,7 +24,7 @@ vertex_loss_weight: 1.0
 perm_loss_weight: 10.0
 
 # training
-batch_size: 32
+batch_size: 16
 start_epoch: 0
 num_epochs: 200
 milestone: 0

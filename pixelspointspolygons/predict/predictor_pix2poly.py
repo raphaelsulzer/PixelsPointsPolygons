@@ -17,6 +17,7 @@ from transformers.generation.utils import top_k_top_p_filtering
 from ..models.pix2poly import Tokenizer, Pix2PolyModel
 from ..misc.coco_conversions import generate_coco_ann
 from ..datasets import get_val_loader
+from ..datasets import get_train_loader, get_val_loader, get_test_loader
 
 from .predictor import Predictor
 
@@ -33,20 +34,28 @@ class Pix2PolyPredictor(Predictor):
         self.cfg.experiment.model.tokenizer.max_len = self.cfg.experiment.model.tokenizer.n_vertices*2+2
         self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.n_vertices*2+1
     
-    def predict_dataset(self):
+    def predict_dataset(self, split="val"):
         
 
         self.setup_tokenizer()
         self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
         self.load_checkpoint()
         
-        val_loader = get_val_loader(self.cfg,self.tokenizer)
+        if split == "train":
+            self.loader = get_train_loader(self.cfg,tokenizer=self.tokenizer,logger=self.logger)
+        elif split == "val":
+            self.loader = get_val_loader(self.cfg,tokenizer=self.tokenizer,logger=self.logger)
+        elif split == "test":
+            self.loader = get_test_loader(self.cfg,tokenizer=self.tokenizer,logger=self.logger)
+        else:   
+            raise ValueError(f"Unknown split {split}.")
         
-        self.logger.info(f"Predicting {len(val_loader.dataset)} images with Pix2Poly checkpoint {self.cfg.experiment.name}/{self.cfg.checkpoint}")
+        self.logger.info(f"Predicting on {len(self.loader)} batches...")
+        
 
         with torch.no_grad():
             t0 = time.time()
-            coco_predictions = self.predict_from_loader(self.model,self.tokenizer,val_loader)
+            coco_predictions = self.predict_from_loader(self.model,self.tokenizer,self.loader)
 
         # prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", f"{self.cfg.checkpoint}.json")
         prediction_outfile = self.cfg.eval.pred_file
@@ -55,7 +64,7 @@ class Pix2PolyPredictor(Predictor):
         with open(prediction_outfile, "w") as fp:
             fp.write(json.dumps(coco_predictions))
 
-        self.logger.info(f"Average prediction speed: {(time.time() - t0) / len(val_loader.dataset):.2f} [s / image]")
+        self.logger.info(f"Average prediction speed: {(time.time() - t0) / len(self.loader.dataset):.2f} [s / image]")
 
     
     def predict_from_loader(self, model, tokenizer, loader):
