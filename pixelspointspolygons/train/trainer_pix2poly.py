@@ -312,7 +312,7 @@ class Pix2PolyTrainer(Trainer):
 
         if self.local_rank == 0:
             evaluator = Evaluator(self.cfg)
-            evaluator.load_gt()
+            evaluator.load_gt(self.cfg.dataset.annotations["val"])
         else:
             evaluator = None
         

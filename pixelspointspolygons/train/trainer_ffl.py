@@ -199,7 +199,7 @@ class FFLTrainer(Trainer):
         if self.local_rank == 0:
             # predictor = Predictor(self.cfg)
             evaluator = Evaluator(self.cfg)
-            evaluator.load_gt()
+            evaluator.load_gt(self.cfg.dataset.annotations["val"])
         else:
             # predictor = None
             evaluator = None

@@ -39,7 +39,7 @@ class Tokenizer:
 
         if shuffle:
             rand_idxs = np.arange(0, len(coords))
-            if 'debug' in CFG.EXPERIMENT_NAME:
+            if self.cfg.run_type.name == 'debug':
                 rand_idxs = rand_idxs[::-1]
             else:
                 np.random.shuffle(rand_idxs)

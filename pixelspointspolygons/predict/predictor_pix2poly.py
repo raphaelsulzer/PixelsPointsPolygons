@@ -42,7 +42,7 @@ class Pix2PolyPredictor(Predictor):
         
         val_loader = get_val_loader(self.cfg,self.tokenizer)
         
-        self.logger.info(f"Predicting {len(val_loader.dataset)} images with Pix2Poly checkpoint {self.cfg.experiment_name}/{self.cfg.checkpoint}")
+        self.logger.info(f"Predicting {len(val_loader.dataset)} images with Pix2Poly checkpoint {self.cfg.experiment.name}/{self.cfg.checkpoint}")
 
         with torch.no_grad():
             t0 = time.time()
