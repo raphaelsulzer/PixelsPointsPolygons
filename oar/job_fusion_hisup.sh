@@ -1,7 +1,7 @@
 #!/bin/bash 
 
 #OAR -q production 
-#OAR -l host=1/gpu=2,walltime=24
+#OAR -l host=1/gpu=2,walltime=20
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
 #OAR -O oar/runs/hisup_fusion_mnv64.out
 #OAR -E oar/runs/hisup_fusion_mnv64.out
