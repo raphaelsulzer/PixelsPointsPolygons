@@ -3,15 +3,15 @@
 #OAR -q production 
 #OAR -l host=1/gpu=2,walltime=20
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
-#OAR -O oar/runs/p2p_e_fusion_mnv64.out
-#OAR -E oar/runs/p2p_e_fusion_mnv64.out
-#OAR -n p2p_e_fusion_mnv64
+#OAR -O oar/runs/lidar_ffl_pp_vit_cnn_mnv8.out
+#OAR -E oar/runs/lidar_ffl_pp_vit_cnn_mnv8.out 
+#OAR -n ffl_lidar_mnv8
 
-# display some information about attributed resources
+## display some information about attributed resources
 hostname 
 nvidia-smi 
 
-# make use of a python torch environment
+## make use of a python torch environment
 module load conda
 conda activate ppp
 python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))";
@@ -23,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=early_fusion_bs2x16_mnv64 checkpoint=null model.batch_size=16 encoder=early_fusion_vit model=pix2poly
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=v3_lidar_pp_vit_cnn_bs2x16_mnv8 checkpoint=null model.batch_size=16 encoder=pointpillars_vit_cnn model=ffl encoder.max_num_points_per_voxel=8
