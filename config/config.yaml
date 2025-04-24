@@ -8,7 +8,8 @@ defaults:
   # - experiment: lidar_density_ablation64
   # - experiment: debug
   # - experiment: hisup
-  - experiment: ffl_image
+  # - experiment: ffl_image
+  - experiment: p2p_image
   - _self_
 
 hydra:

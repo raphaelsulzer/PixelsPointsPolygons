@@ -1,0 +1,8 @@
+defaults:
+  - /encoder: vit
+  - /model: pix2poly
+  - _self_
+
+# name: v3_image_vit_bs4x16
+name: v4_image_vit_bs4x16
+group_name: v2_${.model.name}
