@@ -37,7 +37,7 @@ max_num_voxels: # here: (224/8)**2
 ##############################
 vit:
     type: vit_small_patch${..patch_size}_${..in_size}.dino
-    checkpoint_file: ${...host.data_root}/checkpoints/backbones/dino_deitsmall8_pretrain.pth
+    checkpoint_file: ${....host.data_root}/checkpoints/backbones/dino_deitsmall8_pretrain.pth
     pretrained: True
 
 patch_size: 8
