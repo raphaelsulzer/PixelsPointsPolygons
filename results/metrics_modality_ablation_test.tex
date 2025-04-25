@@ -1,17 +1,17 @@
 \begin{table}[H]
 \centering
 \resizebox{\textwidth}{!}{
-\begin{tabular}{llHccccccccccccc}
+\begin{tabular}{llHcccccccccccccccc}
 \toprule
-\textbf{Method} & \textbf{Modality} & Unnamed: 0 & \textbf{POLIS} $\downarrow$ & \textbf{MTA [$^\circ$]} $\downarrow$ & #images & GT #images w/ polys & Pred #images w/ polys & GT #polygons & Pred #polygons & GT #vertices & Pred #vertices & prediction_time & num_params \\
+\textbf{Method} & \textbf{Modality} & Unnamed: 0 & \textbf{POLIS} $\downarrow$ & \textbf{MTA [$^\circ$]} $\downarrow$ & \textbf{IoU} $\uparrow$ & \textbf{C-IoU} $\uparrow$ & \textbf{NR=1} & #images & GT #images w/ polys & Pred #images w/ polys & GT #polygons & Pred #polygons & GT #vertices & Pred #vertices & prediction_time & num_params \\
 \midrule
-\cellcolor{yellow!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{pix2poly/v3_image_vit_bs4x8} & 1.16 & 34 & 52900 & 11249 & 3 & 32115 & 14 & 224169 & 74 & 0.659 & 31.9 \\
-\cellcolor{green!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{pix2poly/lidar_pp_vit_bs2x16_mnv64} & 0.983 & \cellcolor{blue!25} 32.8 & 52900 & 11249 & 3 & 32115 & 14 & 224169 & 70 & 0.729 & 31.9 \\
-\cellcolor{magenta!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{pix2poly/early_fusion_bs2x16_mnv64} & \cellcolor{blue!10} 0.911 & 37.1 & 52900 & 11249 & 3 & 32115 & 15 & 224169 & 74 & 0.692 & 34.6 \\
+\cellcolor{yellow!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{pix2poly/v3_image_vit_bs4x8} & 2.43 & 35.9 & 0.961 & 0.954 & 0.973 & 13225 & 1185 & 1061 & 3026 & 2605 & 21373 & 18054 & 0.626 & 31.9 \\
+\cellcolor{green!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{pix2poly/lidar_pp_vit_bs2x16_mnv64} & 1.81 & \cellcolor{blue!10} 35.4 & \cellcolor{blue!10} 0.97 & \cellcolor{blue!25} 0.963 & \cellcolor{blue!25} 0.978 & 13225 & 1185 & 1099 & 3026 & 2701 & 21373 & 19565 & 0.627 & 31.9 \\
+\cellcolor{magenta!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{pix2poly/early_fusion_bs2x16_mnv64} & \cellcolor{blue!25} 1.7 & \cellcolor{blue!25} 34 & 0.969 & 0.962 & \cellcolor{blue!25} 0.978 & 13225 & 1185 & 1180 & 3026 & 2799 & 21373 & 19706 & 0.63 & 34.6 \\
 \midrule
-\cellcolor{yellow!10}\textbf{HiSup} \cite{hisup} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{hisup/v3_image_vit_cnn_bs4x12} & 0.916 & \cellcolor{blue!10} 33.9 & 52900 & 11249 & 3 & 32115 & 15 & 224169 & 77 & 0.0386 & 30.8 \\
-\cellcolor{green!10}\textbf{HiSup} \cite{hisup} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{hisup/lidar_pp_vit_cnn_bs2x16_mnv64} & 0.985 & 40.7 & 52900 & 11249 & 3 & 32115 & 16 & 224169 & 156 & 0.0533 & 30.8 \\
-\cellcolor{magenta!10}\textbf{HiSup} \cite{hisup} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{hisup/early_fusion_vit_cnn_bs2x16_mnv64} & \cellcolor{blue!25} 0.798 & 37.1 & 52900 & 11249 & 3 & 32115 & 15 & 224169 & 79 & 0.0566 & 33.5 \\
+\cellcolor{yellow!10}\textbf{HiSup} \cite{hisup} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{hisup/v3_image_vit_cnn_bs4x12} & 2.17 & 36.6 & 0.965 & 0.957 & 0.974 & 13225 & 1185 & 1122 & 3026 & 2802 & 21373 & 21223 & 0.0351 & 30.8 \\
+\cellcolor{green!10}\textbf{HiSup} \cite{hisup} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{hisup/lidar_pp_vit_cnn_bs2x16_mnv64} & 1.98 & 38.6 & 0.968 & 0.958 & 0.972 & 13225 & 1185 & 1132 & 3026 & 2761 & 21373 & 29188 & 0.0385 & 30.8 \\
+\cellcolor{magenta!10}\textbf{HiSup} \cite{hisup} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{hisup/early_fusion_vit_cnn_bs2x16_mnv64} & \cellcolor{blue!10} 1.79 & 37.2 & \cellcolor{blue!25} 0.971 & \cellcolor{blue!25} 0.963 & 0.977 & 13225 & 1185 & 1145 & 3026 & 2827 & 21373 & 26518 & 0.0386 & 33.5 \\
 \bottomrule
 \end{tabular}
 }
