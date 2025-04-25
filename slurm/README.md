@@ -4,6 +4,9 @@ http://www.idris.fr/media/eng/ia/guide_nouvel_utilisateur_ia-eng.pdf
 ## cheatsheet
 http://www.idris.fr/media/su/idrischeatsheet.pdf
 
+## qos per gpu type
+http://www.idris.fr/eng/jean-zay/gpu/jean-zay-gpu-exec_partition_slurm-eng.html#for_a100_partition
+
 ## Show job queue for user.
 squeue -lu $USER
 ## Show pending jobs and the estimated start time for user idrisid
