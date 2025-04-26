@@ -3,6 +3,7 @@ import sys
 import pandas as pd
 from omegaconf import OmegaConf
 from hydra import initialize, compose
+from tqdm import tqdm
 
 from pixelspointspolygons.predict import FFLPredictor, HiSupPredictor, Pix2PolyPredictor
 from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf, count_trainable_parameters
@@ -14,17 +15,19 @@ def parse_cli_overrides():
 
 def predict_all():
     
-    experiments = ["lidar_density_ablation4", "lidar_density_ablation16"]
-
     experiments = [
-        # Pix2Poly
-        "p2p_image",
-        "p2p_lidar", 
-        "p2p_fusion",
+        # FFL
+        # "ffl_image",
+        # "ffl_lidar",
+        # "ffl_fusion",
         # # HiSup 
         "hisup_image", 
         "hisup_lidar",
-        "hisup_fusion"
+        "hisup_fusion",
+        # Pix2Poly
+        "p2p_image",
+        "p2p_lidar", 
+        "p2p_fusion"
         ]
     
 
@@ -34,15 +37,17 @@ def predict_all():
     
     exp_dict = {}
     with initialize(config_path="../config", version_base="1.3"):
-        for exp in experiments:
+        pbar = tqdm(total=len(experiments), desc="Initializing experiments")
+        for exp in pbar:
+            pbar.set_description(f"Predict and evaluate {exp} on {cfg.eval.split}")
+            pbar.refresh()  
             
             overrides = cli_overrides + [f"experiment={exp}", "checkpoint=best_val_iou"]
             cfg = compose(config_name="config", 
                           overrides=overrides)
             OmegaConf.resolve(cfg)
-            print(f"Running: {cfg.experiment.name}")            
+          
             local_rank, world_size = setup_ddp(cfg)
-
 
                         
             if cfg.experiment.model.name == "ffl":

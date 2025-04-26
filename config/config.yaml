@@ -8,8 +8,8 @@ defaults:
   # - experiment: lidar_density_ablation64
   # - experiment: debug
   # - experiment: hisup
-  # - experiment: ffl_image
-  - experiment: p2p_image
+  - experiment: ffl_image
+  # - experiment: p2p_image
   - _self_
 
 hydra:
@@ -38,7 +38,7 @@ dataset:
   annotations:
     train: ${..path}/annotations_${...country}_train.json
     val: ${..path}/annotations_${...country}_val.json
-    test: ${..path}/annotations_${...country}_test_subset25.json
+    test: ${..path}/annotations_${...country}_test.json
 
 experiment:
   model:
