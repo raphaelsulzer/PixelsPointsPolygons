@@ -1,14 +1,12 @@
 name: ffl
 
 
-# Inherit the base encoder configuration and override specific parameters
-encoder:
-  compute_seg: True
-  compute_crossfield: True
-  seg:
-    compute_interior: True
-    compute_edge: False
-    compute_vertex: False
+compute_seg: True
+compute_crossfield: True
+seg:
+  compute_interior: True
+  compute_edge: False
+  compute_vertex: False
 
 decoder:
     in_feature_size: ${...encoder.in_size} # FFL basically has a feature size equal to input image size

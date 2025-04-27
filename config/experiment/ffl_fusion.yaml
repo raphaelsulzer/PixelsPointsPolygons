@@ -8,3 +8,4 @@ group_name: v2_${.model.name}
 
 encoder:
   max_points_per_voxel: 64
+

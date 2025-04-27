@@ -238,14 +238,14 @@ def build_combined_loss(cfg):
     weights = []
     
     # Segment Loss
-    if cfg.experiment.model.encoder.compute_seg:
+    if cfg.experiment.model.compute_seg:
         partial_compute_seg_loss_weigths = partial(compute_seg_loss_weigths, cfg=cfg)
         pre_processes.append(partial_compute_seg_loss_weigths)
         
         gt_channel_selector = [
-            cfg.experiment.model.encoder.seg.compute_interior, 
-            cfg.experiment.model.encoder.seg.compute_edge, 
-            cfg.experiment.model.encoder.seg.compute_vertex
+            cfg.experiment.model.seg.compute_interior, 
+            cfg.experiment.model.seg.compute_edge, 
+            cfg.experiment.model.seg.compute_vertex
         ]
         
         loss_funcs.append(SegLoss(
@@ -258,7 +258,7 @@ def build_combined_loss(cfg):
         weights.append(cfg.experiment.model.loss.multi.weights.seg)
 
     # Crossfield Losses
-    if cfg.experiment.model.encoder.compute_crossfield:
+    if cfg.experiment.model.compute_crossfield:
         pre_processes.append(compute_gt_field)
         
         loss_funcs.append(CrossfieldAlignLoss(name="crossfield_align"))
@@ -271,26 +271,26 @@ def build_combined_loss(cfg):
         weights.append(cfg.experiment.model.loss.multi.weights.crossfield_smooth)
 
     # Coupling Losses: Segment and Crossfield
-    if cfg.experiment.model.encoder.compute_seg:
+    if cfg.experiment.model.compute_seg:
         need_seg_grads = False
         pred_channel = -1
         
         # Seg interior <-> Crossfield coupling:
-        if cfg.experiment.model.encoder.seg.compute_interior and cfg.experiment.model.encoder.compute_crossfield:
+        if cfg.experiment.model.seg.compute_interior and cfg.experiment.model.compute_crossfield:
             need_seg_grads = True
             pred_channel += 1
             loss_funcs.append(SegCrossfieldLoss(name="seg_interior_crossfield", pred_channel=pred_channel))
             weights.append(list(cfg.experiment.model.loss.multi.weights.seg_interior_crossfield))
         
         # Seg edge <-> Crossfield coupling:
-        if cfg.experiment.model.encoder.seg.compute_edge and cfg.experiment.model.encoder.compute_crossfield:
+        if cfg.experiment.model.seg.compute_edge and cfg.experiment.model.compute_crossfield:
             need_seg_grads = True
             pred_channel += 1
             loss_funcs.append(SegCrossfieldLoss(name="seg_edge_crossfield", pred_channel=pred_channel))
             weights.append(list(cfg.experiment.model.loss.multi.weights.seg_edge_crossfield))
 
         # Seg edge <-> seg interior coupling:
-        if cfg.experiment.model.encoder.seg.compute_interior and cfg.experiment.model.encoder.seg.compute_edge:
+        if cfg.experiment.model.seg.compute_interior and cfg.experiment.model.seg.compute_edge:
             need_seg_grads = True
             loss_funcs.append(SegEdgeInteriorLoss(name="seg_edge_interior"))
             weights.append(list(cfg.experiment.model.loss.multi.weights.seg_edge_interior))
