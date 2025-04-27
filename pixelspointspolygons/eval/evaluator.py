@@ -217,14 +217,15 @@ class Evaluator:
         self.logger.info(f"Number of vertices (gt/pred): {num_vert_gt}/{num_vert_pred}")
 
 
-    def evaluate(self):
+    def evaluate(self, print_info=True):
         
         if self.cocoDt is None:
             raise ValueError("No predictions loaded. Please load predictions first with the load_predictions() method.")
         
         res_dict = {}
         
-        self.print_info()
+        if print_info:
+            self.print_info()
                     
         with suppress_stdout():
 

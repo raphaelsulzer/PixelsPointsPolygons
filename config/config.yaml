@@ -3,12 +3,12 @@ defaults:
   - run_type: release
   - polygonization: asm_acm
   - dataset: lidarpoly
-  # - experiment: lidar_density_ablation4
+  - experiment: lidar_density_ablation4
   # - experiment: lidar_density_ablation4
   # - experiment: lidar_density_ablation64
   # - experiment: debug
-  # - experiment: hisup
-  - experiment: ffl_image
+  # - experiment: hisup_fusion
+  # - experiment: ffl_image
   # - experiment: p2p_image
   - _self_
 
@@ -19,7 +19,15 @@ hydra:
 output_dir: ${.host.data_root}/${.experiment.model.name}_outputs/${.dataset.name}/${.experiment.encoder.in_size}/${.experiment.name}
 
 checkpoint: null
+# checkpoint: latest
 checkpoint_file: null
+
+save_best: true
+save_latest: true
+save_every: 10
+val_every: 1
+best_val_loss: 10000000.0
+best_val_iou: 0.0
 
 multi_gpu: false
 device: cuda
@@ -28,6 +36,7 @@ num_workers: ${.run_type.num_workers}
 update_pbar_every: ${.host.update_pbar_every}
 
 country: Switzerland
+# country: NY
 
 ## TODO: I do not think this has to be here in the main conf, could just be specified in the dataset conf itself
 dataset:
@@ -47,12 +56,7 @@ experiment:
 use_lidar: ${.experiment.encoder.use_lidar}
 use_images: ${.experiment.encoder.use_images}
 
-save_best: true
-save_latest: true
-save_every: 10
-val_every: 1
-best_val_loss: 10000000.0
-best_val_iou: 0.0
+
 
 eval:
   split: val
@@ -61,10 +65,10 @@ eval:
   # pred_file: ${..output_dir}/predictions/test.json
   modes:
     # - coco
-    - iou
-    - polis
-    - mta
-    # - stats
+    # - iou
+    # - polis
+    # - mta
+    - stats
     # - topdig
   # eval_file: ${..host.data_root}/${..dataset.name}/metrics.csv
   eval_file: results/metrics

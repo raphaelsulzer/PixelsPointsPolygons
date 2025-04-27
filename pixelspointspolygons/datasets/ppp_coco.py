@@ -2,6 +2,7 @@ import os
 import laspy
 import cv2
 import torch
+import rasterio
 
 import numpy as np
 from PIL import Image
@@ -212,13 +213,14 @@ class PPPDataset(Dataset):
 
         img_id = self.tile_ids[index]
         img_info = self.coco.loadImgs(img_id)[0]
-        ann_ids = self.coco.getAnnIds(imgIds=img_info['id'])
-        # annotations = self.coco.loadAnns(ann_ids)  # annotations of all instances in an image.
 
         # load image
         if self.use_images:
-            filename = self.get_image_file(img_info)
-            image = np.array(Image.open(filename).convert("RGB"))
+            img_file = self.get_image_file(img_info)
+            # image = np.array(Image.open(img_file).convert("RGB"))
+            with rasterio.open(img_file) as src:
+                image = src.read([1, 2, 3])  # shape (3, H, W)
+            image = np.transpose(image, (1, 2, 0))  # (H, W, 3)
         else:
             # make dummy image for albumentations to work
             image = np.zeros((img_info['width'], 
@@ -302,8 +304,11 @@ class PPPDataset(Dataset):
 
         # load image
         if self.use_images:
-            filename = self.get_image_file(img_info)
-            image = np.array(Image.open(filename).convert("RGB"))
+            img_file = self.get_image_file(img_info)
+            # image = np.array(Image.open(img_file).convert("RGB"))
+            with rasterio.open(img_file) as src:
+                image = src.read([1, 2, 3])  # shape (3, H, W)
+            image = np.transpose(image, (1, 2, 0))  # (H, W, 3)
         else:
             # make dummy image for albumentations to work
             image = np.zeros((img_info['width'], 
@@ -311,8 +316,8 @@ class PPPDataset(Dataset):
 
         # load lidar
         if self.use_lidar:
-            filename = self.get_lidar_file(img_info)
-            lidar = self.load_lidar_points(filename, img_info)
+            img_file = self.get_lidar_file(img_info)
+            lidar = self.load_lidar_points(img_file, img_info)
         else:
             lidar = None
 
@@ -397,8 +402,12 @@ class PPPDataset(Dataset):
 
         # load image
         if self.use_images:
-            filename = self.get_image_file(img_info)
-            image = np.array(Image.open(filename).convert("RGB"))
+            img_file = self.get_image_file(img_info)
+            # image = np.array(Image.open(img_file).convert("RGB"))            
+            with rasterio.open(img_file) as src:
+                image = src.read([1, 2, 3])  # shape (3, H, W)
+            image = np.transpose(image, (1, 2, 0))  # (H, W, 3)
+
         else:
             # make dummy image for albumentations to work
             image = np.zeros((img_info['width'], 
@@ -406,8 +415,8 @@ class PPPDataset(Dataset):
 
         # load lidar
         if self.use_lidar:
-            filename = self.get_lidar_file(img_info)
-            lidar = self.load_lidar_points(filename, img_info)
+            img_file = self.get_lidar_file(img_info)
+            lidar = self.load_lidar_points(img_file, img_info)
         else:
             lidar = None
         

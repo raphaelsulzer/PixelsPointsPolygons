@@ -1,0 +1,7 @@
+,#images,GT #images w/ polys,Pred #images w/ polys,GT #polygons,Pred #polygons,GT #vertices,Pred #vertices,prediction_time,num_params
+hisup/v3_image_vit_cnn_bs4x12,14313,10404,28,51757,139,365092,2062,0.0622,30.8
+hisup/lidar_pp_vit_cnn_bs2x16_mnv64,14313,10404,30,51757,113,365092,1488,0.0675,30.8
+hisup/early_fusion_vit_cnn_bs2x16_mnv64,14313,10404,31,51757,122,365092,1641,0.0736,33.5
+pix2poly/v3_image_vit_bs4x16,14313,10404,28,51757,40,365092,228,0.669,31.9
+pix2poly/lidar_pp_vit_bs2x16_mnv64,14313,10404,29,51757,96,365092,947,0.689,31.9
+pix2poly/early_fusion_bs2x16_mnv64,14313,10404,32,51757,102,365092,896,0.705,34.6

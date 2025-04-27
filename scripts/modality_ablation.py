@@ -4,6 +4,7 @@ import pandas as pd
 from omegaconf import OmegaConf
 from hydra import initialize, compose
 from tqdm import tqdm
+from logging import getLogger
 
 from pixelspointspolygons.predict import FFLPredictor, HiSupPredictor, Pix2PolyPredictor
 from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf, count_trainable_parameters
@@ -15,20 +16,26 @@ def parse_cli_overrides():
 
 def predict_all():
     
+    logger = getLogger("HiSupPredictor rank 0")
+    
     experiments = [
         # FFL
         # "ffl_image",
         # "ffl_lidar",
         # "ffl_fusion",
         # # HiSup 
-        "hisup_image", 
-        "hisup_lidar",
-        "hisup_fusion",
+        ("hisup_image", "v3_image_vit_cnn_bs4x12"),
+        ("hisup_lidar", "lidar_pp_vit_cnn_bs2x16_mnv64"),
+        ("hisup_fusion", "early_fusion_vit_cnn_bs2x16_mnv64"),
         # Pix2Poly
-        "p2p_image",
-        "p2p_lidar", 
-        "p2p_fusion"
+        ("p2p_image", "v3_image_vit_bs4x16"),
+        ("p2p_lidar", "lidar_pp_vit_bs2x16_mnv64"),
+        ("p2p_fusion", "early_fusion_bs2x16_mnv64"),
         ]
+    
+    
+    
+    
     
 
     setup_hydraconf()
@@ -38,14 +45,19 @@ def predict_all():
     exp_dict = {}
     with initialize(config_path="../config", version_base="1.3"):
         pbar = tqdm(total=len(experiments), desc="Initializing experiments")
-        for exp in pbar:
-            pbar.set_description(f"Predict and evaluate {exp} on {cfg.eval.split}")
-            pbar.refresh()  
+        for experiment, name in experiments:
+
             
-            overrides = cli_overrides + [f"experiment={exp}", "checkpoint=best_val_iou"]
+            overrides = cli_overrides + \
+                [f"experiment={experiment}",
+                 f"experiment.name={name}",
+                "checkpoint=best_val_iou"]
             cfg = compose(config_name="config", 
                           overrides=overrides)
             OmegaConf.resolve(cfg)
+            
+            pbar.set_description(f"Predict and evaluate {experiment} on {cfg.eval.split}")
+            pbar.refresh()  
           
             local_rank, world_size = setup_ddp(cfg)
 
@@ -62,7 +74,7 @@ def predict_all():
             
             
             
-            cfg.eval.pred_file = cfg.eval.pred_file.replace("predictions", f"predictions_{cfg.eval.split}")
+            cfg.eval.pred_file = cfg.eval.pred_file.replace("predictions", f"predictions_{cfg.country}_{cfg.eval.split}")
             time_dict = predictor.predict_dataset(split=cfg.eval.split)
 
                 
@@ -70,14 +82,16 @@ def predict_all():
             ee = Evaluator(cfg)
             ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
             ee.load_predictions(cfg.eval.pred_file)
-            res_dict=ee.evaluate()
+            res_dict=ee.evaluate(print_info=False)
             res_dict.update(time_dict)
 
             res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
             
             exp_dict[f"{cfg.experiment.model.name}/{cfg.experiment.name}"] = res_dict
+            
+            pbar.update(1)
 
-        
+        pbar.close()
         df = pd.DataFrame.from_dict(exp_dict, orient='index')
 
         # pd.concat(df_list, axis=0, ignore_index=False)
@@ -88,7 +102,8 @@ def predict_all():
         print(df)
         print("\n")
         
-        cfg.eval.eval_file = f"{cfg.eval.eval_file}_modality_ablation_{cfg.eval.split}.csv"
+        
+        cfg.eval.eval_file = f"{cfg.eval.eval_file}_modality_ablation_{cfg.country}_{cfg.eval.split}.csv"
         
         print(f"Save eval file to {cfg.eval.eval_file}")
         df.to_csv(cfg.eval.eval_file, index=True, float_format="%.3g")
