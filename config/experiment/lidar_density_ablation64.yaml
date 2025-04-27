@@ -3,8 +3,8 @@ defaults:
   - /model: ffl
   - _self_
 
-name: v4_lidar_bs2x16_mnv64
+name: v5_lidar_bs2x16_mnv64
 group_name: v2_${.model.name}
 
 encoder:
-  max_points_per_voxel: 64
+  max_num_points_per_voxel: 64
