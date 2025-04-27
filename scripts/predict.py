@@ -21,7 +21,7 @@ def main(cfg):
     else:
         raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
     
-    split = "val"
+    split = "test"
     cfg.eval.pred_file = cfg.eval.pred_file.replace("predictions", f"predictions_{split}")
     
     predictor.predict_dataset(split=split)

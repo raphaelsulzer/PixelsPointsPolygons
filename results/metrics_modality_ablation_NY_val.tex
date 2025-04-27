@@ -1,0 +1,20 @@
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llHcccccccccccccccc}
+\toprule
+\textbf{Method} & \textbf{Modality} & Unnamed: 0 & \textbf{POLIS} $\downarrow$ & \textbf{MTA [$^\circ$]} $\downarrow$ & \textbf{IoU} $\uparrow$ & \textbf{C-IoU} $\uparrow$ & \textbf{NR=1} & #images & GT #images w/ polys & Pred #images w/ polys & GT #polygons & Pred #polygons & GT #vertices & Pred #vertices & prediction_time & num_params \\
+\midrule
+\cellcolor{yellow!10}\textbf{HiSup} \cite{hisup} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{hisup/v3_image_vit_cnn_bs4x12} & 3.27 & 40.6 & \cellcolor{blue!25} 0.485 & \cellcolor{blue!25} 0.377 & 0.64 & 529 & 463 & 426 & 2340 & 1998 & 14192 & 27135 & 0.0445 & 30.8 \\
+\cellcolor{green!10}\textbf{HiSup} \cite{hisup} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{hisup/lidar_pp_vit_cnn_bs2x16_mnv64} & 3.01 & 42.1 & \cellcolor{blue!10} 0.482 & 0.356 & 0.574 & 529 & 463 & 417 & 2340 & 2370 & 14192 & 40018 & 0.0505 & 30.8 \\
+\cellcolor{magenta!10}\textbf{HiSup} \cite{hisup} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{hisup/early_fusion_vit_cnn_bs2x16_mnv64} & 3.0 & 41.1 & 0.468 & 0.334 & 0.587 & 529 & 463 & 476 & 2340 & 2861 & 14192 & 41298 & 0.0534 & 33.5 \\
+\midrule
+\cellcolor{yellow!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{pix2poly/v3_image_vit_bs4x16} & nan & nan & 0.127 & 0.125 & 0.466 & 529 & 463 & 434 & 2340 & 601 & 14192 & 3355 & 0.626 & 31.9 \\
+\cellcolor{green!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{pix2poly/lidar_pp_vit_bs2x16_mnv64} & 2.81 & 39.8 & 0.443 & 0.366 & \cellcolor{blue!25} 0.678 & 529 & 463 & 453 & 2340 & 2041 & 14192 & 20528 & 0.626 & 31.9 \\
+\cellcolor{magenta!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{pix2poly/early_fusion_bs2x16_mnv64} & 2.61 & 39.3 & 0.443 & \cellcolor{blue!10} 0.367 & \cellcolor{blue!10} 0.676 & 529 & 463 & 487 & 2340 & 1904 & 14192 & 18002 & 0.632 & 34.6 \\
+\bottomrule
+\end{tabular}
+}
+\caption{\textbf{Quantitative results of patch prediction on our dataset}. We compare the baseline models trained and tested on different modalities. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores.}
+\label{tab:patch}
+\end{table}
