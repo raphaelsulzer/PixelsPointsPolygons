@@ -65,10 +65,10 @@ eval:
   # pred_file: ${..output_dir}/predictions/test.json
   modes:
     # - coco
-    # - iou
+    - iou
     # - polis
     # - mta
-    - stats
+    # - stats
     # - topdig
   # eval_file: ${..host.data_root}/${..dataset.name}/metrics.csv
   eval_file: results/metrics
