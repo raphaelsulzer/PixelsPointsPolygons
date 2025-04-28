@@ -22,6 +22,7 @@ dependencies = [
     "open3d",
     "pandas",
     "pycocotools",
+    "rasterio",
     "scikit-image",
     "scikit-learn",
     "shapely",

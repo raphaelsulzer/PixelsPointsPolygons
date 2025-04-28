@@ -22,21 +22,19 @@ def predict_all():
         # FFL
         # "ffl_image",
         # "ffl_lidar",
-        # "ffl_fusion",
+        ("ffl_fusion", "v4_fusion_bs4x16_mnv64"),
         # # HiSup 
         ("hisup_image", "v3_image_vit_cnn_bs4x12"),
         ("hisup_lidar", "lidar_pp_vit_cnn_bs2x16_mnv64"),
         ("hisup_fusion", "early_fusion_vit_cnn_bs2x16_mnv64"),
         # Pix2Poly
-        ("p2p_image", "v3_image_vit_bs4x16"),
+        ("p2p_image", "v4_image_vit_bs4x16"),
         ("p2p_lidar", "lidar_pp_vit_bs2x16_mnv64"),
         ("p2p_fusion", "early_fusion_bs2x16_mnv64"),
         ]
     
     
-    
-    
-    
+    # TODO: add Marions metric!!
 
     setup_hydraconf()
 
@@ -44,9 +42,8 @@ def predict_all():
     
     exp_dict = {}
     with initialize(config_path="../config", version_base="1.3"):
-        pbar = tqdm(total=len(experiments), desc="Initializing experiments")
+        pbar = tqdm(total=len(experiments))
         for experiment, name in experiments:
-
             
             overrides = cli_overrides + \
                 [f"experiment={experiment}",
@@ -56,7 +53,8 @@ def predict_all():
                           overrides=overrides)
             OmegaConf.resolve(cfg)
             
-            pbar.set_description(f"Predict and evaluate {experiment} on {cfg.eval.split}")
+            logger.info(f"Predict {experiment}/{name} on {cfg.eval.split}")
+            # pbar.set_description(f"Predict and evaluate {experiment} on {cfg.eval.split}")
             pbar.refresh()  
           
             local_rank, world_size = setup_ddp(cfg)
@@ -71,13 +69,11 @@ def predict_all():
             else:
                 raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
             
-            
-            
-            
-            cfg.eval.pred_file = cfg.eval.pred_file.replace("predictions", f"predictions_{cfg.country}_{cfg.eval.split}")
+            # cfg.eval.pred_file = cfg.eval.pred_file.replace("predictions", f"predictions_{cfg.country}_{cfg.eval.split}")
             time_dict = predictor.predict_dataset(split=cfg.eval.split)
 
-                
+            logger.info(f"Evaluate {experiment}/{name} on {cfg.eval.split}")
+            
             ### Evaluate
             ee = Evaluator(cfg)
             ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
@@ -102,10 +98,9 @@ def predict_all():
         print(df)
         print("\n")
         
-        
         cfg.eval.eval_file = f"{cfg.eval.eval_file}_modality_ablation_{cfg.country}_{cfg.eval.split}.csv"
         
-        print(f"Save eval file to {cfg.eval.eval_file}")
+        logger.info(f"Save eval file to {cfg.eval.eval_file}")
         df.to_csv(cfg.eval.eval_file, index=True, float_format="%.3g")
     
         ee.to_latex(csv_file=cfg.eval.eval_file)

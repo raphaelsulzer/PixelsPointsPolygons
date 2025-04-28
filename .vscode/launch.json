@@ -28,13 +28,14 @@
             "program": "${workspaceFolder}/scripts/predict.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=debug",
-                // "run_type=release",
+                // "run_type=debug",
+                "run_type=release",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
-                "checkpoint=best_val_iou"
+                "checkpoint=best_val_iou",
+                "country=NZ"
             ],
             "justMyCode": false,
             "env": {
@@ -116,7 +117,8 @@
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false"
+                "multi_gpu=false",
+                "country=NZ"
                 // "experiment.encoder=pointpillars_vit" // setting an encoder here, simply to load the 224x224 dataset version
             ],
             "justMyCode": false
