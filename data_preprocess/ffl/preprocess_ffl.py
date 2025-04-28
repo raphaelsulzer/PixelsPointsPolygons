@@ -48,11 +48,11 @@ class FFLPreprocessing(torch.utils.data.Dataset):
 
         self.coco = None
         self.image_id_list = self.load_image_ids()
-        self.stats_filepath = os.path.join(self.processed_dir, "stats.pt")
+        self.stats_filepath = self.cfg.dataset.ffl_stats[fold]
         self.stats = None
         if os.path.exists(self.stats_filepath):
             self.stats = torch.load(self.stats_filepath)
-        self.processed_flag_filepath = os.path.join(self.processed_dir, "processed-flag")
+        self.processed_flag_filepath = os.path.join(self.processed_dir, f"processed-flag-{self.cfg.country}")
 
         self.pre_transform = pre_transform
         # super(DatasetPreprocessor, self).__init__(root, None, pre_transform)
@@ -71,16 +71,8 @@ class FFLPreprocessing(torch.utils.data.Dataset):
     def get_coco(self):
         if self.coco is None:
             
-            # annotation_filename = f"annotations_{self.fold}_processed.json"
-            # annotations_filepath = os.path.join(self.root, annotation_filename)
-            # if os.path.isfile(annotations_filepath):
-            #     print("There is already a processed annotation file. Using this one.")
-            # else:
-            #     annotation_filename = f"annotations_{self.fold}.json"
-            #     annotations_filepath = os.path.join(self.root, annotation_filename)
-            # if not os.path.isfile(annotations_filepath):
-            #     raise FileNotFoundError(f"Annotation file {annotations_filepath} not found in {self.root}.")
             self.ann_file = self.cfg.dataset.annotations[self.fold]
+            self.logger.info(f"Loading annotations from {self.ann_file}")
             if not os.path.isfile(self.ann_file):
                 raise FileNotFoundError(f"Annotation file {self.ann_file} does not exist.")
             
@@ -102,20 +94,20 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         return len(self.image_id_list)
 
     def _process(self):
-        f = os.path.join(self.processed_dir, 'pre_transform.pt')
-        if os.path.exists(f) and torch.load(f) != __repr__(self.pre_transform):
-            warnings.warn(
-                'The `pre_transform` argument differs from the one used in '
-                'the pre-processed version of this dataset. If you really '
-                'want to make use of another pre-processing technique, make '
-                'sure to delete `{}` first.'.format(self.processed_dir))
-        f = os.path.join(self.processed_dir, 'pre_filter.pt')
-        if os.path.exists(f) and torch.load(f) != __repr__(self.pre_filter):
-            warnings.warn(
-                'The `pre_filter` argument differs from the one used in the '
-                'pre-processed version of this dataset. If you really want to '
-                'make use of another pre-fitering technique, make sure to '
-                'delete `{}` first.'.format(self.processed_dir))
+        # f = os.path.join(self.processed_dir, 'pre_transform.pt')
+        # if os.path.exists(f) and torch.load(f) != __repr__(self.pre_transform):
+        #     warnings.warn(
+        #         'The `pre_transform` argument differs from the one used in '
+        #         'the pre-processed version of this dataset. If you really '
+        #         'want to make use of another pre-processing technique, make '
+        #         'sure to delete `{}` first.'.format(self.processed_dir))
+        # f = os.path.join(self.processed_dir, 'pre_filter.pt')
+        # if os.path.exists(f) and torch.load(f) != __repr__(self.pre_filter):
+        #     warnings.warn(
+        #         'The `pre_filter` argument differs from the one used in the '
+        #         'pre-processed version of this dataset. If you really want to '
+        #         'make use of another pre-fitering technique, make sure to '
+        #         'delete `{}` first.'.format(self.processed_dir))
 
         if os.path.exists(self.processed_flag_filepath):
             print("Dataset already processed. Skipping pre-processing...")
@@ -126,8 +118,8 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         os.makedirs(self.processed_dir, exist_ok=True)
         self.process()
 
-        path = os.path.join(self.processed_dir, 'pre_transform.pt')
-        torch.save(__repr__(self.pre_transform), path)
+        # path = os.path.join(self.processed_dir, 'pre_transform.pt')
+        # torch.save(__repr__(self.pre_transform), path)
         
         print('Done!')
 
@@ -178,7 +170,7 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         image_std = np.sqrt(image_s2_total/image_s0_total - np.power(image_mean, 2))
         class_freq = np.sum(class_freq_array*image_s0_array[:, None], axis=0) / image_s0_total
 
-        # Save aggregated stats
+        # # Save aggregated stats
         self.stats = {
             "image_mean": image_mean,
             "image_std": image_std,
@@ -286,6 +278,11 @@ def preprocess_one(image_info, pre_transform):
 
         torch.save(data_needed_in_ppp, image_info["pt_outfile"])
 
+    else:
+        # load the image into data dict, because if .pt already exists it is not loaded
+        data["image"] = skimage.io.imread(image_info["absolute_img_filepath"])
+
+    
     # Compute stats for later aggregation for the whole dataset
     normed_image = data["image"] / 255
     image_s0 = data["image"].shape[0] * data["image"].shape[1]  # Number of pixels
@@ -304,11 +301,8 @@ def main(cfg):
 
     setup_hydraconf(cfg)
     
-    fold = "train"
-    # fold = "val"
-    fold = "test"    
-    
     folds = ["train", "val", "test"]
+    # folds = ["val"]
     
     for fold in folds:
         

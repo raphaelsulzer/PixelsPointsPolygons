@@ -1,11 +1,14 @@
 name: lidarpoly
 size: null
-# path: ${host.data_root}/${.name}/${model.name}
 path: ${host.data_root}/${.name}/${.size}
 annotations:
-  train: ${..path}/annotations_train.json
-  val: ${..path}/annotations_val.json
-  test: ${..path}/annotations_test.json
+  train: ${..path}/annotations_${...country}_train.json
+  val: ${..path}/annotations_${...country}_val.json
+  test: ${..path}/annotations_${...country}_test.json
+ffl_stats:
+  train: ${..path}/ffl/train/stats-${...country}.pt
+  val: ${..path}/ffl/val/stats-${...country}.pt
+  test: ${..path}/ffl/test/stats-${...country}.pt
 train_subset: null
 val_subset: null
 test_subset: null

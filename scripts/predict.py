@@ -11,6 +11,8 @@ def main(cfg):
     setup_hydraconf(cfg)
     local_rank, world_size = setup_ddp(cfg)
     
+    print(f"Predict {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.country}/{cfg.eval.split}")
+    
     
     if cfg.experiment.model.name == "ffl":
         predictor = FFLPredictor(cfg, local_rank, world_size)
@@ -21,13 +23,13 @@ def main(cfg):
     else:
         raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
     
-    split = "test"
-    cfg.eval.pred_file = cfg.eval.pred_file.replace("predictions", f"predictions_{split}")
+    predictor.predict_dataset(split=cfg.eval.split)
     
-    predictor.predict_dataset(split=split)
     
+    print(f"Evaluate {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.country}/{cfg.eval.split}")
+
     ee = Evaluator(cfg)
-    ee.load_gt(cfg.dataset.annotations[split])
+    ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
     ee.load_predictions(cfg.eval.pred_file)
     res=ee.evaluate()
 
