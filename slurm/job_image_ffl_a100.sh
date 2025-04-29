@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --account=cso@a100
-#SBATCH --job-name=ffl_fusion_bs4x16  # Job name
+#SBATCH --job-name=ffl_image_bs4x16  # Job name
 #SBATCH --output=./slurm/runs/ffl_image_bs4x16.log       # Standard output and error log
 #SBATCH --error=./slurm/runs/ffl_image_bs4x16.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
