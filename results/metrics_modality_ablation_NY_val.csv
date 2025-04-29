@@ -1,7 +1,8 @@
-,POLIS,MTA,IoU,C-IoU,NR,#images,GT #images w/ polys,Pred #images w/ polys,GT #polygons,Pred #polygons,GT #vertices,Pred #vertices,prediction_time,num_params
-hisup/v3_image_vit_cnn_bs4x12,3.27,40.6,0.485,0.377,0.64,529,463,426,2340,1998,14192,27135,0.0445,30.8
-hisup/lidar_pp_vit_cnn_bs2x16_mnv64,3.01,42.1,0.482,0.356,0.574,529,463,417,2340,2370,14192,40018,0.0505,30.8
-hisup/early_fusion_vit_cnn_bs2x16_mnv64,3,41.1,0.468,0.334,0.587,529,463,476,2340,2861,14192,41298,0.0534,33.5
-pix2poly/v3_image_vit_bs4x16,,,0.127,0.125,0.466,529,463,434,2340,601,14192,3355,0.626,31.9
-pix2poly/lidar_pp_vit_bs2x16_mnv64,2.81,39.8,0.443,0.366,0.678,529,463,453,2340,2041,14192,20528,0.626,31.9
-pix2poly/early_fusion_bs2x16_mnv64,2.61,39.3,0.443,0.367,0.676,529,463,487,2340,1904,14192,18002,0.632,34.6
+,IoU,C-IoU,NR,prediction_time,num_params
+ffl/v4_fusion_bs4x16_mnv64,0.502,0.337,0.54,0.428,26.4
+hisup/v3_image_vit_cnn_bs4x12,0.485,0.376,0.639,0.0416,30.8
+hisup/lidar_pp_vit_cnn_bs2x16_mnv64,0.482,0.356,0.574,0.0463,30.8
+hisup/early_fusion_vit_cnn_bs2x16_mnv64,0.468,0.334,0.587,0.0491,33.5
+pix2poly/v4_image_vit_bs4x16,0.386,0.314,0.562,0.661,31.9
+pix2poly/lidar_pp_vit_bs2x16_mnv64,0.443,0.366,0.678,0.661,31.9
+pix2poly/early_fusion_bs2x16_mnv64,0.443,0.367,0.676,0.665,34.6
