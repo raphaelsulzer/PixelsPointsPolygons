@@ -12,7 +12,7 @@ point_pillars:
     upsample_strides: [1, 2, 4]
 
 # training
-batch_size: 16
+batch_size: ${...run_type.batch_size}
 start_epoch: 0
 num_epochs: 200
 milestone: 0

@@ -4,5 +4,6 @@ defaults:
   - _self_
 
 
-name: early_fusion_vit_cnn_bs2x16_mnv64
+# name: early_fusion_vit_cnn_bs2x16_mnv64
+name: debug
 group_name: v2_${.model.name}

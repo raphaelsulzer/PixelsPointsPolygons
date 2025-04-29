@@ -20,8 +20,8 @@ def predict_all():
     
     experiments = [
         # FFL
-        # "ffl_image",
-        # "ffl_lidar",
+        ("ffl_image", "v4_image_bs4x16"),
+        ("ffl_lidar", "v5_lidar_bs2x16_mnv64"),
         ("ffl_fusion", "v4_fusion_bs4x16_mnv64"),
         # # HiSup 
         ("hisup_image", "v3_image_vit_cnn_bs4x12"),
@@ -53,7 +53,7 @@ def predict_all():
                           overrides=overrides)
             OmegaConf.resolve(cfg)
             
-            logger.info(f"Predict {experiment}/{name} on {cfg.eval.split}")
+            logger.info(f"Predict {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
             # pbar.set_description(f"Predict and evaluate {experiment} on {cfg.eval.split}")
             pbar.refresh()  
           
@@ -72,7 +72,7 @@ def predict_all():
             # cfg.eval.pred_file = cfg.eval.pred_file.replace("predictions", f"predictions_{cfg.country}_{cfg.eval.split}")
             time_dict = predictor.predict_dataset(split=cfg.eval.split)
 
-            logger.info(f"Evaluate {experiment}/{name} on {cfg.eval.split}")
+            logger.info(f"Evaluate {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
             
             ### Evaluate
             ee = Evaluator(cfg)
