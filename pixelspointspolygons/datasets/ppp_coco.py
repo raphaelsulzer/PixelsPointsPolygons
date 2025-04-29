@@ -102,7 +102,7 @@ class PPPDataset(Dataset):
     def get_lidar_file(self, coco_info):
         filename = os.path.join(self.dataset_dir, coco_info['lidar_path'])
         if not os.path.isfile(filename):
-            raise FileNotFoundError(filename)
+            raise FileNotFoundError(f"{filename}")
         return filename
     
     def apply_augmentations_to_lidar(self, augmentation_replay, lidar):
