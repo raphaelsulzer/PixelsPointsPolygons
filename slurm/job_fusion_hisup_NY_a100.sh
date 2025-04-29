@@ -35,5 +35,3 @@ set -x
 # Run your Python script
 
 torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=null experiment=hisup_fusion experiment.name=fusion_bs4x16_NY country=NY
-
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=null experiment=hisup_fusion experiment.name=debug country=NY
