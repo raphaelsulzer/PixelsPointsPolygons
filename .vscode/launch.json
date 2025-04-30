@@ -106,6 +106,21 @@
             "justMyCode": false
         },
         {
+            "name": "results_to_latex",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/results_to_latex.py",
+            "console": "integratedTerminal",
+            "args": [
+                "run_type=release",
+                "host=gin",
+                "device=cuda",
+                "log_to_wandb=false",
+                "multi_gpu=false",
+            ],
+            "justMyCode": false
+        },
+        {
             "name": "preprocess_ffl",
             "type": "debugpy",
             "request": "launch",

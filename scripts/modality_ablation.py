@@ -57,8 +57,11 @@ def predict_all():
             # pbar.set_description(f"Predict and evaluate {experiment} on {cfg.eval.split}")
             pbar.refresh()  
           
-            local_rank, world_size = setup_ddp(cfg)
+            #############################################
+            ################## PREDICT ##################
+            #############################################
 
+            local_rank, world_size = setup_ddp(cfg)
                         
             if cfg.experiment.model.name == "ffl":
                 predictor = FFLPredictor(cfg, local_rank, world_size)
@@ -73,6 +76,11 @@ def predict_all():
             time_dict = predictor.predict_dataset(split=cfg.eval.split)
 
             logger.info(f"Evaluate {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
+            
+                      
+            #############################################
+            ################## EVALUATE #################
+            #############################################
             
             ### Evaluate
             ee = Evaluator(cfg)

@@ -397,7 +397,7 @@ class Evaluator:
         return best_val, second__best_val
     
     
-    def to_latex(self,df=None,csv_file=None,caption="Patch prediction",label="tab:patch"):
+    def to_latex(self,df=None,csv_file=None,caption="Patch prediction",label="tab:patch",outfile=None):
         
         caption = r"\textbf{Quantitative results of patch prediction on our dataset}. We compare the baseline models trained and tested on different modalities. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
         
@@ -473,7 +473,8 @@ class Evaluator:
         
         latex_string = '\n'.join(lines)
         
-        outfile = self.cfg.eval.eval_file.replace('.csv', '.tex')
+        if outfile is None:
+            outfile = self.cfg.eval.eval_file.replace('.csv', '.tex')
         with open(outfile, 'w') as f:
             f.write(latex_string)
         self.logger.info(f"Saved LaTeX table to {outfile}")
