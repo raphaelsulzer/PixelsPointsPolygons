@@ -1,5 +1,4 @@
 import hydra
-from omegaconf import OmegaConf
 
 from pixelspointspolygons.eval import Evaluator
 from pixelspointspolygons.misc.shared_utils import setup_hydraconf
