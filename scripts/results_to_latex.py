@@ -19,6 +19,8 @@ def main(cfg):
     
     # TODO: make the density ablation table
     
+    # TODO: merge the annotation files of the 3 countries to one annotations_all.json
+    
     ee.to_latex(csv_file=cfg.eval.eval_file)
 
 if __name__ == "__main__":

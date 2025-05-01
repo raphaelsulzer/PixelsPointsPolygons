@@ -1,10 +1,10 @@
 #!/bin/bash 
 
 #OAR -q production 
-#OAR -l host=1/gpu=2,walltime=16
+#OAR -l host=1/gpu=2,walltime=12
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
-#OAR -O oar/runs/ffl_lidar_mnv8.out
-#OAR -E oar/runs/ffl_lidar_mnv8.out 
+#OAR -O oar/runs/ffl_lidar_mnv8_c.out
+#OAR -E oar/runs/ffl_lidar_mnv8_c.out 
 #OAR -n ffl_lidar_mnv8
 
 ## display some information about attributed resources
@@ -23,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true checkpoint=null experiment=lidar_density_ablation8
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true checkpoint=null experiment=lidar_density_ablation8 checkpoint=latest
