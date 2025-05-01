@@ -334,31 +334,61 @@ class Evaluator:
     def format_model_and_modality(self, val):
         """Extract model name and modality from string like 'modelX/somelongstring'"""
         model_name = val.split('/')[0]
-        
-        
+                
         if 'both' in val.lower() or 'fusion' in val.lower():
             cellcolor = 'magenta!10'
-            modality = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Both}'
+            modality_str = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Both}'
+            modality = "both"
         elif 'lidar' in val.lower():
             cellcolor = 'green!10'
-            modality = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{LiDAR}'
+            modality_str = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{LiDAR}'
+            modality = "lidar"
         elif 'image' in val.lower():
             cellcolor = 'yellow!10'
-            modality = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Image}'
+            modality_str = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Image}'
+            modality = "image"
         else:
             raise ValueError(f"Unknown modality name: {model_name}")
         
-        if model_name == 'ffl':
-            model_name = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{FFL} \cite{ffl}'
-        elif model_name == 'hisup':
-            model_name = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{HiSup} \cite{hisup}'
-        elif model_name == 'pix2poly':
-            model_name = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Pix2Poly} \cite{pix2poly}'
+        if modality == "image":
+            if model_name == 'ffl':
+                model_name = r'\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}+ \\ \textbf{FFL}~\cite{ffl}}}'
+            elif model_name == 'hisup':
+                model_name = r'\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}+ \\ \textbf{HiSup}~\cite{hisup}}}'
+            elif model_name == 'pix2poly':
+                model_name = r'\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}}'
+            else:
+                raise ValueError(f"Unknown model name: {model_name}")
         else:
-            raise ValueError(f"Unknown model name: {model_name}")
+            model_name = ""
         
+        # if model_name == 'ffl':
+        #     model_name = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{FFL} \cite{ffl}'
+        # elif model_name == 'hisup':
+        #     model_name = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{HiSup} \cite{hisup}'
+        # elif model_name == 'pix2poly':
+        #     model_name = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Pix2Poly} \cite{pix2poly}'
+        # else:
+        #     raise ValueError(f"Unknown model name: {model_name}")
+        # if 'both' in val.lower() or 'fusion' in val.lower():
+        #     modality = r'\textbf{Hybrid}'
+        # elif 'lidar' in val.lower():
+        #     modality = r'\textbf{LiDAR}'
+        # elif 'image' in val.lower():
+        #     modality = r'\textbf{Image}'
+        # else:
+        #     raise ValueError(f"Unknown modality name: {model_name}")
+        
+        # if model_name == 'ffl':
+        #     model_name = r'\textbf{ViT+FFL}'
+        # elif model_name == 'hisup':
+        #     model_name = r'\textbf{ViT+HiSup}'
+        # elif model_name == 'pix2poly':
+        #     model_name = r'\textbf{ViT+Pix2Poly}'
+        # else:
+        #     raise ValueError(f"Unknown model name: {model_name}")
 
-        return model_name, modality
+        return model_name, modality_str
     
     def format_metric_name(self, names):
         
@@ -376,6 +406,14 @@ class Evaluator:
                 temp.append(r'\textbf{Boundary IoU} $\uparrow$')
             elif name == 'NR':
                 temp.append(r'\textbf{NR=1}')
+            elif name == "prediction_time":
+                temp.append(r'\textbf{Time [s]} $\downarrow$')
+            elif name == "num_params":
+                temp.append(r'\textbf{Params [M]} $\downarrow$')
+            elif name == "AP":
+                temp.append(r'\textbf{AP} $\uparrow$')
+            elif name == "AR10":
+                temp.append(r'\textbf{AR$_{10}$} $\uparrow$')
             else:
                 temp.append(name)
         return temp
@@ -383,10 +421,10 @@ class Evaluator:
     
     def get_first_and_second_best(self, col, col_vals):
         
-        if col in ['IoU', 'C-IoU', 'Boundary IoU', 'NR']: # higher is better
+        if col in ['IoU', 'C-IoU', 'Boundary IoU', 'NR', 'AP', 'AR10']: # higher is better
             best_val = col_vals.max()
             second__best_val = col_vals.nlargest(2).iloc[-1] if len(col_vals.unique()) > 1 else None
-        elif col in ['POLIS', 'MTA']: # lower is better
+        elif col in ['POLIS', 'MTA', 'prediction_time', 'num_params']: # lower is better
             best_val = col_vals.min()
             second__best_val = col_vals.nsmallest(2).iloc[-1] if len(col_vals.unique()) > 1 else None
         else:
@@ -399,8 +437,6 @@ class Evaluator:
     
     def to_latex(self,df=None,csv_file=None,caption="Patch prediction",label="tab:patch",outfile=None):
         
-        caption = r"\textbf{Quantitative results of patch prediction on our dataset}. We compare the baseline models trained and tested on different modalities. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
-        
         self.logger.info("Converting DataFrame to LaTeX format...")
         
         if csv_file is not None:
@@ -409,14 +445,22 @@ class Evaluator:
             raise ValueError("Either df or csv_file must be provided.")
         else:
             raise ValueError("Either df or csv_file must be provided.")
+        
+        
+        df = df.filter(items=["Unnamed: 0","POLIS", "MTA", "IoU", "C-IoU", "NR", "AP", "AR10", "prediction_time", "num_params"])
+        # new_order = [0,3,6,1,4,7,2,5,8]  # new order of rows by position
+        # df = df.iloc[new_order]
+        
 
         lines = []
         lines.append(r'\begin{table}[H]')
+        lines.append(r'\setlength{\tabcolsep}{8pt}')
+
         lines.append(r'\centering')
 
         # Build header: 2 extra columns for model + modality
         cols = self.format_metric_name(df.columns)
-        cols = [r'\textbf{Method}', r'\textbf{Modality}'] + cols
+        cols = [r'\textbf{Model}', r'\textbf{Modality}'] + cols
         align = 'll'+ 'H' + ('c' * (len(cols)-1))
         lines.append(r'\resizebox{\textwidth}{!}{')
         lines.append(r'\begin{tabular}{' + align + '}')
@@ -424,13 +468,16 @@ class Evaluator:
         lines.append(' & '.join(cols) + r' \\')
 
         model_name = ""
-        for _, row in df.iterrows():
+        for i, row in df.iterrows():
             model, modality = self.format_model_and_modality(row.iloc[0])
             formatted_row = [model, modality]
 
             if model_name != row.iloc[0].split('/')[0]:
                 model_name = row.iloc[0].split('/')[0]
+                model = ""
                 lines.append(r'\midrule')
+            # if i==1 or i==2:
+            #     lines.append(r'\midrule')
 
             for col in df.columns:
                 val = row[col]

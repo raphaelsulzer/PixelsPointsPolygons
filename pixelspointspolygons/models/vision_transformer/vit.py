@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from ...misc import make_logger
 
-# from timm.models import VisionTransformer
+from timm.models import VisionTransformer
 
 class ViT(nn.Module):
     

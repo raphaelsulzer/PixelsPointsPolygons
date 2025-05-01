@@ -1,24 +1,25 @@
 \begin{table}[H]
+\setlength{\tabcolsep}{8pt}
 \centering
 \resizebox{\textwidth}{!}{
-\begin{tabular}{llHccccccccccccccccccccc}
+\begin{tabular}{llHccccccccccc}
 \toprule
-\textbf{Method} & \textbf{Modality} & Unnamed: 0 & \textbf{POLIS} $\downarrow$ & \textbf{MTA [$^\circ$]} $\downarrow$ & \textbf{IoU} $\uparrow$ & \textbf{C-IoU} $\uparrow$ & \textbf{NR=1} & AP & AP50 & AP75 & AP_small & AP_medium & AP_large & AR1 & AR10 & AR100 & AR_small & AR_medium & AR_large & prediction_time & num_params \\
+\textbf{Model} & \textbf{Modality} & Unnamed: 0 & \textbf{POLIS} $\downarrow$ & \textbf{MTA [$^\circ$]} $\downarrow$ & \textbf{IoU} $\uparrow$ & \textbf{C-IoU} $\uparrow$ & \textbf{NR=1} & \textbf{AP} $\uparrow$ & \textbf{AR$_{10}$} $\uparrow$ & \textbf{Time [s]} $\downarrow$ & \textbf{Params [M]} $\downarrow$ \\
 \midrule
-\cellcolor{yellow!10}\textbf{FFL} \cite{ffl} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{ffl/v4_image_bs4x16} & 3 & 41 & 0.839 & 0.759 & 0.847 & 0.275 & 0.518 & 0.274 & 0.0506 & 0.423 & 0.497 & 0.175 & 0.46 & 0.46 & 0.175 & 0.573 & 0.656 & 0.532 & 23.7 \\
-\cellcolor{green!10}\textbf{FFL} \cite{ffl} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{ffl/v5_lidar_bs2x16_mnv64} & 2.35 & 44.8 & 0.87 & 0.765 & 0.829 & 0.359 & 0.576 & 0.394 & 0.0711 & 0.563 & 0.613 & 0.21 & 0.545 & 0.545 & 0.214 & 0.683 & 0.745 & 0.582 & 23.7 \\
-\cellcolor{magenta!10}\textbf{FFL} \cite{ffl} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{ffl/v4_fusion_bs4x16_mnv64} & 2.14 & 39.7 & \cellcolor{blue!25} 0.877 & 0.807 & 0.874 & 0.376 & 0.605 & 0.406 & 0.0992 & 0.566 & 0.615 & 0.213 & 0.569 & 0.569 & 0.264 & 0.697 & 0.754 & 0.58 & 26.4 \\
+\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}+ \\ \textbf{FFL}~\cite{ffl}}} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{ffl/v4_image_bs4x16} & 3 & 41 & 0.839 & 0.759 & 0.847 & 0.275 & 0.46 & 0.532 & \cellcolor{blue!25} 23.7 \\
+ & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{ffl/v5_lidar_bs2x16_mnv64} & 2.35 & 44.8 & 0.87 & 0.765 & 0.829 & 0.359 & 0.545 & 0.582 & \cellcolor{blue!25} 23.7 \\
+ & \cellcolor{magenta!10}\textbf{Both} & \detokenize{ffl/v4_fusion_bs4x16_mnv64} & 2.14 & 39.7 & \cellcolor{blue!25} 0.877 & 0.807 & 0.874 & 0.376 & \cellcolor{blue!10} 0.569 & 0.58 & 26.4 \\
 \midrule
-\cellcolor{yellow!10}\textbf{HiSup} \cite{hisup} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{hisup/v3_image_vit_cnn_bs4x12} & 2.46 & 35.2 & 0.85 & 0.794 & 0.885 & 0.287 & 0.509 & 0.294 & 0.0573 & 0.462 & 0.517 & 0.185 & 0.493 & 0.494 & 0.209 & 0.611 & 0.672 & 0.124 & 30.8 \\
-\cellcolor{green!10}\textbf{HiSup} \cite{hisup} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{hisup/lidar_pp_vit_cnn_bs2x16_mnv64} & 2.05 & 37 & 0.87 & 0.809 & 0.882 & 0.347 & 0.564 & 0.377 & 0.0735 & 0.549 & 0.606 & 0.204 & 0.54 & 0.54 & 0.233 & 0.669 & 0.725 & 0.165 & 30.8 \\
-\cellcolor{magenta!10}\textbf{HiSup} \cite{hisup} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{hisup/early_fusion_vit_cnn_bs2x16_mnv64} & 1.91 & 35.2 & \cellcolor{blue!10} 0.872 & 0.815 & 0.89 & 0.355 & 0.569 & 0.386 & 0.0891 & 0.559 & 0.613 & 0.207 & 0.568 & 0.568 & 0.277 & 0.692 & 0.737 & 0.129 & 33.5 \\
+\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}+ \\ \textbf{HiSup}~\cite{hisup}}} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{hisup/v3_image_vit_cnn_bs4x12} & 2.46 & 35.2 & 0.85 & 0.794 & 0.885 & 0.287 & 0.493 & \cellcolor{blue!25} 0.124 & 30.8 \\
+ & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{hisup/lidar_pp_vit_cnn_bs2x16_mnv64} & 2.05 & 37 & 0.87 & 0.809 & 0.882 & 0.347 & 0.54 & 0.165 & 30.8 \\
+ & \cellcolor{magenta!10}\textbf{Both} & \detokenize{hisup/early_fusion_vit_cnn_bs2x16_mnv64} & 1.91 & 35.2 & \cellcolor{blue!10} 0.872 & 0.815 & 0.89 & 0.355 & 0.568 & \cellcolor{blue!10} 0.129 & 33.5 \\
 \midrule
-\cellcolor{yellow!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{pix2poly/v4_image_vit_bs4x16} & 2.46 & 34.3 & 0.845 & 0.805 & 0.906 & 0.317 & 0.553 & 0.325 & 0.0776 & 0.464 & 0.509 & 0.173 & 0.492 & 0.492 & 0.21 & 0.61 & 0.662 & 1.44 & 31.9 \\
-\cellcolor{green!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{pix2poly/lidar_pp_vit_bs2x16_mnv64} & \cellcolor{blue!10} 1.88 & \cellcolor{blue!10} 34.1 & 0.869 & \cellcolor{blue!10} 0.829 & \cellcolor{blue!10} 0.913 & 0.379 & 0.599 & 0.412 & 0.114 & 0.548 & 0.587 & 0.2 & 0.552 & 0.552 & 0.273 & 0.671 & 0.712 & 1.15 & 31.9 \\
-\cellcolor{magenta!10}\textbf{Pix2Poly} \cite{pix2poly} & \cellcolor{magenta!10}\textbf{Both} & \detokenize{pix2poly/early_fusion_bs2x16_mnv64} & \cellcolor{blue!25} 1.8 & \cellcolor{blue!25} 33.4 & 0.87 & \cellcolor{blue!25} 0.831 & \cellcolor{blue!25} 0.915 & 0.398 & 0.624 & 0.428 & 0.131 & 0.57 & 0.581 & 0.196 & 0.578 & 0.578 & 0.296 & 0.698 & 0.743 & 1.15 & 34.6 \\
+\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}} & \cellcolor{yellow!10}\textbf{Image} & \detokenize{pix2poly/v4_image_vit_bs4x16} & 2.46 & 34.3 & 0.845 & 0.805 & 0.906 & 0.317 & 0.492 & 1.44 & 31.9 \\
+ & \cellcolor{green!10}\textbf{LiDAR} & \detokenize{pix2poly/lidar_pp_vit_bs2x16_mnv64} & \cellcolor{blue!10} 1.88 & \cellcolor{blue!10} 34.1 & 0.869 & \cellcolor{blue!10} 0.829 & \cellcolor{blue!10} 0.913 & \cellcolor{blue!10} 0.379 & 0.552 & 1.15 & 31.9 \\
+ & \cellcolor{magenta!10}\textbf{Both} & \detokenize{pix2poly/early_fusion_bs2x16_mnv64} & \cellcolor{blue!25} 1.8 & \cellcolor{blue!25} 33.4 & 0.87 & \cellcolor{blue!25} 0.831 & \cellcolor{blue!25} 0.915 & \cellcolor{blue!25} 0.398 & \cellcolor{blue!25} 0.578 & 1.15 & 34.6 \\
 \bottomrule
 \end{tabular}
 }
-\caption{\textbf{Quantitative results of patch prediction on our dataset}. We compare the baseline models trained and tested on different modalities. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores.}
-\label{tab:patch}
+\caption{\textbf{Modality ablation}. We compare the baseline models trained and tested on different modalities. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores.}
+\label{tab:modality_ablation}
 \end{table}
