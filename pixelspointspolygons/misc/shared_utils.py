@@ -21,7 +21,9 @@ def get_experiment_type(experiment):
     
     return name, img_dim, polygonization_method
 
-
+def parse_cli_overrides():
+    # Skip the script name
+    return [arg for arg in sys.argv[1:] if "=" in arg]
 
 def setup_hydraconf(cfg=None):
     """Setup OmegaConf to allow for dot notation and auto-completion"""

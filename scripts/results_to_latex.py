@@ -14,9 +14,9 @@ def main(cfg):
     
     ee = Evaluator(cfg)
     # outfile = "/home/rsulzer/overleaf/building_footprint_dataset/tables/modality_ablation_table.tex"
-    
-    
+        
     # TODO: check why HiSup NY failed on jz
+    
     
     # TODO: make the density ablation table
     

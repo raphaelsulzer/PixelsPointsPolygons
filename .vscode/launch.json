@@ -133,7 +133,24 @@
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
-                "country=NZ"
+                "country=NY"
+                // "experiment.encoder=pointpillars_vit" // setting an encoder here, simply to load the 224x224 dataset version
+            ],
+            "justMyCode": false
+        },        {
+            "name": "merge_coco_annotations",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/data_preprocess/merge_coco_annotations.py",
+            "console": "integratedTerminal",
+            "args": [
+                // "run_type=release",
+                "run_type=debug",
+                "host=gin",
+                "device=cuda",
+                "log_to_wandb=false",
+                "multi_gpu=false",
+                "country=Switzerland"
                 // "experiment.encoder=pointpillars_vit" // setting an encoder here, simply to load the 224x224 dataset version
             ],
             "justMyCode": false
