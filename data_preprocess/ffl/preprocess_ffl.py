@@ -25,7 +25,7 @@ from copy import deepcopy
 
 from torch_lydorn.torch.utils.data import __repr__
 
-import data_transforms
+from .data_transforms import get_offline_transform_patch
 
 from pixelspointspolygons.misc import make_logger, setup_hydraconf
 
@@ -53,6 +53,9 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         if os.path.exists(self.stats_filepath):
             self.stats = torch.load(self.stats_filepath)
         self.processed_flag_filepath = os.path.join(self.processed_dir, f"processed-flag-{self.cfg.country}")
+
+        self.ann_ffl_file = self.ann_file.replace("annotations_","annotations_ffl_")        
+
 
         self.pre_transform = pre_transform
         # super(DatasetPreprocessor, self).__init__(root, None, pre_transform)
@@ -184,9 +187,8 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         coco_ds = deepcopy(coco.dataset)
         coco_ds["images"] = image_info_with_pt_file_list
 
-        new_annotation_outfile = self.ann_file.replace("annotations_","annotations_ffl_")        
         # new_annotation_outfile = os.path.join(self.root, f"annotations_ffl_{self.fold}.json")
-        with open(new_annotation_outfile, 'w') as f_json:
+        with open(self.ann_ffl_file, 'w') as f_json:
             json.dump(coco_ds, f_json)
 
 
@@ -301,13 +303,14 @@ def main(cfg):
 
     setup_hydraconf(cfg)
     
-    folds = ["val", "test"]
+    folds = ["train","val", "test"]
+    folds = ["train"]
     # folds = ["val"]
     
     for fold in folds:
         
         dataset = FFLPreprocessing(cfg,
-                                pre_transform=data_transforms.get_offline_transform_patch(),
+                                pre_transform=get_offline_transform_patch(),
                                 fold=fold)
         dataset._process()
 

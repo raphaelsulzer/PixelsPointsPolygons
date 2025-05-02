@@ -200,7 +200,7 @@ class Evaluator:
 
     def print_info(self):
         
-        self.logger.info(f"Dataset info for {self.cocoGt.dataset['info']}...")
+        self.logger.info(f"Info for (gt/pred): {os.path.basename(self.gt_file)} / {os.path.basename(os.path.dirname(self.gt_file))}")
         self.logger.info(f"Number of images (gt/pred): {len(self.cocoGt.getImgIds())}/{len(self.cocoDt.getImgIds())}")
         self.logger.info(f"Number of polygons (gt/pred): {len(self.cocoGt.getAnnIds())}/{len(self.cocoDt.getAnnIds())}")
         
@@ -352,11 +352,11 @@ class Evaluator:
         
         if modality == "image":
             if model_name == 'ffl':
-                model_name = r'\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}+ \\ \textbf{FFL}~\cite{ffl}}}'
+                model_name = r'\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{FFL}~\cite{ffl}}}'
             elif model_name == 'hisup':
-                model_name = r'\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}+ \\ \textbf{HiSup}~\cite{hisup}}}'
+                model_name = r'\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{HiSup}~\cite{hisup}}}'
             elif model_name == 'pix2poly':
-                model_name = r'\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}}'
+                model_name = r'\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}}'
             else:
                 raise ValueError(f"Unknown model name: {model_name}")
         else:
