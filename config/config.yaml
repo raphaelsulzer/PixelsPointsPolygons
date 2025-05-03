@@ -30,9 +30,9 @@ log_to_wandb: ${.run_type.log_to_wandb}
 num_workers: ${.run_type.num_workers}
 update_pbar_every: ${.host.update_pbar_every}
 
-# country: Switzerland
+country: Switzerland
 # country: NY
-country: all
+# country: all
 
 use_lidar: ${.experiment.encoder.use_lidar}
 use_images: ${.experiment.encoder.use_images}

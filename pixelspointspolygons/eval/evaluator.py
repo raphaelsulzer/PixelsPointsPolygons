@@ -3,6 +3,7 @@ import os
 import tqdm
 import sys
 import json
+import re
 
 import pandas as pd
 import numpy as np
@@ -435,7 +436,7 @@ class Evaluator:
         return best_val, second__best_val
     
     
-    def to_latex(self,df=None,csv_file=None,caption="Patch prediction",label="tab:patch",outfile=None):
+    def to_latex(self,df=None,csv_file=None,caption="Patch prediction",label="tab:patch",outfile=None,type="modality"):
         
         self.logger.info("Converting DataFrame to LaTeX format...")
         
@@ -446,11 +447,15 @@ class Evaluator:
         else:
             raise ValueError("Either df or csv_file must be provided.")
         
-        
-        df = df.filter(items=["Unnamed: 0","POLIS", "MTA", "IoU", "C-IoU", "NR", "AP", "AR10", "prediction_time", "num_params"])
-        # new_order = [0,3,6,1,4,7,2,5,8]  # new order of rows by position
-        # df = df.iloc[new_order]
-        
+        if type == "modality":
+            df = df.filter(items=["Unnamed: 0","POLIS", "MTA", "IoU", "C-IoU", "NR", "AP", "AR10", "prediction_time", "num_params"])
+        elif type == "density":
+            df = df.filter(items=["Unnamed: 0","POLIS", "MTA", "IoU", "C-IoU", "NR", "AP", "AR10"])
+        elif type == "all":
+            df = df.filter(items=["Unnamed: 0","POLIS", "MTA", "IoU", "C-IoU", "NR", "AP", "AR10", "prediction_time", "num_params"])
+        else:
+            raise ValueError(f"Unknown type: {type}")
+            
 
         lines = []
         lines.append(r'\begin{table}[H]')
@@ -460,8 +465,17 @@ class Evaluator:
 
         # Build header: 2 extra columns for model + modality
         cols = self.format_metric_name(df.columns)
-        cols = [r'\textbf{Model}', r'\textbf{Modality}'] + cols
-        align = 'll'+ 'H' + ('c' * (len(cols)-1))
+        if type == "modality":
+            cols = [r'\textbf{Model}', r'\textbf{Modality}'] + cols
+            align = 'll'+ 'H' + ('c' * (len(cols)-1))
+        elif type == "density":
+            cols = [r'\textbf{Density [$pts/m^2$]}'] + cols
+            align = 'c'+ 'H' + ('c' * (len(cols)-1))
+        elif type == "all":
+            cols = [r'\textbf{Model}', r'\textbf{Modality}'] + cols
+            align = 'll'+ 'H' + ('c' * (len(cols)-1))
+        else:
+            raise ValueError(f"Unknown type: {type}")
         lines.append(r'\resizebox{\textwidth}{!}{')
         lines.append(r'\begin{tabular}{' + align + '}')
         lines.append(r'\toprule')
@@ -469,8 +483,19 @@ class Evaluator:
 
         model_name = ""
         for i, row in df.iterrows():
-            model, modality = self.format_model_and_modality(row.iloc[0])
-            formatted_row = [model, modality]
+            if type == "modality":
+                model, modality = self.format_model_and_modality(row.iloc[0])
+                formatted_row = [model, modality]
+            elif type == "density":
+                density = row.iloc[0]
+                density = re.search(r"mnv(\d+)$", density)
+                density = int(density.group(1))//4
+                formatted_row = [str(density)]
+            elif type == "all":
+                model, modality = self.format_model_and_modality(row.iloc[0])
+                formatted_row = [model, modality]
+            else:   
+                raise ValueError(f"Unknown type: {type}")
 
             if model_name != row.iloc[0].split('/')[0]:
                 model_name = row.iloc[0].split('/')[0]
