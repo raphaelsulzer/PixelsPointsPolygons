@@ -1,17 +1,17 @@
 #!/bin/bash 
 
 #OAR -q production 
-#OAR -l host=1/gpu=2,walltime=20
+#OAR -l host=1/gpu=2,walltime=48
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
-#OAR -O oar/runs/ffl_lidar_mnv16.out
-#OAR -E oar/runs/ffl_lidar_mnv16.out 
-#OAR -n ffl_lidar_mnv16
+#OAR -O oar/runs/ffl_NZ.out
+#OAR -E oar/runs/ffl_NZ.out
+#OAR -n ffl_NZ
 
-## display some information about attributed resources
+# display some information about attributed resources
 hostname 
 nvidia-smi 
 
-## make use of a python torch environment
+# make use of a python torch environment
 module load conda
 conda activate ppp
 python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))";
@@ -23,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true checkpoint=null experiment=lidar_density_ablation16
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true checkpoint=null experiment=ffl_fusion experiment.name=v0_NZ_bs2x16 country=NZ
