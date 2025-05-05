@@ -1,0 +1,9 @@
+defaults:
+  - /encoder: vit_cnn
+  - /model: ffl
+  - _self_
+
+name: image_NZ_ft
+group_name: v2_${.model.name}
+
+

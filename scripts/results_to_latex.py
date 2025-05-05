@@ -31,15 +31,24 @@ def main(cfg):
     #             label="tab:modality_ablation", type="modality")
 
 
-    ### DENSITY ABLATION ###
-    cfg.eval.eval_file = f"{cfg.eval.eval_file}_lidar_density_ablation_{cfg.country}_{cfg.eval.split}.csv"
+    # ### DENSITY ABLATION ###
+    # cfg.eval.eval_file = f"{cfg.eval.eval_file}_lidar_density_ablation_{cfg.country}_{cfg.eval.split}.csv"
+    # ee = Evaluator(cfg)
+    
+    # caption = r"\textbf{Density ablation}. We compare a ViT~\cite{vit}~+~FFL~\cite{ffl} model trained and tested on increasingly dense LiDAR point clouds. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
+    # ee.to_latex(csv_file=cfg.eval.eval_file, 
+    #             caption=caption,
+    #             label="tab:density_ablation",
+    #             type="density")
+    
+    #### ALL COUNTRIES ####
+    cfg.eval.eval_file = f"{cfg.eval.eval_file}_all_countries_{cfg.country}_{cfg.eval.split}.csv"
     ee = Evaluator(cfg)
     
-    caption = r"\textbf{Density ablation}. We compare a ViT+FFL model trained and tested on increasingly dense LiDAR point clouds. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
+    caption = r"\textbf{Multimodal building polygon prediction}. We compare the baseline models with fusion encoders on the full dataset. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
     ee.to_latex(csv_file=cfg.eval.eval_file, 
                 caption=caption,
-                label="tab:density_ablation",
-                type="density")
+                label="tab:all_countries", type="all")
     
     
     

@@ -86,8 +86,6 @@ def main(cfg):
     
     regions = ["train", "val", "test"]
 
-    region = regions[1]
-
     
     if not cfg.country == "Switzerland":
         raise ValueError("Set the country to Switzerland for this script")

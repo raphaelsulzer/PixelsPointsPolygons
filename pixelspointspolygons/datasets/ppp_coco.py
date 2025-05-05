@@ -55,7 +55,7 @@ class PPPDataset(Dataset):
         self.tile_ids = images_id.copy()
         self.num_samples = len(self.tile_ids)
 
-        self.logger.debug(f"Loaded {len(self.coco.anns.items())} annotations from {len(self.coco.imgs.items())} images from {self.ann_file}")
+        self.logger.info(f"Loaded {len(self.coco.anns.items())} annotations from {len(self.coco.imgs.items())} images from {self.ann_file}")
 
         self.use_lidar = cfg.use_lidar
         self.use_images = cfg.use_images
@@ -84,6 +84,12 @@ class PPPDataset(Dataset):
             points[:, -1] = scaler.fit_transform(points[:, -1].reshape(-1, 1)).squeeze()
             
             points = points.astype(np.float32)
+            
+            assert (points.min(axis=0) >= [-0.01,-0.01,-0.01]).all(), f"Points min {points.min(axis=0)} is not allowed."
+            assert (points.max(axis=0) <= [img_info['width'],img_info['height'],self.cfg.experiment.encoder.in_voxel_size.z]).all(), f"Points max {points.min(axis=0)} is not allowed."
+
+            points[:,0] = np.clip(points[:,0],0,img_info['width'])
+            points[:,1] = np.clip(points[:,1],0,img_info['height'])
             
             # if not len(points) > 3:
             #     self.logger.warning(f"Lidar file {lidar_file_name} only has {len(points)} points.")

@@ -14,7 +14,7 @@ def main(cfg):
     
     ee = Evaluator(cfg)
     ee.evaluate_all()    
-    ee.to_latex(csv_file=cfg.eval.eval_file)
+    # ee.to_latex(csv_file=cfg.eval.eval_file)
     
 
 

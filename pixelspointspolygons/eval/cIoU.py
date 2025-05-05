@@ -34,7 +34,7 @@ def calc_IoU(a, b):
     else:
         return iou
 
-def compute_IoU_cIoU(input_json, gti_annotations, pbar_disable=False):
+def compute_IoU_cIoU(input_json, gti_annotations, subset=False, pbar_disable=False):
     # Ground truth annotations
     coco_gt = COCO(gti_annotations)
 
@@ -50,7 +50,11 @@ def compute_IoU_cIoU(input_json, gti_annotations, pbar_disable=False):
     # image_ids = coco_dt.getImgIds(catIds=coco_dt.getCatIds())
     
     # get all gt images regardless if they have an annotation or not
-    image_ids = coco_gt.getImgIds()
+    if subset:
+        image_ids = coco_dt.getImgIds(catIds=coco_dt.getCatIds())
+        # print(f"Compute subset IoU on {len(image_ids)} images")
+    else:
+        image_ids = coco_gt.getImgIds()
     
     bar = tqdm(image_ids, disable=pbar_disable)
 
@@ -75,9 +79,12 @@ def compute_IoU_cIoU(input_json, gti_annotations, pbar_disable=False):
     ciou = np.mean(list_ciou).item()
     nr = np.mean(list_nr).item()
     
-    print("IoU: %2.4f, C-IoU: %2.4f, NR: %2.4f" % (iou, ciou, nr))
-
-    return {"IoU":iou, "C-IoU":ciou, "NR": nr}
+    if subset:
+        print("sIoU: %2.4f, sC-IoU: %2.4f, sNR: %2.4f" % (iou, ciou, nr))
+        return {"sIoU":iou, "sC-IoU":ciou, "sNR": nr}
+    else:
+        print("IoU: %2.4f, C-IoU: %2.4f, NR: %2.4f" % (iou, ciou, nr))
+        return {"IoU":iou, "C-IoU":ciou, "NR": nr}
 
 
 

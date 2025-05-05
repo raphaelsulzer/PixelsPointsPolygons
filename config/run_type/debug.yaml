@@ -1,8 +1,9 @@
 name: debug
-batch_size: 16
+batch_size: 2
 train_subset: 512
 val_subset: 32
 test_subset: 32
 logging: DEBUG
 num_workers: 0
 log_to_wandb: False
+

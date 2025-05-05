@@ -10,6 +10,7 @@
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",
+                // "run_type=release",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
@@ -87,6 +88,24 @@
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "all_countries",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/all_countries.py",
+            "console": "integratedTerminal",
+            "args": [
+                "run_type=debug",
+                // "run_type=release",
+                // "dataset.val_subset=null",
+                "host=gin",
+                "device=cuda",
+                "log_to_wandb=false",
+                "multi_gpu=false",
+                "country=all"
             ],
             "justMyCode": false
         },

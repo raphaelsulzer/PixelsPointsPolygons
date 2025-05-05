@@ -58,11 +58,11 @@ class Trainer:
         matplotlib.use('Agg')  # Use non-GUI backend
         
         
-    def progress_bar(self,item):
+    def progress_bar(self,item,start=0):
         
         disable = self.verbosity >= logging.WARNING
         
-        pbar = tqdm(item, total=len(item), 
+        pbar = tqdm(item, total=len(item), initial=start,
                       file=sys.stdout, 
                       mininterval=self.update_pbar_every,                      
                       disable=disable,
@@ -227,6 +227,7 @@ class Trainer:
             evaluator = Evaluator(self.cfg)
         else:
             evaluator = None
+        
         
         for epoch in self.progress_bar(epoch_iterator):
             

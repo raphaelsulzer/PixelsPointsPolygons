@@ -236,6 +236,8 @@ class Evaluator:
                 res_dict.update(compute_max_angle_error(self.gt_file, self.pred_file, num_workers=self.cfg.num_workers))
             if "iou" in self.cfg.eval.modes:
                 res_dict.update(compute_IoU_cIoU(self.pred_file, self.gt_file, pbar_disable=self.pbar_disable))
+            if "subset_iou" in self.cfg.eval.modes:
+                res_dict.update(compute_IoU_cIoU(self.pred_file, self.gt_file, subset=True, pbar_disable=self.pbar_disable))
             if "topdig" in self.cfg.eval.modes:
                 res_dict.update(compute_mask_metrics(self.pred_file, self.gt_file))
             if "boundary-coco" in self.cfg.eval.modes:
@@ -331,6 +333,19 @@ class Evaluator:
         self.logger.info(f"Save eval file to {self.cfg.eval.eval_file}")
         df.to_csv(self.cfg.eval.eval_file, index=True, float_format="%.3g")
         
+    def get_model_name(self, val):
+        model_name = val.split('/')[0]
+                
+        if model_name == 'ffl':
+            model_name = r"\textbf{ViT}~\cite{vit}~+~\textbf{FFL}~\cite{ffl}"
+        elif model_name == 'hisup':
+            model_name = r"\textbf{ViT}~\cite{vit}~+~\textbf{HiSup}~\cite{hisup}"
+        elif model_name == 'pix2poly':
+            model_name = r"\textbf{ViT}~\cite{vit}~+~\textbf{Pix2Poly}~\cite{pix2poly}"
+        else:
+            raise ValueError(f"Unknown model name: {model_name}")
+        
+        return model_name
     
     def format_model_and_modality(self, val):
         """Extract model name and modality from string like 'modelX/somelongstring'"""
@@ -338,18 +353,24 @@ class Evaluator:
                 
         if 'both' in val.lower() or 'fusion' in val.lower():
             cellcolor = 'magenta!10'
-            modality_str = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Both}'
+            # modality_str = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Hybrid}'
+            modality_str = r'\textbf{Fusion}'
             modality = "both"
         elif 'lidar' in val.lower():
             cellcolor = 'green!10'
-            modality_str = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{LiDAR}'
+            # modality_str = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{LiDAR}'
+            modality_str = r'\textbf{LiDAR}'
             modality = "lidar"
         elif 'image' in val.lower():
             cellcolor = 'yellow!10'
-            modality_str = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Image}'
+            # modality_str = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Image}'
+            modality_str = r'\textbf{Image}'
             modality = "image"
         else:
-            raise ValueError(f"Unknown modality name: {model_name}")
+            modality_str = r'\textbf{Fusion}'
+            modality = "both"
+            self.logger.warning(f"No modality found in experiment name. Assuming fusion.")
+            # raise ValueError(f"Unknown modality name: {model_name}")
         
         if modality == "image":
             if model_name == 'ffl':
@@ -363,31 +384,6 @@ class Evaluator:
         else:
             model_name = ""
         
-        # if model_name == 'ffl':
-        #     model_name = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{FFL} \cite{ffl}'
-        # elif model_name == 'hisup':
-        #     model_name = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{HiSup} \cite{hisup}'
-        # elif model_name == 'pix2poly':
-        #     model_name = r'\cellcolor{'+ cellcolor + r'}' + r'\textbf{Pix2Poly} \cite{pix2poly}'
-        # else:
-        #     raise ValueError(f"Unknown model name: {model_name}")
-        # if 'both' in val.lower() or 'fusion' in val.lower():
-        #     modality = r'\textbf{Hybrid}'
-        # elif 'lidar' in val.lower():
-        #     modality = r'\textbf{LiDAR}'
-        # elif 'image' in val.lower():
-        #     modality = r'\textbf{Image}'
-        # else:
-        #     raise ValueError(f"Unknown modality name: {model_name}")
-        
-        # if model_name == 'ffl':
-        #     model_name = r'\textbf{ViT+FFL}'
-        # elif model_name == 'hisup':
-        #     model_name = r'\textbf{ViT+HiSup}'
-        # elif model_name == 'pix2poly':
-        #     model_name = r'\textbf{ViT+Pix2Poly}'
-        # else:
-        #     raise ValueError(f"Unknown model name: {model_name}")
 
         return model_name, modality_str
     
@@ -452,7 +448,7 @@ class Evaluator:
         elif type == "density":
             df = df.filter(items=["Unnamed: 0","POLIS", "MTA", "IoU", "C-IoU", "NR", "AP", "AR10"])
         elif type == "all":
-            df = df.filter(items=["Unnamed: 0","POLIS", "MTA", "IoU", "C-IoU", "NR", "AP", "AR10", "prediction_time", "num_params"])
+            df = df.filter(items=["Unnamed: 0","POLIS", "MTA", "IoU", "C-IoU", "NR", "AP", "AR10"])
         else:
             raise ValueError(f"Unknown type: {type}")
             
@@ -467,13 +463,13 @@ class Evaluator:
         cols = self.format_metric_name(df.columns)
         if type == "modality":
             cols = [r'\textbf{Model}', r'\textbf{Modality}'] + cols
-            align = 'll'+ 'H' + ('c' * (len(cols)-1))
+            align = 'll'+ 'H|' + ('c' * (len(cols)-3))
         elif type == "density":
             cols = [r'\textbf{Density [$pts/m^2$]}'] + cols
-            align = 'c'+ 'H' + ('c' * (len(cols)-1))
+            align = 'c'+ 'H|' + ('c' * (len(cols)-3))
         elif type == "all":
-            cols = [r'\textbf{Model}', r'\textbf{Modality}'] + cols
-            align = 'll'+ 'H' + ('c' * (len(cols)-1))
+            cols = [r'\textbf{Model}'] + cols
+            align = 'l'+ 'H|' + ('c' * (len(cols)-3))
         else:
             raise ValueError(f"Unknown type: {type}")
         lines.append(r'\resizebox{\textwidth}{!}{')
@@ -492,8 +488,8 @@ class Evaluator:
                 density = int(density.group(1))//4
                 formatted_row = [str(density)]
             elif type == "all":
-                model, modality = self.format_model_and_modality(row.iloc[0])
-                formatted_row = [model, modality]
+                model = self.get_model_name(row.iloc[0])
+                formatted_row = [model]
             else:   
                 raise ValueError(f"Unknown type: {type}")
 

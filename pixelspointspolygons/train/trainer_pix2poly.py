@@ -316,7 +316,7 @@ class Pix2PolyTrainer(Trainer):
         else:
             evaluator = None
         
-        for epoch in self.progress_bar(epoch_iterator):
+        for epoch in self.progress_bar(epoch_iterator, start=self.cfg.experiment.model.start_epoch):
             
             ############################################
             ################# Training #################

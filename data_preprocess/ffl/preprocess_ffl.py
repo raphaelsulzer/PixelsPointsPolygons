@@ -304,8 +304,7 @@ def main(cfg):
     setup_hydraconf(cfg)
     
     folds = ["train","val", "test"]
-    folds = ["train"]
-    # folds = ["val"]
+    folds = ["val"]
     
     for fold in folds:
         

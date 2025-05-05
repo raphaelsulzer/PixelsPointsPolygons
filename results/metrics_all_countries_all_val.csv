@@ -1,0 +1,3 @@
+,sIoU,sC-IoU,sNR,prediction_time,num_params
+hisup/v0_all_bs4x16,0.859,0.682,0.794,0.0953,33.5
+pix2poly/v0_all_bs4x16,0.857,0.723,0.844,0.693,34.6
