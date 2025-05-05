@@ -1,8 +1,4 @@
 import hydra
-import torch
-import os
-
-from omegaconf import OmegaConf
 
 from pixelspointspolygons.predict import FFLPredictor, HiSupPredictor, Pix2PolyPredictor
 from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf

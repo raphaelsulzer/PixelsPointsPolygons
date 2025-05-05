@@ -1,0 +1,17 @@
+\begin{table}[H]
+\setlength{\tabcolsep}{8pt}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{llH|cc}
+\toprule
+\textbf{Model} & \textbf{Modality} & Unnamed: 0 & \textbf{Time [s]} $\downarrow$ & \textbf{Params [M]} $\downarrow$ \\
+\midrule
+ & \textbf{Hybrid} & \detokenize{hisup/v0_all_bs4x16} & \cellcolor{blue!25} 0.0953 & \cellcolor{blue!25} 33.5 \\
+\midrule
+ & \textbf{Hybrid} & \detokenize{pix2poly/v0_all_bs4x16} & \cellcolor{blue!10} 0.693 & \cellcolor{blue!10} 34.6 \\
+\bottomrule
+\end{tabular}
+}
+\caption{Patch prediction}
+\label{tab:patch}
+\end{table}

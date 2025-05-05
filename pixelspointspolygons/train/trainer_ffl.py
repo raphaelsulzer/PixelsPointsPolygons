@@ -208,7 +208,7 @@ class FFLTrainer(Trainer):
         if self.cfg.log_to_wandb and self.local_rank == 0:
             self.setup_wandb()
             
-        for epoch in self.progress_bar(epoch_iterator):
+        for epoch in self.progress_bar(epoch_iterator, start=self.cfg.experiment.model.start_epoch):
             
             ############################################
             ################# Training #################

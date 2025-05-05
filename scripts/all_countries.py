@@ -1,0 +1,115 @@
+import sys
+
+import pandas as pd
+from omegaconf import OmegaConf
+from hydra import initialize, compose
+from tqdm import tqdm
+from logging import getLogger
+
+from pixelspointspolygons.predict import FFLPredictor, HiSupPredictor, Pix2PolyPredictor
+from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf, count_trainable_parameters
+from pixelspointspolygons.eval import Evaluator
+
+def parse_cli_overrides():
+    # Skip the script name
+    return [arg for arg in sys.argv[1:] if "=" in arg]
+
+def predict_and_evaluate():
+    
+    logger = getLogger("HiSupPredictor rank 0")
+    
+    experiments = [
+        # FFL
+        # ("ffl_image", "v4_image_bs4x16"),
+        # ("ffl_lidar", "v5_lidar_bs2x16_mnv64"),
+        # ("ffl_fusion", "v4_fusion_bs4x16_mnv64"),
+        # # HiSup 
+        ("hisup_fusion", "v0_all_bs4x16"),
+        # Pix2Poly
+        ("p2p_fusion", "v0_all_bs4x16"),
+        ]
+    
+    
+    # TODO: add Marions metric!!
+
+    setup_hydraconf()
+
+    cli_overrides = parse_cli_overrides()
+    
+    exp_dict = {}
+    with initialize(config_path="../config", version_base="1.3"):
+        pbar = tqdm(total=len(experiments))
+        for experiment, name in experiments:
+            
+            overrides = cli_overrides + \
+                [f"experiment={experiment}",
+                 f"experiment.name={name}",
+                "checkpoint=best_val_iou"]
+            cfg = compose(config_name="config", 
+                          overrides=overrides)
+            OmegaConf.resolve(cfg)
+            
+            logger.info(f"Predict {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
+            # pbar.set_description(f"Predict and evaluate {experiment} on {cfg.eval.split}")
+            pbar.refresh()  
+          
+            #############################################
+            ################## PREDICT ##################
+            #############################################
+
+            local_rank, world_size = setup_ddp(cfg)
+                        
+            if cfg.experiment.model.name == "ffl":
+                predictor = FFLPredictor(cfg, local_rank, world_size)
+            elif cfg.experiment.model.name == "hisup":
+                predictor = HiSupPredictor(cfg, local_rank, world_size)
+            elif cfg.experiment.model.name == "pix2poly":
+                predictor = Pix2PolyPredictor(cfg, local_rank, world_size)
+            else:
+                raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
+            
+            # cfg.eval.pred_file = cfg.eval.pred_file.replace("predictions", f"predictions_{cfg.country}_{cfg.eval.split}")
+            time_dict = predictor.predict_dataset(split=cfg.eval.split)
+
+            logger.info(f"Evaluate {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
+            
+                      
+            #############################################
+            ################## EVALUATE #################
+            #############################################
+            
+            ### Evaluate
+            ee = Evaluator(cfg)
+            ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
+            ee.load_predictions(cfg.eval.pred_file)
+            res_dict=ee.evaluate(print_info=False)
+            res_dict.update(time_dict)
+
+            res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
+            
+            exp_dict[f"{cfg.experiment.model.name}/{cfg.experiment.name}"] = res_dict
+            
+            pbar.update(1)
+
+        pbar.close()
+        df = pd.DataFrame.from_dict(exp_dict, orient='index')
+
+        # pd.concat(df_list, axis=0, ignore_index=False)
+        # Save the DataFrame to a CSV file
+        # output_dir = os.path.join(self.cfg.host.data_root, "eval_results")
+        
+        print("\n")
+        print(df)
+        print("\n")
+        
+        cfg.eval.eval_file = f"{cfg.eval.eval_file}_all_countries_{cfg.country}_{cfg.eval.split}.csv"
+        
+        logger.info(f"Save eval file to {cfg.eval.eval_file}")
+        df.to_csv(cfg.eval.eval_file, index=True, float_format="%.3g")
+    
+        ee.to_latex(csv_file=cfg.eval.eval_file)
+
+    
+        
+if __name__ == "__main__":
+    predict_and_evaluate()
