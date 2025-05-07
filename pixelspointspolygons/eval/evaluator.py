@@ -19,6 +19,7 @@ from .angle_eval import compute_max_angle_error
 from .cIoU import compute_IoU_cIoU
 from .polis import compute_polis
 from .topdig_metrics import compute_mask_metrics
+from .line_dof import compute_line_dof
 
 # Format the DataFrame to display only two digits after the comma
 pd.options.display.float_format = "{:.2f}".format
@@ -88,18 +89,10 @@ class Evaluator:
     def compute_coco_metrics(self, annType='segm'):
         
         self.logger.warning("The area thresholds for the COCO evaluation seem to be specific for bigger images?!")
-
-        # imgIds = cocoGt.getImgIds()
-        
-        # Force area to "all"
-
-        # print("\npred: ", cocoDt.loadAnns(cocoDt.getAnnIds(imgIds=[0]))[2])
-        # print("\ngt: ", cocoGt.loadAnns(cocoGt.getAnnIds(imgIds=[0]))[1])
         
         # have to pass a deepcopy here, otherwise the self.cocoGt object will be modified
         cocoEval = COCOeval(deepcopy(self.cocoGt), deepcopy(self.cocoDt), iouType=annType)
         
-
         # cocoEval.params.imgIds = [0]
         cocoEval.params.catIds = [100]
         cocoEval.evaluate()
@@ -232,6 +225,9 @@ class Evaluator:
 
             if "polis" in self.cfg.eval.modes:  
                 res_dict.update(compute_polis(self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
+            if "ldof" in self.cfg.eval.modes:
+                res_dict.update(compute_line_dof(
+                    self.cfg.eval.ldof_exe, self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
             if "mta" in self.cfg.eval.modes:
                 res_dict.update(compute_max_angle_error(self.gt_file, self.pred_file, num_workers=self.cfg.num_workers))
             if "iou" in self.cfg.eval.modes:
@@ -285,6 +281,9 @@ class Evaluator:
     
     def evaluate_all(self):
         
+        self.logger.warning("evaluate_all() is deprecated. Please use evaluate() instead.")
+
+
         self.logger.info("Evaluating all models...")
         
         # first quickly check if the prediction file exists before doing the more lengthy evaluation

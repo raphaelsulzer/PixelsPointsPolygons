@@ -3,9 +3,10 @@ defaults:
   - run_type: release
   - polygonization: asm_acm
   - dataset: lidarpoly
-  - experiment: ffl_fusion
+  # - experiment: ffl_fusion
   # - experiment: hisup_fusion
-  # - experiment: p2p_image
+  # - experiment: p2p_fusion
+  - experiment: p2p_lidar
   - _self_
 
 
@@ -16,6 +17,7 @@ hydra:
 output_dir: ${.host.data_root}/${.experiment.model.name}_outputs/${.dataset.name}/${.experiment.encoder.in_size}/${.experiment.name}
 
 checkpoint: null
+# checkpoint: best_val_iou
 # checkpoint: latest
 # checkpoint_file: null
 # checkpoint_file: /data/rsulzer/ffl_outputs/lidarpoly/224/v5_lidar_bs2x16_mnv32/checkpoints/best_val_iou.pth
@@ -38,8 +40,8 @@ num_workers: ${.run_type.num_workers}
 update_pbar_every: ${.host.update_pbar_every}
 
 # country: Switzerland
-# country: NY
-country: NZ
+country: NY
+# country: NZ
 # country: all
 
 use_lidar: ${.experiment.encoder.use_lidar}
@@ -49,14 +51,16 @@ eval:
   split: val # do not change this here, because it could cause that during training, test predictions are overwritten
   pred_file: ${..output_dir}/predictions_${..country}_${.split}/${..checkpoint}.json
   modes:
-    # - coco
+    - ldof
+    - coco
     - iou
     # - subset_iou
-    # - polis
-    # - mta
+    - polis
+    - mta
     # - stats
     # - topdig
   eval_file: results/metrics
+  ldof_exe: /user/rsulzer/home/cpp/line-DOF-metric/build/calculate_DoF
 
 
 
