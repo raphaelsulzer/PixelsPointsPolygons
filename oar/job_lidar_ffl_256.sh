@@ -23,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true checkpoint=null experiment=lidar_density_ablation256
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true checkpoint=null experiment=lidar_density_ablation256 country=Switzerland experiment.name=v5_lidar_bs2x16_mnv256

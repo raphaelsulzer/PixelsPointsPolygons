@@ -34,4 +34,4 @@ set -x
 
 # Run your Python script
 
-torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=null experiment=ffl_lidar experiment.name=lidar_density_ablation256 country=all
+torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=null experiment=lidar_density_ablation256 country=Switzerland experiment.name=v5_lidar_bs4x16_mnv256
