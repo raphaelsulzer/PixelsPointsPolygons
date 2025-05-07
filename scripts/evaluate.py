@@ -1,5 +1,7 @@
 import hydra
 
+import pandas as pd
+
 from pixelspointspolygons.eval import Evaluator
 from pixelspointspolygons.misc.shared_utils import setup_hydraconf
 
@@ -12,9 +14,21 @@ def main(cfg):
     modes_str = "_".join(cfg.eval.modes)
     cfg.eval.eval_file = f"{cfg.eval.eval_file}_{modes_str}.csv"
     
+    print(f"Evaluate {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.country}/{cfg.eval.split}")
+
     ee = Evaluator(cfg)
-    ee.evaluate_all()    
-    # ee.to_latex(csv_file=cfg.eval.eval_file)
+    ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
+    ee.load_predictions(cfg.eval.pred_file)
+    res=ee.evaluate()
+
+    df = pd.DataFrame.from_dict(res, orient='index')
+    
+    print("\n")
+    print(df)
+    print("\n")
+    
+    print(f"Save eval file to {cfg.eval.eval_file}")
+    df.to_csv(cfg.eval.eval_file, index=True, float_format="%.3g")
     
 
 

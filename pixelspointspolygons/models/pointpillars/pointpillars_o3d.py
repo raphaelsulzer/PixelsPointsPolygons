@@ -68,10 +68,26 @@ class PointPillarsEncoder(ml3d.models.PointPillars):
         del self.loss_bbox
         del self.loss_dir
         
+    def compute_density(self, x_lidar):
+        
+        x_lidar = list(torch.unbind(x_lidar, dim=0))
+        
+        n_points = 0
+        for tensor in x_lidar:
+            n_points += tensor.shape[0]
+        
+        density = n_points / (len(x_lidar)*56**2)
+        
+        self.logger.warning(f"{density}")
+        
+        
         
     def forward(self, x_lidar, return_flattened=True):
         """Extract features from points."""
         
+        # self.compute_density(x_lidar)
+        
+
         # x_lidar = list(torch.unbind(x_lidar, dim=0))
         voxels, num_points, coors = self.voxelize(x_lidar)
         voxel_features = self.voxel_encoder(voxels, num_points, coors)

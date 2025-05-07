@@ -178,6 +178,8 @@ class Pix2PolyTrainer(Trainer):
 
         loader = self.progress_bar(self.val_loader)
 
+        n_points = 0
+        
         for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
             
             batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
@@ -207,6 +209,16 @@ class Pix2PolyTrainer(Trainer):
             loss_meter.update(loss.item(), batch_size)
             vertex_loss_meter.update(vertex_loss.item(), batch_size)
             perm_loss_meter.update(perm_loss.item(), batch_size)
+            
+            x_lidar = x_lidar.unbind()
+            x_lidar = list(x_lidar)
+            for tensor in x_lidar:
+                n_points += tensor.shape[0]
+            
+        
+        n_images = len(self.val_loader.dataset)
+        area = n_images * 3136
+        self.logger.debug(f"Validation pts/m2 {n_points/area}")
 
 
         self.logger.debug(f"Validation loss: {loss_meter.global_avg:.3f}")

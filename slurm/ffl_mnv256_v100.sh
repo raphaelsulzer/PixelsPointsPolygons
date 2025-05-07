@@ -1,16 +1,16 @@
 #!/bin/bash
 
-#SBATCH --account=cso@a100
-#SBATCH --job-name=ffl_fusion_NY_bs4x16  # Job name
-#SBATCH --output=./slurm/runs/ffl_fusion_NY_bs4x16.log       # Standard output and error log
-#SBATCH --error=./slurm/runs/ffl_fusion_NY_bs4x16.log         # Error log
+#SBATCH --account=cso@v100
+#SBATCH --job-name=ffl_mnv256_bs4x16  # Job name
+#SBATCH --output=./slurm/runs/ffl_mnv256_bs4x16.log       # Standard output and error log
+#SBATCH --error=./slurm/runs/ffl_mnv256_bs4x16.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
 #SBATCH --ntasks=4 # reserve 4 tasks (or processes)
 #SBATCH --gres=gpu:4              # Request 2 GPUs
-#SBATCH --constraint=a100
+#SBATCH --constraint=v100
 #SBATCH --cpus-per-task=16         # Request 8 CPU cores
-#SBATCH --qos=qos_gpu_a100-t3 # QoS
-#SBATCH --time=20:00:00           # Time limit (hh:mm:ss)
+#SBATCH --qos=qos_gpu-t4 # QoS
+#SBATCH --time=44:00:00           # Time limit (hh:mm:ss)
 #SBATCH --mail-user=raphael.sulzer.1@gmail.com  # Email for notifications
 #SBATCH --mail-type=ALL           # When to receive emails (BEGIN, END, FAIL, ALL)
 
@@ -19,7 +19,7 @@ module purge # purge modules inherited by default
 #conda deactivate
 
 # Load modules (if needed)
-module load arch/a100
+# module load arch/a100
 module load miniforge/24.9.0
 
 # Activate virtual environment (if needed)
@@ -34,4 +34,4 @@ set -x
 
 # Run your Python script
 
-torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=null experiment=ffl_fusion experiment.name=fusion_bs4x16_NY country=NY
+torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=null experiment=ffl_lidar experiment.name=lidar_density_ablation256 country=all

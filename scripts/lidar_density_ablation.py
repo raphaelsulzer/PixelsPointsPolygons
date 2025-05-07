@@ -26,9 +26,6 @@ def predict_all():
         ("lidar_density_ablation128", "v5_lidar_bs2x16_mnv128"),
         ]
     
-    # TODO: modify the prediction output file so that it does not overwrite the modality ablation predictions
-    # TODO: add Marions metric!!
-
     setup_hydraconf()
 
     cli_overrides = parse_cli_overrides()
