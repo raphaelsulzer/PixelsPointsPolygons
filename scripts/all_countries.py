@@ -20,18 +20,14 @@ def predict_and_evaluate():
     
     experiments = [
         # FFL
-        # ("ffl_image", "v4_image_bs4x16"),
-        # ("ffl_lidar", "v5_lidar_bs2x16_mnv64"),
-        # ("ffl_fusion", "v4_fusion_bs4x16_mnv64"),
+        ("ffl_fusion", "v0_all_bs4x16"),
         # # HiSup 
         ("hisup_fusion", "v0_all_bs4x16"),
         # Pix2Poly
-        ("p2p_fusion", "v0_all_bs4x16"),
+        # ("p2p_fusion", "v0_all_bs4x16")
         ]
     
     
-    # TODO: add Marions metric!!
-
     setup_hydraconf()
 
     cli_overrides = parse_cli_overrides()

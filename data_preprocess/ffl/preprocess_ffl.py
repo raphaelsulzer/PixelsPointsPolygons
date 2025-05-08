@@ -20,12 +20,11 @@ from tqdm import tqdm
 
 import torch
 
-from omegaconf import OmegaConf
 from copy import deepcopy
 
 from torch_lydorn.torch.utils.data import __repr__
 
-from .data_transforms import get_offline_transform_patch
+from data_transforms import get_offline_transform_patch
 
 from pixelspointspolygons.misc import make_logger, setup_hydraconf
 
@@ -304,7 +303,7 @@ def main(cfg):
     setup_hydraconf(cfg)
     
     folds = ["train","val", "test"]
-    folds = ["val"]
+    # folds = ["val"]
     
     for fold in folds:
         
