@@ -40,9 +40,9 @@ num_workers: ${.run_type.num_workers}
 update_pbar_every: ${.host.update_pbar_every}
 
 # country: Switzerland
-country: NY
+# country: NY
 # country: NZ
-# country: all
+country: all
 
 use_lidar: ${.experiment.encoder.use_lidar}
 use_images: ${.experiment.encoder.use_images}
@@ -51,12 +51,12 @@ eval:
   split: val # do not change this here, because it could cause that during training, test predictions are overwritten
   pred_file: ${..output_dir}/predictions_${..country}_${.split}/${..checkpoint}.json
   modes:
-    - ldof
+    # - ldof
     - coco
-    - iou
+    # - iou
     # - subset_iou
-    - polis
-    - mta
+    # - polis
+    # - mta
     # - stats
     # - topdig
   eval_file: results/metrics
