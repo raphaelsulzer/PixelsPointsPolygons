@@ -20,7 +20,7 @@ def predict_and_evaluate():
     
     experiments = [
         # FFL
-        ("ffl_fusion", "v0_all_bs4x16"),
+        # ("ffl_fusion", "v0_all_bs4x16"),
         # # HiSup 
         ("hisup_fusion", "v0_all_bs4x16"),
         # Pix2Poly
