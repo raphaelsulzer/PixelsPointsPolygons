@@ -152,7 +152,7 @@
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
-                "country=NY"
+                // "country=NY"
                 // "experiment.encoder=pointpillars_vit" // setting an encoder here, simply to load the 224x224 dataset version
             ],
             "justMyCode": false
