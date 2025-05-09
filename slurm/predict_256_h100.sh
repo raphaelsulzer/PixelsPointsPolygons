@@ -34,4 +34,4 @@ set -x
 
 # Run your Python script
 
-python scripts/predict.py host=jz run_type=release multi_gpu=false checkpoint=best_val_iou country=Switzerland eval.split=test experiment.name=lidar_density_ablation256
+python scripts/predict.py host=jz run_type=release multi_gpu=false checkpoint=best_val_iou country=Switzerland eval.split=test experiment=lidar_density_ablation256 experiment.name=v5_lidar_bs2x16_mnv256
