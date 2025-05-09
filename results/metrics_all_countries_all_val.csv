@@ -1,3 +1,4 @@
-,sIoU,sC-IoU,sNR,prediction_time,num_params
-hisup/v0_all_bs4x16,0.859,0.682,0.794,0.0953,33.5
-pix2poly/v0_all_bs4x16,0.857,0.723,0.844,0.693,34.6
+,hausdorff,chamfer,IoU,C-IoU,NR
+ffl/v0_all_bs4x16,54,6.69,0.571,0.455,0.539
+hisup/v0_all_bs4x16,58.7,8.51,0.595,0.505,0.615
+pix2poly/v0_all_bs4x16,63,9.82,0.646,0.576,0.728
