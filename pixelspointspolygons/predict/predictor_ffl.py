@@ -46,19 +46,21 @@ class FFLPredictor(Predictor):
         time_dict = {}
         time_dict["prediction_time"] = (time.time() - t0) / len(self.loader.dataset)
         
-        for k,coco_predictions in annotations.items():
-            outfile = os.path.join(os.path.dirname(self.cfg.eval.pred_file), k, f"{self.cfg.checkpoint}.json")
-            os.makedirs(os.path.dirname(outfile), exist_ok=True)
-            self.logger.info(f"Saving prediction {k} to {outfile}")
-            with open(outfile, "w") as fp:
-                fp.write(json.dumps(coco_predictions))
-        
-        self.logger.info(f"Copy acm.tol_1 to predictions_{split}/{self.cfg.checkpoint}.json")
-        if "acm.tol_1" in annotations.keys():
-            outfile = os.path.join(os.path.dirname(self.cfg.eval.pred_file), f"{self.cfg.checkpoint}.json")
-            os.makedirs(os.path.dirname(outfile), exist_ok=True)
-            with open(outfile, "w") as fp:
-                fp.write(json.dumps(annotations["acm.tol_1"]))
+        if self.local_rank == 0:
+
+            for k,coco_predictions in annotations.items():
+                outfile = os.path.join(os.path.dirname(self.cfg.eval.pred_file), k, f"{self.cfg.checkpoint}.json")
+                os.makedirs(os.path.dirname(outfile), exist_ok=True)
+                self.logger.info(f"Saving prediction {k} to {outfile}")
+                with open(outfile, "w") as fp:
+                    fp.write(json.dumps(coco_predictions))
+            
+            self.logger.info(f"Copy acm.tol_1 to predictions_{split}/{self.cfg.checkpoint}.json")
+            if "acm.tol_1" in annotations.keys():
+                outfile = os.path.join(os.path.dirname(self.cfg.eval.pred_file), f"{self.cfg.checkpoint}.json")
+                os.makedirs(os.path.dirname(outfile), exist_ok=True)
+                with open(outfile, "w") as fp:
+                    fp.write(json.dumps(annotations["acm.tol_1"]))
         
         
         return time_dict

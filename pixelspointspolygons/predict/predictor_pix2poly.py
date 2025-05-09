@@ -60,11 +60,12 @@ class Pix2PolyPredictor(Predictor):
         time_dict = {}
         time_dict["prediction_time"] = (time.time() - t0) / len(self.loader.dataset)
         
-        prediction_outfile = self.cfg.eval.pred_file
-        self.logger.info(f"Saving predictions to {prediction_outfile}")
-        os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
-        with open(prediction_outfile, "w") as fp:
-            fp.write(json.dumps(coco_predictions))
+        if self.local_rank == 0:
+            prediction_outfile = self.cfg.eval.pred_file
+            self.logger.info(f"Saving predictions to {prediction_outfile}")
+            os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
+            with open(prediction_outfile, "w") as fp:
+                fp.write(json.dumps(coco_predictions))
         
 
         return time_dict
