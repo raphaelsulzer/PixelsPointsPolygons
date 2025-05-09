@@ -1,6 +1,4 @@
 ,0
-hausdorff,9.94
-chamfer,1.28
-IoU,0.854
-C-IoU,0.7
-NR,0.794
+IoU,0.877
+C-IoU,0.785
+NR,0.849
