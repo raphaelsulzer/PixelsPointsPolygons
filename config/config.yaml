@@ -3,12 +3,12 @@ defaults:
   - run_type: release
   - polygonization: asm_acm
   - dataset: lidarpoly
-  - experiment: ffl_image
+  # - experiment: ffl_fusion
+  - experiment: lidar_density_ablation256.yaml
   # - experiment: hisup_fusion
   # - experiment: p2p_fusion
   # - experiment: p2p_lidar
   - _self_
-
 
 hydra:
   run:
@@ -19,11 +19,6 @@ output_dir: ${.host.data_root}/${.experiment.model.name}_outputs/${.dataset.name
 checkpoint: null
 # checkpoint: best_val_iou
 # checkpoint: latest
-# checkpoint_file: null
-# checkpoint_file: /data/rsulzer/ffl_outputs/lidarpoly/224/v5_lidar_bs2x16_mnv32/checkpoints/best_val_iou.pth
-# TODO: see why LiDAR does not work
-# checkpoint_file: /data/rsulzer/ffl_outputs/lidarpoly/224/v4_image_bs4x16/checkpoints/best_val_iou.pth
-# checkpoint_file: /data/rsulzer/hisup_outputs/lidarpoly/224/lidar_pp_vit_cnn_bs2x16_mnv64/checkpoints/best_val_iou.pth
 checkpoint_file: null
 
 save_best: true
@@ -39,10 +34,10 @@ log_to_wandb: ${.run_type.log_to_wandb}
 num_workers: ${.run_type.num_workers}
 update_pbar_every: ${.host.update_pbar_every}
 
-country: Switzerland
+# country: all
 # country: NY
 # country: NZ
-# country: all
+country: Switzerland
 
 
 # dataset:
@@ -55,12 +50,13 @@ eval:
   split: val # do not change this here, because it could cause that during training, test predictions are overwritten
   pred_file: ${..output_dir}/predictions_${..country}_${.split}/${..checkpoint}.json
   modes:
-    # - ldof
-    # - coco
+    - ldof
+    - hausdorff
+    - coco
     - iou
+    - polis
+    - mta
     # - subset_iou
-    # - polis
-    # - mta
     # - stats
     # - topdig
   eval_file: results/metrics
