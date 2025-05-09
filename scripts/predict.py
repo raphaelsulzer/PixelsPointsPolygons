@@ -25,21 +25,21 @@ def main(cfg):
     
     predictor.predict_dataset(split=cfg.eval.split)
     
-    # print(f"Evaluate {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.country}/{cfg.eval.split}")
+    print(f"Evaluate {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.country}/{cfg.eval.split}")
 
-    # ee = Evaluator(cfg)
-    # ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
-    # ee.load_predictions(cfg.eval.pred_file)
-    # res=ee.evaluate()
+    ee = Evaluator(cfg)
+    ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
+    ee.load_predictions(cfg.eval.pred_file)
+    res=ee.evaluate()
 
-    # df = pd.DataFrame.from_dict(res, orient='index')
+    df = pd.DataFrame.from_dict(res, orient='index')
     
-    # print("\n")
-    # print(df)
-    # print("\n")
+    print("\n")
+    print(df)
+    print("\n")
     
-    # print(f"Save eval file to {cfg.eval.eval_file}")
-    # df.to_csv(cfg.eval.eval_file, index=True, float_format="%.3g")
+    print(f"Save eval file to {cfg.eval.eval_file}")
+    df.to_csv(cfg.eval.eval_file, index=True, float_format="%.3g")
         
 if __name__ == "__main__":
     main()

@@ -2,13 +2,15 @@
 \setlength{\tabcolsep}{8pt}
 \centering
 \resizebox{\textwidth}{!}{
-\begin{tabular}{llH|cc}
+\begin{tabular}{llH|ccc}
 \toprule
-\textbf{Model} & \textbf{Modality} & Unnamed: 0 & \textbf{Time [s]} $\downarrow$ & \textbf{Params [M]} $\downarrow$ \\
+\textbf{Model} & \textbf{Modality} & Unnamed: 0 & \textbf{IoU} $\uparrow$ & \textbf{C-IoU} $\uparrow$ & \textbf{NR=1} \\
 \midrule
- & \textbf{Hybrid} & \detokenize{hisup/v0_all_bs4x16} & \cellcolor{blue!25} 0.0953 & \cellcolor{blue!25} 33.5 \\
+ & \textbf{Fusion} & \detokenize{ffl/v0_all_bs4x16} & 0.571 & 0.455 & 0.539 \\
 \midrule
- & \textbf{Hybrid} & \detokenize{pix2poly/v0_all_bs4x16} & \cellcolor{blue!10} 0.693 & \cellcolor{blue!10} 34.6 \\
+ & \textbf{Fusion} & \detokenize{hisup/v0_all_bs4x16} & \cellcolor{blue!10} 0.595 & \cellcolor{blue!10} 0.505 & \cellcolor{blue!10} 0.615 \\
+\midrule
+ & \textbf{Fusion} & \detokenize{pix2poly/v0_all_bs4x16} & \cellcolor{blue!25} 0.646 & \cellcolor{blue!25} 0.576 & \cellcolor{blue!25} 0.728 \\
 \bottomrule
 \end{tabular}
 }
