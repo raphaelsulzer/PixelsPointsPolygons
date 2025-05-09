@@ -24,6 +24,7 @@ def predict_all():
         ("lidar_density_ablation32", "v5_lidar_bs2x16_mnv32"),
         ("lidar_density_ablation64", "v5_lidar_bs2x16_mnv64"),
         ("lidar_density_ablation128", "v5_lidar_bs2x16_mnv128"),
+        ("lidar_density_ablation256", "v5_lidar_bs2x16_mnv256"),
         ]
     
     setup_hydraconf()
@@ -55,9 +56,10 @@ def predict_all():
                         
             predictor = FFLPredictor(cfg, local_rank, world_size)
 
-            # cfg.eval.pred_file = cfg.eval.pred_file.replace("predictions", f"predictions_{cfg.country}_{cfg.eval.split}")
-            time_dict = predictor.predict_dataset(split=cfg.eval.split)
-
+            # time_dict = predictor.predict_dataset(split=cfg.eval.split)
+            # res_dict.update(time_dict)
+            # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
+            
             logger.info(f"Evaluate {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
             
                       
@@ -67,12 +69,11 @@ def predict_all():
             
             ### Evaluate
             ee = Evaluator(cfg)
+            ee.pbar_disable = False
             ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
             ee.load_predictions(cfg.eval.pred_file)
             res_dict=ee.evaluate(print_info=False)
-            res_dict.update(time_dict)
 
-            res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
             
             exp_dict[f"{cfg.experiment.model.name}/{cfg.experiment.name}"] = res_dict
             
