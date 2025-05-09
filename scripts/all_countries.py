@@ -20,11 +20,11 @@ def predict_and_evaluate():
     
     experiments = [
         # FFL
-        # ("ffl_fusion", "v0_all_bs4x16"),
+        ("ffl_fusion", "v0_all_bs4x16"),
         # # HiSup 
         ("hisup_fusion", "v0_all_bs4x16"),
         # Pix2Poly
-        # ("p2p_fusion", "v0_all_bs4x16")
+        ("p2p_fusion", "v0_all_bs4x16")
         ]
     
     
@@ -46,7 +46,6 @@ def predict_and_evaluate():
             OmegaConf.resolve(cfg)
             
             logger.info(f"Predict {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
-            # pbar.set_description(f"Predict and evaluate {experiment} on {cfg.eval.split}")
             pbar.refresh()  
           
             #############################################
@@ -64,11 +63,11 @@ def predict_and_evaluate():
             else:
                 raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
             
-            # cfg.eval.pred_file = cfg.eval.pred_file.replace("predictions", f"predictions_{cfg.country}_{cfg.eval.split}")
-            time_dict = predictor.predict_dataset(split=cfg.eval.split)
+            # cfg.eval.pred_file = f"{cfg.output_dir}/predictions/{cfg.checkpoint}.json"
+            # time_dict = predictor.predict_dataset(split=cfg.eval.split)
+            # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
 
             logger.info(f"Evaluate {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
-            
                       
             #############################################
             ################## EVALUATE #################
@@ -76,12 +75,12 @@ def predict_and_evaluate():
             
             ### Evaluate
             ee = Evaluator(cfg)
+            ee.pbar_disable = False
             ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
             ee.load_predictions(cfg.eval.pred_file)
             res_dict=ee.evaluate(print_info=False)
-            res_dict.update(time_dict)
+            # res_dict.update(time_dict)
 
-            res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
             
             exp_dict[f"{cfg.experiment.model.name}/{cfg.experiment.name}"] = res_dict
             

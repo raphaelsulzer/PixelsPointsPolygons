@@ -20,6 +20,7 @@ from .cIoU import compute_IoU_cIoU
 from .polis import compute_polis
 from .topdig_metrics import compute_mask_metrics
 from .line_dof import compute_line_dof
+from .hausdorff import compute_hausdorff_chamfer
 
 # Format the DataFrame to display only two digits after the comma
 pd.options.display.float_format = "{:.2f}".format
@@ -88,7 +89,7 @@ class Evaluator:
 
     def compute_coco_metrics(self, annType='segm'):
         
-        self.logger.warning("The area thresholds for the COCO evaluation seem to be specific for bigger images?!")
+        # self.logger.warning("The area thresholds for the COCO evaluation seem to be specific for bigger images?!")
         
         # have to pass a deepcopy here, otherwise the self.cocoGt object will be modified
         cocoEval = COCOeval(deepcopy(self.cocoGt), deepcopy(self.cocoDt), iouType=annType)
@@ -224,23 +225,37 @@ class Evaluator:
         with suppress_stdout():
 
             if "polis" in self.cfg.eval.modes:  
+                self.logger.info("Computing POLIS...")
                 res_dict.update(compute_polis(self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
+            if "hausdorff" in self.cfg.eval.modes: 
+                self.logger.info("Computing Hausdorff and Chamfer distance...") 
+                res_dict.update(compute_hausdorff_chamfer(self.gt_file, self.pred_file, 
+                                                          pbar_disable=self.pbar_disable,
+                                                          workers=self.cfg.num_workers))
             if "ldof" in self.cfg.eval.modes:
+                self.logger.info("Computing line DoF...")
                 res_dict.update(compute_line_dof(
                     self.cfg.eval.ldof_exe, self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
             if "mta" in self.cfg.eval.modes:
+                self.logger.info("Computing MTA...")
                 res_dict.update(compute_max_angle_error(self.gt_file, self.pred_file, num_workers=self.cfg.num_workers))
             if "iou" in self.cfg.eval.modes:
+                self.logger.info("Computing IoU and C-IoU...")
                 res_dict.update(compute_IoU_cIoU(self.pred_file, self.gt_file, pbar_disable=self.pbar_disable))
             if "subset_iou" in self.cfg.eval.modes:
+                self.logger.info("Computing Subset IoU and C-IoU...")
                 res_dict.update(compute_IoU_cIoU(self.pred_file, self.gt_file, subset=True, pbar_disable=self.pbar_disable))
             if "topdig" in self.cfg.eval.modes:
+                self.logger.info("Computing Topdig...")
                 res_dict.update(compute_mask_metrics(self.pred_file, self.gt_file))
             if "boundary-coco" in self.cfg.eval.modes:
+                self.logger.info("Computing Boundary COCO...")
                 res_dict.update(self.compute_boundary_coco_metrics())
             if "coco" in self.cfg.eval.modes:
+                self.logger.info("Computing COCO...")
                 res_dict.update(self.compute_coco_metrics())
             if "stats" in self.cfg.eval.modes:
+                self.logger.info("Computing Stats...")
                 res_dict.update(self.compute_coco_stats())
         
         
@@ -410,6 +425,12 @@ class Evaluator:
                 temp.append(r'\textbf{AP} $\uparrow$')
             elif name == "AR10":
                 temp.append(r'\textbf{AR$_{10}$} $\uparrow$')
+            elif name == "hausdorff":
+                temp.append(r'\textbf{HD [m]} $\downarrow$')
+            elif name == "chamfer":
+                temp.append(r'\textbf{CD [m]} $\downarrow$')
+            elif name == "norm_line_dofs":
+                temp.append(r'\textbf{DoF} $\downarrow$')
             else:
                 temp.append(name)
         return temp
@@ -420,7 +441,7 @@ class Evaluator:
         if col in ['IoU', 'C-IoU', 'Boundary IoU', 'NR', 'AP', 'AR10']: # higher is better
             best_val = col_vals.max()
             second__best_val = col_vals.nlargest(2).iloc[-1] if len(col_vals.unique()) > 1 else None
-        elif col in ['POLIS', 'MTA', 'prediction_time', 'num_params']: # lower is better
+        elif col in ['POLIS', 'MTA', 'prediction_time', 'num_params', 'hausdorff', 'chamfer', 'norm_line_dofs']: # lower is better
             best_val = col_vals.min()
             second__best_val = col_vals.nsmallest(2).iloc[-1] if len(col_vals.unique()) > 1 else None
         else:
@@ -430,6 +451,20 @@ class Evaluator:
         
         return best_val, second__best_val
     
+        
+    def get_metric_description(self, table_type):
+        
+
+        if table_type == "density":
+            desc = r'    &   & \multicolumn{3}{c}{\emph{Point-}} & \emph{Line-}  &  \multicolumn{3}{c}{\emph{Area-based}} &  \multicolumn{3}{c}{\emph{Complexity}}   \\'
+        elif table_type == "modality":
+            desc = r'    &   & & \multicolumn{3}{c}{\emph{Point-}} & \emph{Line-}&  \multicolumn{3}{c}{\emph{Area-based}} &  \multicolumn{2}{c}{\emph{Efficiency}} \\'
+        elif table_type == "all":
+            desc = r'    &   & \multicolumn{3}{c}{\emph{Point-}} & \emph{Line-}  &  \multicolumn{3}{c}{\emph{Area-based}} &  \multicolumn{3}{c}{\emph{Complexity}}  \\'
+        else:
+            raise ValueError(f"Unknown type: {table_type}")
+        
+        return desc
     
     def to_latex(self,df=None,csv_file=None,caption="Patch prediction",label="tab:patch",outfile=None,type="modality"):
         
@@ -442,40 +477,49 @@ class Evaluator:
         else:
             raise ValueError("Either df or csv_file must be provided.")
         
-        if type == "modality":
-            df = df.filter(items=["Unnamed: 0","POLIS", "MTA", "IoU", "C-IoU", "NR", "AP", "AR10", "prediction_time", "num_params"])
-        elif type == "density":
-            df = df.filter(items=["Unnamed: 0","POLIS", "MTA", "IoU", "C-IoU", "NR", "AP", "AR10"])
+
+        if type == "density":
+            df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
+        elif type == "modality":
+            df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU",  "prediction_time", "num_params"])
         elif type == "all":
-            df = df.filter(items=["Unnamed: 0","POLIS", "MTA", "IoU", "C-IoU", "NR", "AP", "AR10"])
+            df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
         else:
             raise ValueError(f"Unknown type: {type}")
-            
-
+                    
         lines = []
         lines.append(r'\begin{table}[H]')
-        lines.append(r'\setlength{\tabcolsep}{8pt}')
+        lines.append(r'\setlength{\tabcolsep}{3pt}')
 
         lines.append(r'\centering')
 
-        # Build header: 2 extra columns for model + modality
+        ##### format metric #####
         cols = self.format_metric_name(df.columns)
         if type == "modality":
             cols = [r'\textbf{Model}', r'\textbf{Modality}'] + cols
-            align = 'll'+ 'H|' + ('c' * (len(cols)-3))
+            align = '@{}ll'+ 'H|' + ('c' * (len(cols)-3))  + '@{}'
         elif type == "density":
             cols = [r'\textbf{Density [$pts/m^2$]}'] + cols
-            align = 'c'+ 'H|' + ('c' * (len(cols)-3))
+            align = '@{}c'+ 'H|' + ('c' * (len(cols)-2))  + '@{}'
         elif type == "all":
             cols = [r'\textbf{Model}'] + cols
-            align = 'l'+ 'H|' + ('c' * (len(cols)-3))
+            align = '@{}l'+ 'H|' + ('c' * (len(cols)-2))  + '@{}'
         else:
             raise ValueError(f"Unknown type: {type}")
         lines.append(r'\resizebox{\textwidth}{!}{')
         lines.append(r'\begin{tabular}{' + align + '}')
         lines.append(r'\toprule')
+        
+        ### add metric description
+        metric_desc = self.get_metric_description(type)
+        lines.append(metric_desc)
+        
+        # lines.append(r'\midrule')
+        lines.append(r'\midrule')
         lines.append(' & '.join(cols) + r' \\')
+        lines.append(r'\midrule')
 
+        ##### format model and modality #####
         model_name = ""
         for i, row in df.iterrows():
             if type == "modality":
@@ -492,7 +536,7 @@ class Evaluator:
             else:   
                 raise ValueError(f"Unknown type: {type}")
 
-            if model_name != row.iloc[0].split('/')[0]:
+            if model_name != row.iloc[0].split('/')[0] and type == "modality" and i > 0:
                 model_name = row.iloc[0].split('/')[0]
                 model = ""
                 lines.append(r'\midrule')

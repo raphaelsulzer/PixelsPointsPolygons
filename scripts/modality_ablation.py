@@ -33,9 +33,6 @@ def predict_all():
         ("p2p_fusion", "early_fusion_bs2x16_mnv64"),
         ]
     
-    
-    # TODO: add Marions metric!!
-
     setup_hydraconf()
 
     cli_overrides = parse_cli_overrides()
@@ -47,7 +44,7 @@ def predict_all():
             
             overrides = cli_overrides + \
                 [f"experiment={experiment}",
-                 f"experiment.name={name}",
+                 f"experiment.name={name}", f"country=Switzerland", f"eval.split=test",
                 "checkpoint=best_val_iou"]
             cfg = compose(config_name="config", 
                           overrides=overrides)
@@ -72,24 +69,28 @@ def predict_all():
             else:
                 raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
             
-            # cfg.eval.pred_file = cfg.eval.pred_file.replace("predictions", f"predictions_{cfg.country}_{cfg.eval.split}")
-            time_dict = predictor.predict_dataset(split=cfg.eval.split)
+
+            # time_dict = predictor.predict_dataset(split=cfg.eval.split)
+            # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
+            # res_dict.update(time_dict)
+            # time_dict_file = f"{cfg.eval.eval_file}_modality_ablation_{cfg.country}_{cfg.eval.split}.csv".replace("metrics", "time")
+            # df = pd.read_csv(time_dict_file)
+            # time_dict = df.to_dict(orient="records")[0]
+            
 
             logger.info(f"Evaluate {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
             
-                      
             #############################################
             ################## EVALUATE #################
             #############################################
             
             ### Evaluate
             ee = Evaluator(cfg)
+            ee.pbar_disable = False
             ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
             ee.load_predictions(cfg.eval.pred_file)
             res_dict=ee.evaluate(print_info=False)
-            res_dict.update(time_dict)
 
-            res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
             
             exp_dict[f"{cfg.experiment.model.name}/{cfg.experiment.name}"] = res_dict
             
