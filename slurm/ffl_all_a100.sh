@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --account=cso@a100
-#SBATCH --job-name=ffl_all_bs4x16  # Job name
-#SBATCH --output=./slurm/runs/ffl_all_bs4x16.log       # Standard output and error log
-#SBATCH --error=./slurm/runs/ffl_all_bs4x16.log         # Error log
+#SBATCH --job-name=c_ffl_all_bs4x16  # Job name
+#SBATCH --output=./slurm/runs/ffl_all_bs4x16_cont.log       # Standard output and error log
+#SBATCH --error=./slurm/runs/ffl_all_bs4x16_cont.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
 #SBATCH --ntasks=4 # reserve 4 tasks (or processes)
 #SBATCH --gres=gpu:4              # Request 2 GPUs
@@ -35,4 +35,4 @@ set -x
 # Run your Python script
 
 
-torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=null experiment=ffl_fusion experiment.name=v0_all_bs4x16 country=all
+torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=latest experiment=ffl_fusion experiment.name=v0_all_bs4x16 country=all
