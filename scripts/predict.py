@@ -23,7 +23,7 @@ def main(cfg):
     else:
         raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
     
-    # predictor.predict_dataset(split=cfg.eval.split)
+    predictor.predict_dataset(split=cfg.eval.split)
     
     print(f"Evaluate {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.country}/{cfg.eval.split}")
 
