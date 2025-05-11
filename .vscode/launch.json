@@ -121,6 +121,8 @@
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
+                "eval.split=test",
+                "checkpoint=best_val_iou"
             ],
             "justMyCode": false
         },

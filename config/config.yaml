@@ -4,8 +4,8 @@ defaults:
   - polygonization: asm_acm
   - dataset: lidarpoly
   # - experiment: ffl_fusion
-  - experiment: lidar_density_ablation256.yaml
-  # - experiment: hisup_fusion
+  # - experiment: lidar_density_ablation256.yaml
+  - experiment: hisup_fusion
   # - experiment: p2p_fusion
   # - experiment: p2p_lidar
   - _self_
@@ -34,10 +34,10 @@ log_to_wandb: ${.run_type.log_to_wandb}
 num_workers: ${.run_type.num_workers}
 update_pbar_every: ${.host.update_pbar_every}
 
-# country: all
+country: all
 # country: NY
 # country: NZ
-country: Switzerland
+# country: Switzerland
 
 
 # dataset:
@@ -53,11 +53,11 @@ eval:
     # - ldof
     # - hausdorff
     # - coco
-    - iou
+    # - iou
     # - polis
     # - mta
     # - subset_iou
-    # - stats
+    - stats
     # - topdig
   eval_file: results/metrics
   ldof_exe: /user/rsulzer/home/cpp/line-DOF-metric/build/calculate_DoF
