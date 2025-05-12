@@ -37,6 +37,8 @@
                 "multi_gpu=false",
                 "checkpoint=best_val_iou",
                 "country=Switzerland",
+                "eval.split=test",
+                // "dataset.size=224015"
             ],
             "justMyCode": false,
             "env": {
