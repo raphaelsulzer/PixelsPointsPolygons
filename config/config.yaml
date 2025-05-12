@@ -4,8 +4,9 @@ defaults:
   - polygonization: asm_acm
   - dataset: lidarpoly
   # - experiment: ffl_fusion
+  - experiment: ffl_image_015
   # - experiment: lidar_density_ablation256.yaml
-  - experiment: hisup_fusion
+  # - experiment: hisup_fusion
   # - experiment: p2p_fusion
   # - experiment: p2p_lidar
   - _self_
