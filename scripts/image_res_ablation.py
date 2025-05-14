@@ -18,14 +18,8 @@ def predict_all():
     
     experiments = [
         # FFL
-        ("lidar_density_ablation4", "v5_lidar_bs2x16_mnv4"),
-        ("lidar_density_ablation8", "v5_lidar_bs2x16_mnv8"),
-        ("lidar_density_ablation16", "v5_lidar_bs2x16_mnv16"),
-        ("lidar_density_ablation32", "v5_lidar_bs2x16_mnv32"),
-        ("lidar_density_ablation64", "v5_lidar_bs2x16_mnv64"),
-        ("lidar_density_ablation128", "v5_lidar_bs2x16_mnv128"),
-        ("lidar_density_ablation256", "v5_lidar_bs2x16_mnv256"),
-        ("lidar_density_ablation512", "v5_lidar_bs2x16_mnv512"),
+        ("ffl_image", "ffl_image_015", "224015"),
+        ("ffl_image", "v4_image_bs4x16", "224"),
         ]
     
     setup_hydraconf()
@@ -35,14 +29,15 @@ def predict_all():
     exp_dict = {}
     with initialize(config_path="../config", version_base="1.3"):
         pbar = tqdm(total=len(experiments))
-        for experiment, name in experiments:
+        for experiment, name, image_res in experiments:
             
             overrides = cli_overrides + \
                 [f"experiment={experiment}",
                  f"experiment.name={name}",
                 "checkpoint=best_val_iou",
                 "eval.split=test",
-                "country=Switzerland"]
+                "country=Switzerland",
+                f"dataset.size={image_res}"]
             cfg = compose(config_name="config", 
                           overrides=overrides)
             OmegaConf.resolve(cfg)
@@ -93,12 +88,16 @@ def predict_all():
         print(df)
         print("\n")
         
-        cfg.eval.eval_file = f"{cfg.eval.eval_file}_lidar_density_ablation_{cfg.country}_{cfg.eval.split}.csv"
+        cfg.eval.eval_file = f"{cfg.eval.eval_file}_image_res_ablation_{cfg.country}_{cfg.eval.split}.csv"
         
         logger.info(f"Save eval file to {cfg.eval.eval_file}")
         df.to_csv(cfg.eval.eval_file, index=True, float_format="%.3g")
     
-        ee.to_latex(csv_file=cfg.eval.eval_file)
+        caption = r"\textbf{Ground sampling distance ablation}. We compare a ViT~\cite{vit}~+~FFL~\cite{ffl} model trained and tested on aerial images with a GSD of 15 and 25~cm. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
+        ee.to_latex(csv_file=cfg.eval.eval_file, 
+                    caption=caption,
+                    label="tab:gsd_ablation",
+                    type="resolution")
 
 
 
