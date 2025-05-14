@@ -35,9 +35,22 @@ def main(cfg):
     #             label="tab:modality_ablation", type="modality")
 
     
+    ### GSD ABLATION ###
+    # cfg.eval.eval_file = f"{cfg.eval.eval_file}_image_res_ablation_{cfg.country}_{cfg.eval.split}.csv"
+
+    # ee = Evaluator(cfg)
+    
+    # caption = r"\textbf{Ground sampling distance ablation}. We compare a ViT~\cite{vit}~+~FFL~\cite{ffl} model trained and tested on aerial images with a GSD of 15 and 25~cm. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
+    # ee.to_latex(csv_file=cfg.eval.eval_file, 
+    #             caption=caption,
+    #             label="tab:gsd_ablation",
+    #             type="resolution")
     
     
-    ### DENSITY ABLATION ###
+    
+    
+    
+    # ### DENSITY ABLATION ###
     cfg.eval.eval_file = f"{cfg.eval.eval_file}_lidar_density_ablation_{cfg.country}_{cfg.eval.split}.csv"
 
     ee = Evaluator(cfg)

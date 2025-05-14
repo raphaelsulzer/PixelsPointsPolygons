@@ -455,7 +455,7 @@ class Evaluator:
     def get_metric_description(self, table_type):
         
 
-        if table_type == "density":
+        if table_type == "density" or table_type == "resolution":
             desc = r'    &   & \multicolumn{3}{c}{\emph{Point-}} & \emph{Line-}  &  \multicolumn{3}{c}{\emph{Area-based}} &  \multicolumn{3}{c}{\emph{Complexity}}   \\'
         elif table_type == "modality":
             desc = r'    &   & & \multicolumn{3}{c}{\emph{Point-}} & \emph{Line-}&  \multicolumn{3}{c}{\emph{Area-based}} &  \multicolumn{2}{c}{\emph{Efficiency}} \\'
@@ -480,6 +480,8 @@ class Evaluator:
 
         if type == "density":
             df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
+        elif type == "resolution":
+            df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
         elif type == "modality":
             df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU",  "prediction_time", "num_params"])
         elif type == "all":
@@ -500,6 +502,9 @@ class Evaluator:
             align = '@{}ll'+ 'H|' + ('c' * (len(cols)-3))  + '@{}'
         elif type == "density":
             cols = [r'\textbf{Density [$pts/m^2$]}'] + cols
+            align = '@{}c'+ 'H|' + ('c' * (len(cols)-2))  + '@{}'
+        elif type == "resolution":
+            cols = [r'\textbf{GSD [cm]}'] + cols
             align = '@{}c'+ 'H|' + ('c' * (len(cols)-2))  + '@{}'
         elif type == "all":
             cols = [r'\textbf{Model}'] + cols
@@ -530,6 +535,9 @@ class Evaluator:
                 density = re.search(r"mnv(\d+)$", density)
                 density = int(density.group(1))//4
                 formatted_row = [str(density)]
+            elif type == "resolution":
+                gsd = [15,25]
+                formatted_row = [str(gsd[i])]
             elif type == "all":
                 model = self.get_model_name(row.iloc[0])
                 formatted_row = [model]

@@ -118,13 +118,14 @@
             "program": "${workspaceFolder}/scripts/evaluate.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=debug",
+                "run_type=release",
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
                 "multi_gpu=false",
                 "eval.split=test",
-                "checkpoint=best_val_iou"
+                "checkpoint=best_val_iou",
+                "experiment=lidar_density_ablation512"
             ],
             "justMyCode": false
         },

@@ -1,8 +1,0 @@
-,IoU,C-IoU,NR,prediction_time,num_params
-ffl/v4_fusion_bs4x16_mnv64,0.502,0.337,0.54,0.428,26.4
-hisup/v3_image_vit_cnn_bs4x12,0.485,0.376,0.639,0.0416,30.8
-hisup/lidar_pp_vit_cnn_bs2x16_mnv64,0.482,0.356,0.574,0.0463,30.8
-hisup/early_fusion_vit_cnn_bs2x16_mnv64,0.468,0.334,0.587,0.0491,33.5
-pix2poly/v4_image_vit_bs4x16,0.386,0.314,0.562,0.661,31.9
-pix2poly/lidar_pp_vit_bs2x16_mnv64,0.443,0.366,0.678,0.661,31.9
-pix2poly/early_fusion_bs2x16_mnv64,0.443,0.367,0.676,0.665,34.6
