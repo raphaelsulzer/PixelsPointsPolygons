@@ -9,18 +9,14 @@ from pixelspointspolygons.eval import Evaluator
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
     setup_hydraconf(cfg)
-    
-
-    # outfile = "/home/rsulzer/overleaf/building_footprint_dataset/tables/modality_ablation_table.tex"
-    
             
     cfg.eval.split = "test"
+    cfg.country = "Switzerland"
     
-    
-    ### MODALITY ABLATION ###
+    # ### MODALITY ABLATION ###
     # cfg.eval.eval_file = f"{cfg.eval.eval_file}_modality_ablation_{cfg.country}_{cfg.eval.split}.csv"
     
-    ## load time from time table
+    # # load time from time table
     # time_table = cfg.eval.eval_file.replace("metrics", "time")
     # df1 = pd.read_csv(cfg.eval.eval_file)
     # df2 = pd.read_csv(time_table)
@@ -37,24 +33,16 @@ def main(cfg):
     
     ### GSD ABLATION ###
     # cfg.eval.eval_file = f"{cfg.eval.eval_file}_image_res_ablation_{cfg.country}_{cfg.eval.split}.csv"
-
     # ee = Evaluator(cfg)
-    
     # caption = r"\textbf{Ground sampling distance ablation}. We compare a ViT~\cite{vit}~+~FFL~\cite{ffl} model trained and tested on aerial images with a GSD of 15 and 25~cm. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
     # ee.to_latex(csv_file=cfg.eval.eval_file, 
     #             caption=caption,
     #             label="tab:gsd_ablation",
     #             type="resolution")
     
-    
-    
-    
-    
-    # ### DENSITY ABLATION ###
+    ### DENSITY ABLATION ###
     cfg.eval.eval_file = f"{cfg.eval.eval_file}_lidar_density_ablation_{cfg.country}_{cfg.eval.split}.csv"
-
     ee = Evaluator(cfg)
-    
     caption = r"\textbf{Density ablation}. We compare a ViT~\cite{vit}~+~FFL~\cite{ffl} model trained and tested on increasingly dense LiDAR point clouds. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
     ee.to_latex(csv_file=cfg.eval.eval_file, 
                 caption=caption,
@@ -62,6 +50,7 @@ def main(cfg):
                 type="density")
     
     #### ALL COUNTRIES ####
+    # cfg.country = "all"
     # cfg.eval.eval_file = f"{cfg.eval.eval_file}_all_countries_{cfg.country}_{cfg.eval.split}.csv"
     # ee = Evaluator(cfg)
     
