@@ -32,7 +32,7 @@ wandb/*
 *.o
 
 # Files ignore
-!media/teaser.jpg
-
+!teaser.jpg
+!worldmap.jpg
 
 oar/runs/*
