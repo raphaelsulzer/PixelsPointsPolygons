@@ -1,19 +1,17 @@
 <div align="center">
-    <h2 align="center">Pixels, Points, Polygons: A Global Dataset and Baseline for Multimodal Building Vectorization</h2>
+    <h2 align="center">The P<sup>3</sup> dataset: Pixels, Points and Polygons <br> for Multimodal Building Vectorization</h2>
     <!-- <h3 align="center">Arxiv</h3> -->
     <!-- <h3 align="center"><a href="https://raphaelsulzer.de/">Raphael Sulzer<sup>1,2</sup></a><br></h3> -->
-    <h3><align="center">Raphael Sulzer<sup>1,2</sup></a></h3>
-    <align="center"><sup>1</sup>LuxCarta   <sup>2</sup>Inria
-    <img src="./media/teaser.jpg" width=100% height=100%>
+    <h3><align="center">Raphael Sulzer<sup>1,2</sup> &nbsp;&nbsp;&nbsp; Liuyun Duan<sup>1</sup>
+    &nbsp;&nbsp;&nbsp; Nicolas Girard<sup>1</sup>&nbsp;&nbsp;&nbsp; Florent Lafarge<sup>2</sup></a></h3>
+    <align="center"><sup>1</sup>LuxCarta Technology <br>  <sup>2</sup>Centre Inria d'Université Côte d'Azur
+    <img src="./teaser.jpg" width=100% height=100%>
     <b>Figure 1</b>: A view of our dataset of Zurich, Switzerland
 </div>
 
-
-<!-- [[Project Webpage]()]    [[Paper](https://arxiv.org/abs/2412.07899)]    [[Video]()] -->
-
 ## Abstract:
 
-asd
+We present the P<sup>3</sup> dataset, a large-scale multimodal benchmark for building vectorization, constructed from aerial LiDAR point clouds, high-resolution aerial imagery, and vectorized 2D building outlines, collected across three continents. The dataset contains over 10 billion LiDAR points with decimeter-level accuracy and RGB images at a ground sampling distance of 25 cm. While many existing datasets primarily focus on the image modality, P$^3$ offers a complementary perspective by also incorporating dense 3D information. We demonstrate that LiDAR point clouds serve as a robust modality for predicting building polygons, both in hybrid and end-to-end learning frameworks. Moreover, fusing aerial LiDAR and imagery further improves accuracy and geometric quality of predicted polygons. The P<sup>3</sup> dataset is publicly available, along with code and pretrained weights of three state-of-the-art models for building polygon prediction at https://github.com/raphaelsulzer/PixelsPointsPolygons.
 
 ## Highlights
 
@@ -23,24 +21,32 @@ asd
 
 ## Dataset
 
-### Numbers
+### Download
 
-#TODO put some images and numbers about the dataset
+You can download the dataset at [huggingface.co/datasets/rsi/PixelsPointsPolygons](https://huggingface.co/datasets/rsi/PixelsPointsPolygons) .
 
-<!-- ### Properties -->
 
-We provide train and val splits of the dataset in two different sizes 224 $\times$ 224 and 512 $\times$ 512. Both sized versions cover the same areas. The tiles of the test split have a fixed size of 2000 $\times$ 2000.
+### Overview
+
+<div align="left">
+    <img src="./worldmap.jpg" width=60% height=50%>
+</div>
+
+
+<!-- ### Prepare custom tile size
+
+See [datasets preprocessing](data_preprocess) for instructions on preparing a dataset with different tile sizes. -->
+
+
+## Code 
 
 ### Download
 
-hugginface link
+```
+git clone https://github.com/raphaelsulzer/PixelsPointsPolygons
+```
 
-### Prepare custom tile size
-
-See [datasets preprocessing](data_preprocess) for instructions on preparing a dataset with different tile sizes.
-
-
-## Requirements
+### Requirements
 
 To create a conda environment named `ppp` and install the repository as a python package with all dependencies run
 ```
@@ -56,7 +62,7 @@ pip install .
 
 
 
-## Model Zoo
+<!-- ## Model Zoo
 
 
 | Model                     | \<model>  | Encoder                   | \<encoder>            |Image  |LiDAR  | IoU       | C-IoU     |
@@ -69,9 +75,9 @@ pip install .
 | HiSup                     |\<hisup>   | PP+ViT \& ViT             | \<fusion_vit>         | ✅    |✅     | 0.78      | 0.85      |
 | Pix2Poly                  |\<pix2poly>| Vision Transformer (ViT)  | \<vit>                | ✅    |       | 0.85      | 0.90      |
 | Pix2Poly                  |\<pix2poly>| PointPillars (PP) + ViT   | \<pp_vit>             |       | ✅    | 0.80      | 0.88      |
-| Pix2Poly                  |\<pix2poly>| PP+ViT \& ViT             | \<fusion_vit>         | ✅    |✅     | 0.78      | 0.85      |
+| Pix2Poly                  |\<pix2poly>| PP+ViT \& ViT             | \<fusion_vit>         | ✅    |✅     | 0.78      | 0.85      | -->
 
-## Configuration
+### Configuration
 
 The project supports hydra configuration which allows to modify any parameter from the command line, such as the model and encoder types from the table above.
 To view all available options run
@@ -79,7 +85,7 @@ To view all available options run
 python train.py --help
 ```
 
-## Training
+### Training
 
 Start training with the following command:
 
@@ -88,14 +94,14 @@ torchrun --nproc_per_node=<num GPUs> train.py model=<model> encoder=<encoder> mo
 
 ```
 
-## Prediction
+### Prediction
 
 ```
 torchrun --nproc_per_node=<num GPUs> predict.py model=<model> checkpoint=best_val_iou ...
 
 ```
 
-## Evaluation
+### Evaluation
 
 ```
 python evaluate.py model=<model> checkpoint=best_val_iou

@@ -40,6 +40,8 @@ def predict_and_evaluate():
             overrides = cli_overrides + \
                 [f"experiment={experiment}",
                  f"experiment.name={name}",
+                 "country=all",
+                 "eval.split=test",
                 "checkpoint=best_val_iou"]
             cfg = compose(config_name="config", 
                           overrides=overrides)
@@ -81,7 +83,6 @@ def predict_and_evaluate():
             res_dict=ee.evaluate(print_info=False)
             # res_dict.update(time_dict)
 
-            
             exp_dict[f"{cfg.experiment.model.name}/{cfg.experiment.name}"] = res_dict
             
             pbar.update(1)

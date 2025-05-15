@@ -21,6 +21,7 @@ from .polis import compute_polis
 from .topdig_metrics import compute_mask_metrics
 from .line_dof import compute_line_dof
 from .hausdorff import compute_hausdorff_chamfer
+from .polis_chamfer_hausdorff import PointBasedMetrics
 
 # Format the DataFrame to display only two digits after the comma
 pd.options.display.float_format = "{:.2f}".format
@@ -223,15 +224,21 @@ class Evaluator:
             self.print_info()
                     
         with suppress_stdout():
-
-            if "polis" in self.cfg.eval.modes:  
-                self.logger.info("Computing POLIS...")
-                res_dict.update(compute_polis(self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
-            if "hausdorff" in self.cfg.eval.modes: 
-                self.logger.info("Computing Hausdorff and Chamfer distance...") 
-                res_dict.update(compute_hausdorff_chamfer(self.gt_file, self.pred_file, 
-                                                          pbar_disable=self.pbar_disable,
-                                                          workers=self.cfg.num_workers))
+            
+            
+            if bool(set(self.cfg.eval.modes) & set(["polis", "chamfer", "hausdorff"])):  
+                self.logger.info("Computing point-based metrics...")
+                gt_coco = COCO(self.gt_file)
+                dt_coco = gt_coco.loadRes(self.pred_file)
+                polisEval = PointBasedMetrics(gt_coco, dt_coco, iou_threshold=0.5, pbar_disable=self.pbar_disable, num_workers=self.cfg.num_workers)
+                res_dict.update(polisEval.evaluate())
+                
+                # res_dict.update(compute_polis(self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
+            # if "hausdorff" in self.cfg.eval.modes: 
+            #     self.logger.info("Computing Hausdorff and Chamfer distance...") 
+            #     res_dict.update(compute_hausdorff_chamfer(self.gt_file, self.pred_file, 
+            #                                               pbar_disable=self.pbar_disable,
+            #                                               workers=self.cfg.num_workers))
             if "ldof" in self.cfg.eval.modes:
                 self.logger.info("Computing line DoF...")
                 res_dict.update(compute_line_dof(
@@ -410,7 +417,7 @@ class Evaluator:
             elif name == 'C-IoU':
                 temp.append(r'\textbf{C-IoU} $\uparrow$')
             elif name == 'POLIS':
-                temp.append(r'\textbf{POLIS} $\downarrow$')
+                temp.append(r'\textbf{POLIS [m]} $\downarrow$')
             elif name == 'MTA' or name == 'mta':
                 temp.append(r'\textbf{MTA [$^\circ$]} $\downarrow$')
             elif name == 'Boundary IoU':
@@ -420,11 +427,11 @@ class Evaluator:
             elif name == "prediction_time":
                 temp.append(r'\textbf{Time [s]} $\downarrow$')
             elif name == "num_params":
-                temp.append(r'\textbf{Params [M]} $\downarrow$')
+                temp.append(r'\textbf{Params [$\times 10^6$]} $\downarrow$')
             elif name == "AP":
                 temp.append(r'\textbf{AP} $\uparrow$')
             elif name == "AR10":
-                temp.append(r'\textbf{AR$_{10}$} $\uparrow$')
+                temp.append(r'\textbf{AR} $\uparrow$')
             elif name == "hausdorff":
                 temp.append(r'\textbf{HD [m]} $\downarrow$')
             elif name == "chamfer":
@@ -456,11 +463,11 @@ class Evaluator:
         
 
         if table_type == "density" or table_type == "resolution":
-            desc = r'    &   & \multicolumn{3}{c}{\emph{Point-}} & \emph{Line-}  &  \multicolumn{3}{c}{\emph{Area-based}} &  \multicolumn{3}{c}{\emph{Complexity}}   \\'
+            desc = r'    & & \multicolumn{4}{c}{\emph{Boundary}}  & \multicolumn{3}{c}{\emph{Area}}  &  \multicolumn{3}{c}{\emph{Complexity}} \\'
         elif table_type == "modality":
-            desc = r'    &   & & \multicolumn{3}{c}{\emph{Point-}} & \emph{Line-}&  \multicolumn{3}{c}{\emph{Area-based}} &  \multicolumn{2}{c}{\emph{Efficiency}} \\'
+            desc = r'    & & & \multicolumn{4}{c}{\emph{Boundary}}& \multicolumn{3}{c}{\emph{Area}}  & \emph{Complexity} &  \multicolumn{2}{c}{\emph{Efficiency}} \\'
         elif table_type == "all":
-            desc = r'    &   & \multicolumn{3}{c}{\emph{Point-}} & \emph{Line-}  &  \multicolumn{3}{c}{\emph{Area-based}} &  \multicolumn{3}{c}{\emph{Complexity}}  \\'
+            desc = r'    & & \multicolumn{4}{c}{\emph{Boundary}}  & \multicolumn{3}{c}{\emph{Area}}  &  \multicolumn{3}{c}{\emph{Complexity}} \\'
         else:
             raise ValueError(f"Unknown type: {table_type}")
         
@@ -479,38 +486,42 @@ class Evaluator:
         
 
         if type == "density":
-            df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
+            df = df.filter(items=["Unnamed: 0","POLIS", "chamfer", "hausdorff", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
         elif type == "resolution":
-            df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
+            df = df.filter(items=["Unnamed: 0","POLIS", "chamfer", "hausdorff", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
         elif type == "modality":
-            df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU",  "prediction_time", "num_params"])
+            df = df.filter(items=["Unnamed: 0","POLIS", "chamfer", "hausdorff", "MTA", "AP", "AR10", "IoU", "NR", "prediction_time", "num_params"])
         elif type == "all":
-            df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
+            df = df.filter(items=["Unnamed: 0","POLIS", "chamfer", "hausdorff", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
         else:
             raise ValueError(f"Unknown type: {type}")
                     
         lines = []
-        lines.append(r'\begin{table}[H]')
-        lines.append(r'\setlength{\tabcolsep}{3pt}')
+        lines.append(r'\begin{table}[]')
 
-        lines.append(r'\centering')
 
         ##### format metric #####
         cols = self.format_metric_name(df.columns)
         if type == "modality":
             cols = [r'\textbf{Model}', r'\textbf{Modality}'] + cols
-            align = '@{}ll'+ 'H|' + ('c' * (len(cols)-3))  + '@{}'
+            align = '@{}cc@{}'+ 'H|' + ('c' * (len(cols)-3))  + '@{}'
+            lines.append(r'\setlength{\tabcolsep}{2pt}')
         elif type == "density":
             cols = [r'\textbf{Density [$pts/m^2$]}'] + cols
             align = '@{}c'+ 'H|' + ('c' * (len(cols)-2))  + '@{}'
+            lines.append(r'\setlength{\tabcolsep}{2pt}')
         elif type == "resolution":
             cols = [r'\textbf{GSD [cm]}'] + cols
             align = '@{}c'+ 'H|' + ('c' * (len(cols)-2))  + '@{}'
+            lines.append(r'\setlength{\tabcolsep}{2pt}')
         elif type == "all":
             cols = [r'\textbf{Model}'] + cols
             align = '@{}l'+ 'H|' + ('c' * (len(cols)-2))  + '@{}'
+            lines.append(r'\setlength{\tabcolsep}{2pt}')
         else:
             raise ValueError(f"Unknown type: {type}")
+        
+        lines.append(r'\centering')
         lines.append(r'\resizebox{\textwidth}{!}{')
         lines.append(r'\begin{tabular}{' + align + '}')
         lines.append(r'\toprule')
