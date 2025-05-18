@@ -36,8 +36,10 @@
                 "log_to_wandb=false",
                 "multi_gpu=false",
                 "checkpoint=best_val_iou",
-                "country=Switzerland",
-                "eval.split=test",
+                // "country=Switzerland",
+                "eval.split=val",
+                "experiment=hisup_fusion",
+                "experiment.name=early_fusion_vit_cnn_bs2x16_mnv64"
                 // "dataset.size=224015"
             ],
             "justMyCode": false,

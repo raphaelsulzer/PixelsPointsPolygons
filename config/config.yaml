@@ -2,9 +2,9 @@ defaults:
   - host: gin
   - run_type: release
   - polygonization: asm_acm
-  - dataset: lidarpoly
-  # - experiment: ffl_fusion
-  - experiment: ffl_image
+  - dataset: p3
+  - experiment: ffl_fusion
+  # - experiment: ffl_image
   # - experiment: lidar_density_ablation256.yaml
   # - experiment: hisup_fusion
   # - experiment: p2p_fusion
@@ -38,7 +38,7 @@ update_pbar_every: ${.host.update_pbar_every}
 # country: all
 # country: NY
 # country: NZ
-country: Switzerland
+country: CH
 
 
 # dataset:
