@@ -35,7 +35,7 @@ def get_test_loader(cfg,tokenizer=None,logger=None):
 def get_val_loader(cfg,tokenizer=None,logger=None):
     if cfg.dataset.name == 'inria':
         return get_val_loader_inria(cfg,tokenizer,logger)
-    elif cfg.dataset.name == 'lidarpoly':
+    elif cfg.dataset.name == 'lidarpoly' or cfg.dataset.name == 'p3':
         return get_val_loader_lidarpoly(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
