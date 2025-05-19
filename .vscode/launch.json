@@ -14,7 +14,7 @@
                 "host=gin",
                 "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false",
+                "multi_gpu=false"
             ],
             "justMyCode": false,
             "env": {
