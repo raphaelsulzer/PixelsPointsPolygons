@@ -3,13 +3,16 @@ defaults:
   - run_type: release
   - polygonization: asm_acm
   - dataset: p3
-  - experiment: ffl_fusion
+  - experiment: hisup_fusion
   # - experiment: ffl_image
   # - experiment: lidar_density_ablation256.yaml
   # - experiment: hisup_fusion
   # - experiment: p2p_fusion
   # - experiment: p2p_lidar
   - _self_
+
+experiment.name: debug
+
 
 hydra:
   run:
@@ -33,7 +36,7 @@ multi_gpu: false
 device: cuda
 log_to_wandb: ${.run_type.log_to_wandb}
 num_workers: ${.run_type.num_workers}
-update_pbar_every: ${.host.update_pbar_every}
+update_pbar_every: 2
 
 # country: all
 # country: NY

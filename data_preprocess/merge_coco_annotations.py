@@ -62,8 +62,6 @@ def merge_pt_files(input_files, output_file):
     
     data_dicts = defaultdict(list) 
     
-    
-    
     for input_file in input_files:
         
         data = torch.load(input_file)
@@ -86,47 +84,42 @@ def main(cfg):
     
     regions = ["train", "val", "test"]
 
-    
-    if not cfg.country == "Switzerland":
-        raise ValueError("Set the country to Switzerland for this script")
-    
-    
     for region in regions:
         
         fflp = FFLPreprocessing(cfg,
                         pre_transform=get_offline_transform_patch(),
                         fold=region)
 
-        file = fflp.processed_flag_filepath.replace("Switzerland", "all")        
+        file = fflp.processed_flag_filepath.replace(cfg.country, "all")        
         pathlib.Path(file).touch()   
         
         
         input_files = [
-            fflp.stats_filepath,
-            fflp.stats_filepath.replace("Switzerland", "NZ"),
-            fflp.stats_filepath.replace("Switzerland", "NY"),
+            fflp.stats_filepath.replace(cfg.country, "CH"),
+            fflp.stats_filepath.replace(cfg.country, "NZ"),
+            fflp.stats_filepath.replace(cfg.country, "NY"),
         ]
-        output_file = fflp.stats_filepath.replace("Switzerland", "all")
+        output_file = fflp.stats_filepath.replace(cfg.country, "all")
         merge_pt_files(input_files, output_file)
         
              
         # Example usage
         input_files = [
-            fflp.ann_ffl_file,
-            fflp.ann_ffl_file.replace("Switzerland", "NZ"),
-            fflp.ann_ffl_file.replace("Switzerland", "NY"),
+            fflp.ann_ffl_file.replace(cfg.country, "CH"),
+            fflp.ann_ffl_file.replace(cfg.country, "NZ"),
+            fflp.ann_ffl_file.replace(cfg.country, "NY"),
         ]
-        output_file = fflp.ann_ffl_file.replace("Switzerland", "all")
+        output_file = fflp.ann_ffl_file.replace(cfg.country, "all")
         merge_coco_annotations(input_files, output_file)
         
         
         # Example usage
         input_files = [
-            fflp.ann_file,
-            fflp.ann_file.replace("Switzerland", "NZ"),
-            fflp.ann_file.replace("Switzerland", "NY"),
+            fflp.ann_file.replace(cfg.country, "CH"),
+            fflp.ann_file.replace(cfg.country, "NZ"),
+            fflp.ann_file.replace(cfg.country, "NY"),
         ]
-        output_file = fflp.ann_file.replace("Switzerland", "all")
+        output_file = fflp.ann_file.replace(cfg.country, "all")
         merge_coco_annotations(input_files, output_file)
 
 
