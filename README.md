@@ -476,7 +476,7 @@ pip install .
 
 ### Setup
 
-The project supports hydra configuration which allows to modify any parameter either from a `.yaml` file of directly from the command line.
+The project supports hydra configuration which allows to modify any parameter either from a `.yaml` file or directly from the command line.
 
 To setup the project structure we recommend to specify your `$DATA_ROOT` and `$MODEL_ROOT` in `config/host/default.yaml`.
 
