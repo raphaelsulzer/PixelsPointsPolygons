@@ -520,15 +520,15 @@ python scripts/all_countries.py
 
 ### Custom training, prediction and evaluation
 
-We recommend to first setup a custom `$EXP_FILE` in `config/experiment` following the structure of one of the existing experiment files, e.g. `ffl_fusion.yaml`. You can then run:
+We recommend to first setup a custom experiment file `$EXP_FILE` in `config/experiment/` following the structure of one of the existing files, e.g. `ffl_fusion.yaml`. You can then run
 
 ```
 # train your model (on multiple GPUs)
 torchrun --nproc_per_node=$NUM_GPU scripts/train.py experiment=$EXP_FILE
 # predict the test set with your model (on multiple GPUs)
-torchrun --nproc_per_node=$NUM_GPU scripts/predict.py evaluation=test checkpoint=best_val_iou
+torchrun --nproc_per_node=$NUM_GPU scripts/predict.py experiment=$EXP_FILE evaluation=test checkpoint=best_val_iou
 # evaluate your prediction of the test set
-python scripts/evaluate.py model=<model> evaluation=test checkpoint=best_val_iou
+python scripts/evaluate.py model=<model> experiment=$EXP_FILE evaluation=test checkpoint=best_val_iou
 ```
 
 You could also continue training from a provided pretrained model with
