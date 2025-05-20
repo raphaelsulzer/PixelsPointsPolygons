@@ -6,3 +6,5 @@ multi_gpu: false
 device: cuda
 
 update_pbar_every: 1
+
+ldof_exe: /user/rsulzer/home/cpp/line-DOF-metric/build/calculate_DoF

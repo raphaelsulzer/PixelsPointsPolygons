@@ -124,7 +124,7 @@ class FFLTrainer(Trainer):
             plt.savefig(outfile)
             if show:
                 plt.show(block=True)
-            if self.cfg.log_to_wandb and self.local_rank == 0:
+            if self.cfg.run_type.log_to_wandb and self.local_rank == 0:
                 wandb.log({f"{epoch}: {names[i]}": wandb.Image(fig)})            
             plt.close(fig)
             
@@ -189,7 +189,7 @@ class FFLTrainer(Trainer):
 
     def train_val_loop(self):
 
-        if self.cfg.checkpoint is not None or self.cfg.checkpoint_file is not None:
+        if self.cfg.checkpoint is not None:
             self.load_checkpoint()
 
         iter_idx=self.cfg.experiment.model.start_epoch * len(self.train_loader)
@@ -205,7 +205,7 @@ class FFLTrainer(Trainer):
             evaluator = None
             
         
-        if self.cfg.log_to_wandb and self.local_rank == 0:
+        if self.cfg.run_type.log_to_wandb and self.local_rank == 0:
             self.setup_wandb()
             
         for epoch in self.progress_bar(epoch_iterator, start=self.cfg.experiment.model.start_epoch):
@@ -275,7 +275,7 @@ class FFLTrainer(Trainer):
 
                     wandb_dict[f"val_num_polygons"] = len(coco_predictions)
 
-                    prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", f"epoch_{epoch}.json")
+                    prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.experiment.country}_{self.cfg.evaluation.split}", f"epoch_{epoch}.json")
                     os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
                     with open(prediction_outfile, "w") as fp:
                         fp.write(json.dumps(coco_predictions))
@@ -286,7 +286,7 @@ class FFLTrainer(Trainer):
                     evaluator.print_dict_results(val_metrics_dict)
                     
                     if val_metrics_dict['IoU'] > self.cfg.training.best_val_iou:
-                        best_prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", "best_val_iou.json")
+                        best_prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.experiment.country}_{self.cfg.evaluation.split}", "best_val_iou.json")
                         shutil.copyfile(prediction_outfile, best_prediction_outfile)
                         self.logger.info(f"Copied predictions to {best_prediction_outfile}")
                         
@@ -298,7 +298,7 @@ class FFLTrainer(Trainer):
                     self.save_best_and_latest_checkpoint(epoch, val_loss_dict, val_metrics_dict)
                     for k,v in wandb_dict.items():
                         self.logger.debug(f"{k}: {v}")
-                        if self.cfg.log_to_wandb:
+                        if self.cfg.run_type.log_to_wandb:
                             wandb.log(wandb_dict)
                             
                 # Sync all processes before next epoch

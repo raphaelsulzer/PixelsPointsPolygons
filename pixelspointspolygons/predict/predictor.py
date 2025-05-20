@@ -51,11 +51,8 @@ class Predictor:
     def load_checkpoint(self):
         
         ## get the file
-        if self.cfg.checkpoint_file is not None:
-            checkpoint_file = self.cfg.checkpoint_file
-            self.cfg.checkpoint = os.path.basename(checkpoint_file).split(".")[0]+"_overwrite"
-        else:
-            checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
+        checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"{self.cfg.checkpoint}.pth")
+        
         if not os.path.isfile(checkpoint_file):
             raise FileExistsError(f"Checkpoint file {checkpoint_file} not found.")
         self.logger.info(f"Loading model from checkpoint: {checkpoint_file}")

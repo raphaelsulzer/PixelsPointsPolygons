@@ -1,8 +1,10 @@
 name: default
-data_root: data
-model_root: results
+data_root: data/${..dataset.name}
+model_root: data/${..dataset.name}_output
 
 multi_gpu: false
 device: cuda
 
 update_pbar_every: 1
+
+ldof_exe: /path/to/calculate_DoF

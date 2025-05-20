@@ -1,0 +1,10 @@
+split: val
+pred_file: ${..output_dir}/predictions_${..experiment.country}_${.split}/${..checkpoint}.json
+modes:
+    - ldof
+    - hausdorff
+    - coco
+    - iou
+    - polis
+    - mta
+eval_file: results/metrics

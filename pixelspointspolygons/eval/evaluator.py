@@ -34,8 +34,6 @@ class Evaluator:
         
         self.cfg = cfg
         
-        # self.gt_file = cfg.eval.gt_file
-        # self.pred_file = cfg.eval.pred_file
         self.gt_file = None
         self.pred_file = None
         
@@ -226,7 +224,7 @@ class Evaluator:
         with suppress_stdout():
             
             
-            if bool(set(self.cfg.eval.modes) & set(["polis", "chamfer", "hausdorff"])):  
+            if bool(set(self.cfg.evaluation.modes) & set(["polis", "chamfer", "hausdorff"])):  
                 self.logger.info("Computing point-based metrics...")
                 gt_coco = COCO(self.gt_file)
                 dt_coco = gt_coco.loadRes(self.pred_file)
@@ -234,34 +232,37 @@ class Evaluator:
                 res_dict.update(polisEval.evaluate())
                 
                 # res_dict.update(compute_polis(self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
-            # if "hausdorff" in self.cfg.eval.modes: 
+            # if "hausdorff" in self.cfg.evaluation.modes: 
             #     self.logger.info("Computing Hausdorff and Chamfer distance...") 
             #     res_dict.update(compute_hausdorff_chamfer(self.gt_file, self.pred_file, 
             #                                               pbar_disable=self.pbar_disable,
             #                                               workers=self.cfg.num_workers))
-            if "ldof" in self.cfg.eval.modes:
+            if "ldof" in self.cfg.evaluation.modes:
                 self.logger.info("Computing line DoF...")
-                res_dict.update(compute_line_dof(
-                    self.cfg.eval.ldof_exe, self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
-            if "mta" in self.cfg.eval.modes:
+                if os.path.isfile(self.cfg.host.ldof_exe):
+                    res_dict.update(compute_line_dof(
+                        self.cfg.host.ldof_exe, self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
+                else:
+                    self.logger.warning(f"Line DoF executable {self.cfg.host.ldof_exe} not found. Skipping line DoF evaluation.")
+            if "mta" in self.cfg.evaluation.modes:
                 self.logger.info("Computing MTA...")
                 res_dict.update(compute_max_angle_error(self.gt_file, self.pred_file, num_workers=self.cfg.num_workers))
-            if "iou" in self.cfg.eval.modes:
+            if "iou" in self.cfg.evaluation.modes:
                 self.logger.info("Computing IoU and C-IoU...")
                 res_dict.update(compute_IoU_cIoU(self.pred_file, self.gt_file, pbar_disable=self.pbar_disable))
-            if "subset_iou" in self.cfg.eval.modes:
+            if "subset_iou" in self.cfg.evaluation.modes:
                 self.logger.info("Computing Subset IoU and C-IoU...")
                 res_dict.update(compute_IoU_cIoU(self.pred_file, self.gt_file, subset=True, pbar_disable=self.pbar_disable))
-            if "topdig" in self.cfg.eval.modes:
+            if "topdig" in self.cfg.evaluation.modes:
                 self.logger.info("Computing Topdig...")
                 res_dict.update(compute_mask_metrics(self.pred_file, self.gt_file))
-            if "boundary-coco" in self.cfg.eval.modes:
+            if "boundary-coco" in self.cfg.evaluation.modes:
                 self.logger.info("Computing Boundary COCO...")
                 res_dict.update(self.compute_boundary_coco_metrics())
-            if "coco" in self.cfg.eval.modes:
+            if "coco" in self.cfg.evaluation.modes:
                 self.logger.info("Computing COCO...")
                 res_dict.update(self.compute_coco_metrics())
-            if "stats" in self.cfg.eval.modes:
+            if "stats" in self.cfg.evaluation.modes:
                 self.logger.info("Computing Stats...")
                 res_dict.update(self.compute_coco_stats())
         
@@ -281,78 +282,6 @@ class Evaluator:
         # Pretty print the DataFrame
         print(df)
         
-        
-    def check_if_predictions_exist(self):
-        
-        for item in self.cfg.experiments:
-            
-            for exp in item.experiment_name:
-                
-                name, img_dim, polygonization_method = get_experiment_type(exp)
-                                                
-                pred = self.cfg.checkpoint
-                pred_file = os.path.join(self.cfg.host.data_root,
-                                         f"{item.model}_outputs",self.cfg.dataset.name,
-                                         img_dim,name,
-                                         "predictions",polygonization_method,f"{pred}.json")
-                if not os.path.isfile(pred_file):
-                    raise FileExistsError(f"{pred_file} does not exist!")
-
-        
-        return True
-    
-    def evaluate_all(self):
-        
-        self.logger.warning("evaluate_all() is deprecated. Please use evaluate() instead.")
-
-
-        self.logger.info("Evaluating all models...")
-        
-        # first quickly check if the prediction file exists before doing the more lengthy evaluation
-        self.check_if_predictions_exist()
-        self.logger.debug("All prediction files exist.")
-        
-        res_dict = {}
-        
-        for item in self.cfg.experiments:
-            
-            for exp in item.experiment_name:
-                
-                name, img_dim, polygonization_method = get_experiment_type(exp)
-
-                pred = self.cfg.checkpoint
-
-                self.logger.info(f"Evaluate {item.model}/{exp}/{pred}")
-                
-                pred_file = os.path.join(self.cfg.host.data_root,
-                                         f"{item.model}_outputs",self.cfg.dataset.name,
-                                         img_dim,name,
-                                         "predictions",polygonization_method,f"{pred}.json")                
-                if not os.path.isfile(pred_file):
-                    raise FileExistsError(f"{pred_file} does not exist!")
-                
-                gt_file = os.path.join(self.cfg.host.data_root,self.cfg.dataset.name,img_dim,"annotations_val.json")
-                if not os.path.isfile(gt_file):
-                    raise FileExistsError(f"{gt_file} does not exist!")
-                
-                self.load_gt(gt_file)
-                self.load_predictions(pred_file)
-                
-                res_dict[f"{item.model}/{exp}"]=self.evaluate()
-
-        
-        df = pd.DataFrame.from_dict(res_dict, orient='index')
-
-        # pd.concat(df_list, axis=0, ignore_index=False)
-        # Save the DataFrame to a CSV file
-        # output_dir = os.path.join(self.cfg.host.data_root, "eval_results")
-        
-        print("\n")
-        print(df)
-        print("\n")
-        
-        self.logger.info(f"Save eval file to {self.cfg.eval.eval_file}")
-        df.to_csv(self.cfg.eval.eval_file, index=True, float_format="%.3g")
         
     def get_model_name(self, val):
         model_name = val.split('/')[0]
@@ -604,7 +533,7 @@ class Evaluator:
         latex_string = '\n'.join(lines)
         
         if outfile is None:
-            outfile = self.cfg.eval.eval_file.replace('.csv', '.tex')
+            outfile = self.cfg.evaluation.eval_file.replace('.csv', '.tex')
         with open(outfile, 'w') as f:
             f.write(latex_string)
         self.logger.info(f"Saved LaTeX table to {outfile}")
