@@ -7,7 +7,7 @@
     <b>Figure 1</b>: A view of our dataset of Zurich, Switzerland
 </div>
 
-## Abstract:
+## Abstract
 
 <div align="justify">
 We present the P<sup>3</sup> dataset, a large-scale multimodal benchmark for building vectorization, constructed from aerial LiDAR point clouds, high-resolution aerial imagery, and vectorized 2D building outlines, collected across three continents. The dataset contains over 10 billion LiDAR points with decimeter-level accuracy and RGB images at a ground sampling distance of 25 cm. While many existing datasets primarily focus on the image modality, P<sup>3</sup> offers a complementary perspective by also incorporating dense 3D information. We demonstrate that LiDAR point clouds serve as a robust modality for predicting building polygons, both in hybrid and end-to-end learning frameworks. Moreover, fusing aerial LiDAR and imagery further improves accuracy and geometric quality of predicted polygons. The P<sup>3</sup> dataset is publicly available, along with code and pretrained weights of three state-of-the-art models for building polygon prediction at https://github.com/raphaelsulzer/PixelsPointsPolygons.
@@ -15,8 +15,9 @@ We present the P<sup>3</sup> dataset, a large-scale multimodal benchmark for bui
 
 ## Highlights
 
-- A global, multimodal dataset of aerial images, aerial lidar point clouds and building polygons
-- A library for training and evaluating state-of-the-art deep learning methods on the dataset
+- A global, multimodal dataset of aerial images, aerial LiDAR point clouds and building outline polygons, available at [huggingface.co/datasets/rsi/PixelsPointsPolygons](https://huggingface.co/datasets/rsi/PixelsPointsPolygons) 
+- A library for training and evaluating state-of-the-art deep learning methods on the dataset, available at [github.com/raphaelsulzer/PixelsPointsPolygons](https://github.com/raphaelsulzer/PixelsPointsPolygons)
+- Pretrained model weights, available at [huggingface.co/rsi/PixelsPointsPolygons](https://huggingface.co/rsi/PixelsPointsPolygons) 
 
 
 ## Dataset
@@ -24,6 +25,8 @@ We present the P<sup>3</sup> dataset, a large-scale multimodal benchmark for bui
 ### Download
 
 You can download the dataset at [huggingface.co/datasets/rsi/PixelsPointsPolygons](https://huggingface.co/datasets/rsi/PixelsPointsPolygons) .
+
+
 
 
 ### Overview
@@ -48,7 +51,7 @@ git clone https://github.com/raphaelsulzer/PixelsPointsPolygons
 
 ### Requirements
 
-To create a conda environment named `ppp` and install the repository as a python package with all dependencies run
+To create a conda environment named `p3` and install the repository as a python package with all dependencies run
 ```
 bash install.sh
 ```
@@ -79,32 +82,41 @@ pip install .
 
 ### Configuration
 
-The project supports hydra configuration which allows to modify any parameter from the command line, such as the model and encoder types from the table above.
+The project supports hydra configurations which allow to modify any parameter from the command line, such as the model and encoder types from the table above.
 To view all available options run
 ```
-python train.py --help
+python scripts/train.py --help
 ```
+
+<!-- The most important parameters are described below:
+<details>
+<summary>CLI Parameters</summary>
+
+- **experiment:** Path to an experiment.yaml file
+- **model:** Overwrite for a specific model
+
+</details> -->
 
 ### Training
 
 Start training with the following command:
 
 ```
-torchrun --nproc_per_node=<num GPUs> train.py model=<model> encoder=<encoder> model.batch_size=<batch size> ...
+torchrun --nproc_per_node=<num GPUs> scripts/train.py model=<model> encoder=<encoder> model.batch_size=<batch size> ...
 
 ```
 
 ### Prediction
 
 ```
-torchrun --nproc_per_node=<num GPUs> predict.py model=<model> checkpoint=best_val_iou ...
+torchrun --nproc_per_node=<num GPUs> scripts/predict.py model=<model> checkpoint=best_val_iou ...
 
 ```
 
 ### Evaluation
 
 ```
-python evaluate.py model=<model> checkpoint=best_val_iou
+python scripts/evaluate.py model=<model> checkpoint=best_val_iou
 ```
 <!-- ## Trained models
 

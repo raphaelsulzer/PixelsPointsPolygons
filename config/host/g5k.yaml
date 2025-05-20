@@ -1,3 +1,8 @@
 name: g5k
 data_root: /home/rsulzer/data
 model_root: /home/rsulzer/data
+
+multi_gpu: true
+device: cuda
+
+update_pbar_every: 60

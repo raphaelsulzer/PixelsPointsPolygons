@@ -10,11 +10,8 @@
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",
-                // "run_type=release",
                 "host=gin",
-                "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false"
             ],
             "justMyCode": false,
             "env": {
@@ -32,11 +29,9 @@
                 // "run_type=debug",
                 "run_type=release",
                 "host=gin",
-                "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false",
                 "checkpoint=best_val_iou",
-                // "country=Switzerland",
+                // "experiment.country=Switzerland",
                 "eval.split=val",
                 "experiment=hisup_fusion",
                 "experiment.name=early_fusion_vit_cnn_bs2x16_mnv64"
@@ -57,9 +52,7 @@
             "args": [
                 "run_type=debug",
                 "host=gin",
-                "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false"
             ],
             "justMyCode": false
         },
@@ -72,9 +65,7 @@
             "args": [
                 "run_type=debug",
                 "host=gin",
-                "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false"
             ],
             "justMyCode": false
         },
@@ -86,12 +77,8 @@
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",
-                // "run_type=release",
-                // "dataset.val_subset=null",
                 "host=gin",
-                "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false",
             ],
             "justMyCode": false
         },
@@ -103,13 +90,9 @@
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",
-                // "run_type=release",
-                // "dataset.val_subset=null",
                 "host=gin",
-                "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false",
-                "country=all"
+                "experiment.country=all"
             ],
             "justMyCode": false
         },
@@ -122,9 +105,7 @@
             "args": [
                 "run_type=release",
                 "host=gin",
-                "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false",
                 "eval.split=test",
                 "checkpoint=best_val_iou",
                 "experiment=lidar_density_ablation512"
@@ -140,9 +121,8 @@
             "args": [
                 "run_type=release",
                 "host=gin",
-                "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false",
+                "host.multi_gpu=false",
             ],
             "justMyCode": false
         },
@@ -156,10 +136,8 @@
                 // "run_type=release",
                 "run_type=debug",
                 "host=gin",
-                "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false",
-                // "country=NY"
+                // "experiment.country=NY"
                 // "experiment.encoder=pointpillars_vit" // setting an encoder here, simply to load the 224x224 dataset version
             ],
             "justMyCode": false
@@ -173,10 +151,8 @@
                 // "run_type=release",
                 "run_type=debug",
                 "host=gin",
-                "device=cuda",
                 "log_to_wandb=false",
-                "multi_gpu=false",
-                "country=Switzerland"
+                "experiment.country=Switzerland"
                 // "experiment.encoder=pointpillars_vit" // setting an encoder here, simply to load the 224x224 dataset version
             ],
             "justMyCode": false

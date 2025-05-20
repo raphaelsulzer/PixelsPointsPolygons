@@ -3,13 +3,13 @@ name: PixelsPointsPolygons
 size: ${..experiment.encoder.in_size}
 path: ${host.data_root}/data/${.size}
 annotations:
-  train: ${..path}/annotations/annotations_${...country}_train.json
-  val: ${..path}/annotations/annotations_${...country}_val.json
-  test: ${..path}/annotations/annotations_${...country}_test.json
+  train: ${..path}/annotations/annotations_${...experiment.country}_train.json
+  val: ${..path}/annotations/annotations_${...experiment.country}_val.json
+  test: ${..path}/annotations/annotations_${...experiment.country}_test.json
 ffl_stats:
-  train: ${..path}/ffl/train/stats-${...country}.pt
-  val: ${..path}/ffl/val/stats-${...country}.pt
-  test: ${..path}/ffl/test/stats-${...country}.pt
+  train: ${..path}/ffl/train/stats-${...experiment.country}.pt
+  val: ${..path}/ffl/val/stats-${...experiment.country}.pt
+  test: ${..path}/ffl/test/stats-${...experiment.country}.pt
 # train_subset: null
 # val_subset: null
 # test_subset: null

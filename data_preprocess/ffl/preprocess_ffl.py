@@ -51,7 +51,7 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         self.stats = None
         if os.path.exists(self.stats_filepath):
             self.stats = torch.load(self.stats_filepath)
-        self.processed_flag_filepath = os.path.join(self.processed_dir, f"processed-flag-{self.cfg.country}")
+        self.processed_flag_filepath = os.path.join(self.processed_dir, f"processed-flag-{self.cfg.experiment.country}")
 
         self.ann_ffl_file = self.ann_file.replace("annotations_","annotations_ffl_")        
 

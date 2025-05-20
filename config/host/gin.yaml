@@ -1,3 +1,8 @@
 name: gin
 data_root: /data/rsulzer/${..dataset.name}
 model_root: /data/rsulzer/${..dataset.name}_output
+
+multi_gpu: false
+device: cuda
+
+update_pbar_every: 1

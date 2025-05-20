@@ -50,7 +50,7 @@ def predict_all():
                           overrides=overrides)
             OmegaConf.resolve(cfg)
             
-            logger.info(f"Predict {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
+            logger.info(f"Predict {experiment}/{name} on {cfg.experiment.country}/{cfg.eval.split}")
             # pbar.set_description(f"Predict and evaluate {experiment} on {cfg.eval.split}")
             pbar.refresh()  
           
@@ -73,12 +73,12 @@ def predict_all():
             # time_dict = predictor.predict_dataset(split=cfg.eval.split)
             # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
             # res_dict.update(time_dict)
-            # time_dict_file = f"{cfg.eval.eval_file}_modality_ablation_{cfg.country}_{cfg.eval.split}.csv".replace("metrics", "time")
+            # time_dict_file = f"{cfg.eval.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.eval.split}.csv".replace("metrics", "time")
             # df = pd.read_csv(time_dict_file)
             # time_dict = df.to_dict(orient="records")[0]
             
 
-            logger.info(f"Evaluate {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
+            logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.country}/{cfg.eval.split}")
             
             #############################################
             ################## EVALUATE #################
@@ -107,7 +107,7 @@ def predict_all():
         print(df)
         print("\n")
         
-        cfg.eval.eval_file = f"{cfg.eval.eval_file}_modality_ablation_{cfg.country}_{cfg.eval.split}.csv"
+        cfg.eval.eval_file = f"{cfg.eval.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.eval.split}.csv"
         
         logger.info(f"Save eval file to {cfg.eval.eval_file}")
         df.to_csv(cfg.eval.eval_file, index=True, float_format="%.3g")

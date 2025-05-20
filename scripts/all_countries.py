@@ -47,7 +47,7 @@ def predict_and_evaluate():
                           overrides=overrides)
             OmegaConf.resolve(cfg)
             
-            logger.info(f"Predict {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
+            logger.info(f"Predict {experiment}/{name} on {cfg.experiment.country}/{cfg.eval.split}")
             pbar.refresh()  
           
             #############################################
@@ -69,7 +69,7 @@ def predict_and_evaluate():
             # time_dict = predictor.predict_dataset(split=cfg.eval.split)
             # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
 
-            logger.info(f"Evaluate {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
+            logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.country}/{cfg.eval.split}")
                       
             #############################################
             ################## EVALUATE #################
@@ -98,7 +98,7 @@ def predict_and_evaluate():
         print(df)
         print("\n")
         
-        cfg.eval.eval_file = f"{cfg.eval.eval_file}_all_countries_{cfg.country}_{cfg.eval.split}.csv"
+        cfg.eval.eval_file = f"{cfg.eval.eval_file}_all_countries_{cfg.experiment.country}_{cfg.eval.split}.csv"
         
         logger.info(f"Save eval file to {cfg.eval.eval_file}")
         df.to_csv(cfg.eval.eval_file, index=True, float_format="%.3g")

@@ -204,7 +204,7 @@ def plot_model_architecture(model, input_shape=(16,3,224,224), outfile="/data/rs
 def setup_ddp(cfg):
     """Init multi-gpu training or prediction"""
     
-    if not cfg.multi_gpu:
+    if not cfg.host.multi_gpu:
         return 0,1
     else:
         world_size = torch.cuda.device_count()
