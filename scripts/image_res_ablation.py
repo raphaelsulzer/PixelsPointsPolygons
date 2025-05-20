@@ -42,8 +42,8 @@ def predict_all():
                           overrides=overrides)
             OmegaConf.resolve(cfg)
             
-            logger.info(f"Predict {experiment}/{name} on {cfg.experiment.country}/{cfg.eval.split}")
-            # pbar.set_description(f"Predict and evaluate {experiment} on {cfg.eval.split}")
+            logger.info(f"Predict {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
+            # pbar.set_description(f"Predict and evaluate {experiment} on {cfg.evaluation.split}")
             pbar.refresh()  
           
             #############################################
@@ -54,11 +54,11 @@ def predict_all():
                         
             predictor = FFLPredictor(cfg, local_rank, world_size)
 
-            # time_dict = predictor.predict_dataset(split=cfg.eval.split)
+            # time_dict = predictor.predict_dataset(split=cfg.evaluation.split)
             # res_dict.update(time_dict)
             # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
             
-            logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.country}/{cfg.eval.split}")
+            logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
             
                       
             #############################################
@@ -68,8 +68,8 @@ def predict_all():
             ### Evaluate
             ee = Evaluator(cfg)
             ee.pbar_disable = False
-            ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
-            ee.load_predictions(cfg.eval.pred_file)
+            ee.load_gt(cfg.dataset.annotations[cfg.evaluation.split])
+            ee.load_predictions(cfg.evaluation.pred_file)
             res_dict=ee.evaluate(print_info=False)
 
             
@@ -88,13 +88,13 @@ def predict_all():
         print(df)
         print("\n")
         
-        cfg.eval.eval_file = f"{cfg.eval.eval_file}_image_res_ablation_{cfg.experiment.country}_{cfg.eval.split}.csv"
+        cfg.evaluation.eval_file = f"{cfg.evaluation.eval_file}_image_res_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv"
         
-        logger.info(f"Save eval file to {cfg.eval.eval_file}")
-        df.to_csv(cfg.eval.eval_file, index=True, float_format="%.3g")
+        logger.info(f"Save eval file to {cfg.evaluation.eval_file}")
+        df.to_csv(cfg.evaluation.eval_file, index=True, float_format="%.3g")
     
         caption = r"\textbf{Ground sampling distance ablation}. We compare a ViT~\cite{vit}~+~FFL~\cite{ffl} model trained and tested on aerial images with a GSD of 15 and 25~cm. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
-        ee.to_latex(csv_file=cfg.eval.eval_file, 
+        ee.to_latex(csv_file=cfg.evaluation.eval_file, 
                     caption=caption,
                     label="tab:gsd_ablation",
                     type="resolution")

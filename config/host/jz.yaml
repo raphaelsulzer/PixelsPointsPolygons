@@ -6,3 +6,5 @@ multi_gpu: true
 device: cuda
 
 update_pbar_every: 60
+
+ldof_exe: null

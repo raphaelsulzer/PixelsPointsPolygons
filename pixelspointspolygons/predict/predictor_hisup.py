@@ -95,9 +95,9 @@ class HiSupPredictor(Predictor):
             time_dict["prediction_time"] = (time.time() - t0) / len(self.loader.dataset)
         
             if self.local_rank == 0:
-                os.makedirs(os.path.dirname(self.cfg.eval.pred_file), exist_ok=True)
-                self.logger.info(f"Writing predictions to {self.cfg.eval.pred_file}")
-                with open(self.cfg.eval.pred_file, "w") as fp:
+                os.makedirs(os.path.dirname(self.cfg.evaluation.pred_file), exist_ok=True)
+                self.logger.info(f"Writing predictions to {self.cfg.evaluation.pred_file}")
+                with open(self.cfg.evaluation.pred_file, "w") as fp:
                     fp.write(json.dumps(coco_predictions))
             
             return time_dict
