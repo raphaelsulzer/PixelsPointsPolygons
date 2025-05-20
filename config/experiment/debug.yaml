@@ -1,7 +1,10 @@
 defaults:
   - /encoder: pointpillars_vit_cnn
   - /model: ffl
+  - /polygonization: asm_acm
   - _self_
 
 name: debug
 group_name: debug
+
+country: CH

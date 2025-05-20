@@ -1,5 +1,7 @@
 import timm
 import logging
+import os
+
 import torch.nn as nn
 
 from ...misc import make_logger
@@ -15,6 +17,8 @@ class ViT(nn.Module):
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
     
+        if not os.path.isfile(cfg.experiment.encoder.checkpoint_file):
+            raise FileNotFoundError(f"Checkpoint file {cfg.experiment.encoder.checkpoint_file} not found.")
         logging.getLogger('timm').setLevel(logging.WARNING)
         self.vit = timm.create_model(
             model_name=cfg.experiment.encoder.type,

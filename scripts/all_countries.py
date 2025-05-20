@@ -47,7 +47,7 @@ def predict_and_evaluate():
                           overrides=overrides)
             OmegaConf.resolve(cfg)
             
-            logger.info(f"Predict {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
+            logger.info(f"Predict {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
             pbar.refresh()  
           
             #############################################
@@ -65,11 +65,10 @@ def predict_and_evaluate():
             else:
                 raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
             
-            # cfg.eval.pred_file = f"{cfg.output_dir}/predictions/{cfg.checkpoint}.json"
-            # time_dict = predictor.predict_dataset(split=cfg.eval.split)
+            # time_dict = predictor.predict_dataset(split=cfg.evaluation.split)
             # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
 
-            logger.info(f"Evaluate {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
+            logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
                       
             #############################################
             ################## EVALUATE #################
@@ -78,8 +77,8 @@ def predict_and_evaluate():
             ### Evaluate
             ee = Evaluator(cfg)
             ee.pbar_disable = False
-            ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
-            ee.load_predictions(cfg.eval.pred_file)
+            ee.load_gt(cfg.dataset.annotations[cfg.evaluation.split])
+            ee.load_predictions(cfg.evaluation.pred_file)
             res_dict=ee.evaluate(print_info=False)
             # res_dict.update(time_dict)
 
@@ -98,12 +97,12 @@ def predict_and_evaluate():
         print(df)
         print("\n")
         
-        cfg.eval.eval_file = f"{cfg.eval.eval_file}_all_countries_{cfg.country}_{cfg.eval.split}.csv"
+        cfg.evaluation.eval_file = f"{cfg.evaluation.eval_file}_all_countries_{cfg.experiment.country}_{cfg.evaluation.split}.csv"
         
-        logger.info(f"Save eval file to {cfg.eval.eval_file}")
-        df.to_csv(cfg.eval.eval_file, index=True, float_format="%.3g")
+        logger.info(f"Save eval file to {cfg.evaluation.eval_file}")
+        df.to_csv(cfg.evaluation.eval_file, index=True, float_format="%.3g")
     
-        ee.to_latex(csv_file=cfg.eval.eval_file)
+        ee.to_latex(csv_file=cfg.evaluation.eval_file)
 
     
         

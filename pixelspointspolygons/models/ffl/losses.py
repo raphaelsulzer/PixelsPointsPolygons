@@ -297,7 +297,7 @@ def build_combined_loss(cfg):
 
         # Add gradient computation for segmentation if necessary
         if need_seg_grads:
-            pre_processes.append(ComputeSegGrads(cfg.device))
+            pre_processes.append(ComputeSegGrads(cfg.host.device))
 
     # Final Combined Loss
     combined_loss = MultiLoss(

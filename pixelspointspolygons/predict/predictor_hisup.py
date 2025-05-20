@@ -37,7 +37,7 @@ class HiSupPredictor(Predictor):
         
         self.model = HiSupModel(self.cfg, self.local_rank)
         self.model.eval()
-        self.model.to(self.cfg.device)
+        self.model.to(self.cfg.host.device)
         self.load_checkpoint()
     
     def predict_dataset(self, split="val"):
@@ -65,14 +65,14 @@ class HiSupPredictor(Predictor):
 
             for x_image, x_lidar, y, tile_ids in loader:
                 
-                batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
+                batch_size = x_image.size(0) if self.cfg.experiment.encoder.use_images else x_lidar.size(0)
                 
-                if self.cfg.use_images:
-                    x_image = x_image.to(self.cfg.device, non_blocking=True)
-                if self.cfg.use_lidar:
-                    x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+                if self.cfg.experiment.encoder.use_images:
+                    x_image = x_image.to(self.cfg.host.device, non_blocking=True)
+                if self.cfg.experiment.encoder.use_lidar:
+                    x_lidar = x_lidar.to(self.cfg.host.device, non_blocking=True)
                     
-                y=to_single_device(y,self.cfg.device)
+                y=to_single_device(y,self.cfg.host.device)
 
                 polygon_output, loss_dict = self.model(x_image, x_lidar, y)
 
@@ -95,9 +95,9 @@ class HiSupPredictor(Predictor):
             time_dict["prediction_time"] = (time.time() - t0) / len(self.loader.dataset)
         
             if self.local_rank == 0:
-                os.makedirs(os.path.dirname(self.cfg.eval.pred_file), exist_ok=True)
-                self.logger.info(f"Writing predictions to {self.cfg.eval.pred_file}")
-                with open(self.cfg.eval.pred_file, "w") as fp:
+                os.makedirs(os.path.dirname(self.cfg.evaluation.pred_file), exist_ok=True)
+                self.logger.info(f"Writing predictions to {self.cfg.evaluation.pred_file}")
+                with open(self.cfg.evaluation.pred_file, "w") as fp:
                     fp.write(json.dumps(coco_predictions))
             
             return time_dict
@@ -116,7 +116,7 @@ class HiSupPredictor(Predictor):
         
         if img_infile is not None:
             image_pil = np.array(Image.open(img_infile).convert("RGB"))
-            image = torch.from_numpy(image_pil).permute(2, 0, 1).unsqueeze(0).to(self.cfg.device).to(torch.float32)
+            image = torch.from_numpy(image_pil).permute(2, 0, 1).unsqueeze(0).to(self.cfg.host.device).to(torch.float32)
             image = F.normalize(image, mean=self.cfg.dataset.image_mean, std=self.cfg.dataset.image_std)
         else:
             image = None
@@ -135,7 +135,7 @@ class HiSupPredictor(Predictor):
             scaler = MinMaxScaler(feature_range=(0,512))
             lidar[:, -1] = scaler.fit_transform(lidar[:, -1].reshape(-1, 1)).squeeze()
             
-            lidar = torch.from_numpy(lidar).unsqueeze(0).to(self.cfg.device).to(torch.float32).contiguous()
+            lidar = torch.from_numpy(lidar).unsqueeze(0).to(self.cfg.host.device).to(torch.float32).contiguous()
         
         
         

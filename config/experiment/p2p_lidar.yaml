@@ -6,7 +6,7 @@ defaults:
 name: debug
 group_name: v2_${.model.name}
 
-
-
 encoder:
-  max_num_points_per_voxel: 4
+  max_num_points_per_voxel: 64
+
+country: all

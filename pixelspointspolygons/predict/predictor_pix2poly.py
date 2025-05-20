@@ -61,7 +61,7 @@ class Pix2PolyPredictor(Predictor):
         time_dict["prediction_time"] = (time.time() - t0) / len(self.loader.dataset)
         
         if self.local_rank == 0:
-            prediction_outfile = self.cfg.eval.pred_file
+            prediction_outfile = self.cfg.evaluation.pred_file
             self.logger.info(f"Saving predictions to {prediction_outfile}")
             os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
             with open(prediction_outfile, "w") as fp:
@@ -83,9 +83,9 @@ class Pix2PolyPredictor(Predictor):
         coco_predictions = []
         for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in self.progress_bar(loader):
             
-            if self.cfg.use_images:
+            if self.cfg.experiment.encoder.use_images:
                 x_image = x_image.to(self.device, non_blocking=True)
-            if self.cfg.use_lidar:
+            if self.cfg.experiment.encoder.use_lidar:
                 x_lidar = x_lidar.to(self.device, non_blocking=True)
             
             batch_polygons = self.batch_to_polygons(x_image, x_lidar, model, tokenizer)
@@ -148,31 +148,31 @@ class Pix2PolyPredictor(Predictor):
 
         with torch.no_grad():
             ## a bit ugly :/
-            if self.cfg.multi_gpu:
+            if self.cfg.host.multi_gpu:
                 
-                if self.cfg.use_images and not self.cfg.use_lidar:
+                if self.cfg.experiment.encoder.use_images and not self.cfg.experiment.encoder.use_lidar:
                     features = self.model.module.encoder(x_images)
-                elif not self.cfg.use_images and self.cfg.use_lidar:
+                elif not self.cfg.experiment.encoder.use_images and self.cfg.experiment.encoder.use_lidar:
                     features = self.model.module.encoder(x_lidar)
-                elif self.cfg.use_images and self.cfg.use_lidar:
+                elif self.cfg.experiment.encoder.use_images and self.cfg.experiment.encoder.use_lidar:
                     features = self.model.module.encoder(x_images, x_lidar)
                 else:
                     raise ValueError("At least one of use_images or use_lidar must be True")
                 
             else:
                 
-                if self.cfg.use_images and not self.cfg.use_lidar:
+                if self.cfg.experiment.encoder.use_images and not self.cfg.experiment.encoder.use_lidar:
                     features = self.model.encoder(x_images)
-                elif not self.cfg.use_images and self.cfg.use_lidar:
+                elif not self.cfg.experiment.encoder.use_images and self.cfg.experiment.encoder.use_lidar:
                     features = self.model.encoder(x_lidar)
-                elif self.cfg.use_images and self.cfg.use_lidar:
+                elif self.cfg.experiment.encoder.use_images and self.cfg.experiment.encoder.use_lidar:
                     features = self.model.encoder(x_images, x_lidar)
                 else:
                     raise ValueError("At least one of use_images or use_lidar must be True")
                 
                 
             for i in range(self.cfg.experiment.model.tokenizer.generation_steps):
-                if self.cfg.multi_gpu:
+                if self.cfg.host.multi_gpu:
                     preds, feats = self.model.module.predict(features, batch_preds)
                 else:
                     preds, feats = self.model.predict(features, batch_preds)
@@ -184,7 +184,7 @@ class Pix2PolyPredictor(Predictor):
                 preds = sample(preds)
                 batch_preds = torch.cat([batch_preds, preds], dim=1)
 
-            if self.cfg.multi_gpu:
+            if self.cfg.host.multi_gpu:
                 perm_preds = self.model.module.scorenet1(feats) + torch.transpose(self.model.module.scorenet2(feats), 1, 2)
             else:
                 perm_preds = self.model.scorenet1(feats) + torch.transpose(self.model.scorenet2(feats), 1, 2)

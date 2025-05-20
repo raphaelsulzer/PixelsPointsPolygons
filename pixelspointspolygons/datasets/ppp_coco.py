@@ -41,7 +41,6 @@ class PPPDataset(Dataset):
             self.ann_file = self.cfg.dataset.annotations[split].replace("annotations_", "annotations_ffl_")
             self.stats_filepath = self.cfg.dataset.ffl_stats[split]
             if not os.path.isfile(self.stats_filepath):
-                # TODO: now there is no FFL training data for 224x224 tiles. Just include the FFL training data creation in ppp_dataset now
                 raise FileExistsError(self.stats_filepath)
             self.stats = torch.load(self.stats_filepath)
         else:
@@ -57,8 +56,8 @@ class PPPDataset(Dataset):
 
         self.logger.info(f"Loaded {len(self.coco.anns.items())} annotations from {len(self.coco.imgs.items())} images from {self.ann_file}")
 
-        self.use_lidar = cfg.use_lidar
-        self.use_images = cfg.use_images
+        self.use_lidar = cfg.experiment.encoder.use_lidar
+        self.use_images = cfg.experiment.encoder.use_images
         self.transform = transform
         self.model_type = cfg.experiment.model.name
         for key, value in kwargs.items():

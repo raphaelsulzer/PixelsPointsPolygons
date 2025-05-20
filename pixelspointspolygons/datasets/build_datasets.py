@@ -26,7 +26,7 @@ def get_collate_fn(model):
 def get_test_loader(cfg,tokenizer=None,logger=None):
     if cfg.dataset.name == 'inria':
         raise NotImplementedError
-    elif cfg.dataset.name == 'lidarpoly':
+    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons"]:
         return get_test_loader_lidarpoly(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
@@ -35,7 +35,7 @@ def get_test_loader(cfg,tokenizer=None,logger=None):
 def get_val_loader(cfg,tokenizer=None,logger=None):
     if cfg.dataset.name == 'inria':
         return get_val_loader_inria(cfg,tokenizer,logger)
-    elif cfg.dataset.name == 'lidarpoly':
+    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons"]:
         return get_val_loader_lidarpoly(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
@@ -43,7 +43,7 @@ def get_val_loader(cfg,tokenizer=None,logger=None):
 def get_train_loader(cfg,tokenizer=None,logger=None):
     if cfg.dataset.name == 'inria':
         return get_train_loader_inria(cfg,tokenizer,logger)
-    elif cfg.dataset.name == 'lidarpoly':
+    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons"]:
         return get_train_loader_lidarpoly(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
@@ -88,7 +88,7 @@ def get_train_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     if logger is not None:
         logger.debug(f"Train dataset created with {len(train_ds)} image/lidar samples.")
         
-    sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.multi_gpu else None
+    sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.host.multi_gpu else None
 
     train_loader = DataLoader(
         train_ds,
@@ -134,7 +134,7 @@ def get_val_loader_lidarpoly(cfg,tokenizer=None,logger=None):
         val_ds.ann_file = ann_file
         val_ds.coco = coco
 
-    sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.multi_gpu else None
+    sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.host.multi_gpu else None
     
     val_loader = DataLoader(
         val_ds,
@@ -182,7 +182,7 @@ def get_test_loader_lidarpoly(cfg,tokenizer=None,logger=None):
         ds.ann_file = ann_file
         ds.coco = coco
 
-    sampler = DistributedSampler(dataset=ds, shuffle=False) if cfg.multi_gpu else None
+    sampler = DistributedSampler(dataset=ds, shuffle=False) if cfg.host.multi_gpu else None
     
     loader = DataLoader(
         ds,
@@ -236,7 +236,7 @@ def get_train_loader_inria(cfg,tokenizer,logger=None):
         tokenizer=tokenizer,
     )
     
-    sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.multi_gpu else None
+    sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.host.multi_gpu else None
 
 
     train_loader = DataLoader(
@@ -284,7 +284,7 @@ def get_val_loader_inria(cfg,tokenizer,logger=None):
     ## be aware that the DistributedSampler here will even out the batch sizes on the different devices
     ## and thereby lead to some images being included twice in the coco annotations
     ## there is not really anything to avoid this, beside setting drop_last=True. Then, however, some images might be dropped entirely
-    sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.multi_gpu else None
+    sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.host.multi_gpu else None
 
     val_loader = DataLoader(
         val_ds,

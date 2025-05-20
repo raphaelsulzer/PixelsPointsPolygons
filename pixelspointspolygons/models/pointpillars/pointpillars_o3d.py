@@ -51,7 +51,7 @@ class PointPillarsEncoder(ml3d.models.PointPillars):
         }
             
         super(PointPillarsEncoder,self).__init__(
-                 device=cfg.device,
+                 device=cfg.host.device,
                  num_input_features=3,
                  point_cloud_range=point_cloud_range,
                  voxelize=voxelize,
@@ -174,7 +174,7 @@ class PointPillars(ml3d.models.PointPillars):
         
         ## careful, the stupid o3d pointpillars class overwrites self.cfg
         super(PointPillars,self).__init__(
-                    device=cfg.device,
+                    device=cfg.host.device,
                     num_input_features=3,
                     point_cloud_range=point_cloud_range,
                     voxelize=voxelize,
