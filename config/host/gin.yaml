@@ -1,2 +1,3 @@
 name: gin
-data_root: /data/rsulzer
+data_root: /data/rsulzer/${..dataset.name}
+model_root: /data/rsulzer/${..dataset.name}_output

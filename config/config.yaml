@@ -18,7 +18,8 @@ hydra:
   run:
     dir: ${...output_dir}
 
-output_dir: ${.host.data_root}/${.experiment.model.name}_outputs/${.dataset.name}/${.experiment.encoder.in_size}/${.experiment.name}
+# output_dir: ${.host.data_root}/${.experiment.model.name}_outputs/${.dataset.name}/${.experiment.encoder.in_size}/${.experiment.name}
+output_dir: ${.host.model_root}/${.experiment.model.name}/${.experiment.encoder.in_size}/${.experiment.name}
 
 checkpoint: null
 # checkpoint: best_val_iou

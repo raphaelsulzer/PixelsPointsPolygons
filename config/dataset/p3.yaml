@@ -1,11 +1,11 @@
-name: p3
+name: PixelsPointsPolygons
 # size: null
 size: ${..experiment.encoder.in_size}
-path: ${host.data_root}/PixelsPointsPolygons/data/${.size}
+path: ${host.data_root}/data/${.size}
 annotations:
-  train: ${..path}/annotations_${...country}_train.json
-  val: ${..path}/annotations_${...country}_val.json
-  test: ${..path}/annotations_${...country}_test.json
+  train: ${..path}/annotations/annotations_${...country}_train.json
+  val: ${..path}/annotations/annotations_${...country}_val.json
+  test: ${..path}/annotations/annotations_${...country}_test.json
 ffl_stats:
   train: ${..path}/ffl/train/stats-${...country}.pt
   val: ${..path}/ffl/val/stats-${...country}.pt

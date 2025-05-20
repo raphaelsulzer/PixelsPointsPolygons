@@ -9,7 +9,7 @@ from ..pointpillars import *
 from ..vision_transformer import *
 from ..hrnet import HighResolutionNet as HRNet48v2
 from ..unetresnet.unet_resnet import UNetResNetBackbone
-from ..fusion_layers import FusionViTCNN, EarlyFusionViTCNN
+from ..fusion_layers import EarlyFusionViTCNN
 
 def get_out_channels(module):
     if hasattr(module, "out_channels"):
