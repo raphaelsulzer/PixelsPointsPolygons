@@ -33,7 +33,7 @@ class Trainer:
             verbosity = logging.WARNING
         self.verbosity = verbosity
         self.logger = make_logger(f"Trainer (rank {local_rank})",level=verbosity)
-        self.update_pbar_every = cfg.update_pbar_every
+        self.update_pbar_every = cfg.host.update_pbar_every
 
         self.logger.log(logging.INFO, f"Init Trainer on rank {local_rank} in world size {world_size}...")
         self.logger.info("Configuration:")
@@ -52,7 +52,7 @@ class Trainer:
         self.lr_scheduler = None
         self.loss_fn_dict = {}
         
-        self.is_ddp = self.cfg.multi_gpu
+        self.is_ddp = self.cfg.host.multi_gpu
         
         import matplotlib
         matplotlib.use('Agg')  # Use non-GUI backend
@@ -129,26 +129,26 @@ class Trainer:
     def save_best_and_latest_checkpoint(self, epoch, val_loss_dict, val_metrics_dict):
         
         # Save best validation loss/iou epoch.
-        if val_loss_dict['total_loss'] < self.cfg.best_val_loss and self.cfg.save_best:
-            self.cfg.best_val_loss = val_loss_dict['total_loss']
+        if val_loss_dict['total_loss'] < self.cfg.training.best_val_loss and self.cfg.training.save_best:
+            self.cfg.training.best_val_loss = val_loss_dict['total_loss']
             checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "best_val_loss.pth")
-            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
+            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.training.best_val_loss, best_val_iou=self.cfg.training.best_val_iou)
 
-        if val_metrics_dict.get('IoU',0.0) > self.cfg.best_val_iou and self.cfg.save_best:
+        if val_metrics_dict.get('IoU',0.0) > self.cfg.training.best_val_iou and self.cfg.training.save_best:
 
-            self.cfg.best_val_iou = val_metrics_dict['IoU']
+            self.cfg.training.best_val_iou = val_metrics_dict['IoU']
             checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "best_val_iou.pth")
-            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
+            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.training.best_val_loss, best_val_iou=self.cfg.training.best_val_iou)
 
         # Save latest checkpoint every epoch.
-        if self.cfg.save_latest:
+        if self.cfg.training.save_latest:
             checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "latest.pth")
-            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
+            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.training.best_val_loss, best_val_iou=self.cfg.training.best_val_iou)
 
 
-        if (epoch + 1) % self.cfg.save_every == 0:
+        if (epoch + 1) % self.cfg.training.save_every == 0:
             checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
-            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.best_val_loss, best_val_iou=self.cfg.best_val_iou)
+            self.save_checkpoint(checkpoint_file, epoch=epoch, best_val_loss=self.cfg.training.best_val_loss, best_val_iou=self.cfg.training.best_val_iou)
     
     
 
@@ -167,7 +167,7 @@ class Trainer:
         self.logger.info(f"Loading model from checkpoint: {checkpoint_file}")
         
         ## load the checkpoint
-        checkpoint = torch.load(checkpoint_file, map_location=self.cfg.device)
+        checkpoint = torch.load(checkpoint_file, map_location=self.cfg.host.device)
         
         temp = {}
         for k,v in checkpoint.items():
@@ -181,11 +181,11 @@ class Trainer:
         ## check for correct model type
         cfg = checkpoint.get("cfg",None)
         if cfg is not None:
-            if not cfg.use_lidar == self.cfg.use_lidar:
-                self.logger.error(f"Model checkpoint was trained with use_lidar={cfg.use_lidar}, but current config is use_lidar={self.cfg.use_lidar}.")
+            if not cfg.experiment.encoder.use_lidar == self.cfg.experiment.encoder.use_lidar:
+                self.logger.error(f"Model checkpoint was trained with use_lidar={cfg.experiment.encoder.use_lidar}, but current config is use_lidar={self.cfg.experiment.encoder.use_lidar}.")
                 raise ValueError("Model checkpoint and current config do not match.")
-            if not cfg.use_images == self.cfg.use_images:
-                self.logger.error(f"Model checkpoint was trained with use_images={cfg.use_images}, but current config is use_images={self.cfg.use_images}.")
+            if not cfg.experiment.encoder.use_images == self.cfg.experiment.encoder.use_images:
+                self.logger.error(f"Model checkpoint was trained with use_images={cfg.experiment.encoder.use_images}, but current config is use_images={self.cfg.experiment.encoder.use_images}.")
                 raise ValueError("Model checkpoint and current config do not match.")
             
             if hasattr(cfg, "model.fusion") and isattr(self.cfg.experiment.model, "fusion"):
@@ -202,8 +202,8 @@ class Trainer:
         start_epoch = checkpoint.get("epochs_run",checkpoint.get("epoch",0))
         self.cfg.experiment.model.start_epoch = start_epoch + 1
         
-        self.cfg.best_val_loss = checkpoint.get("best_val_loss",self.cfg.best_val_loss)
-        self.cfg.best_val_iou = checkpoint.get("best_val_iou",self.cfg.best_val_iou)
+        self.cfg.training.best_val_loss = checkpoint.get("best_val_loss",self.cfg.training.best_val_loss)
+        self.cfg.training.best_val_iou = checkpoint.get("best_val_iou",self.cfg.training.best_val_iou)
 
 
     def train_val_loop(self):
@@ -262,26 +262,26 @@ class Trainer:
 
                 validation_best = False
                 # Save best validation loss epoch.
-                if val_loss_dict['total_loss'] < best_loss and self.cfg.save_best:
+                if val_loss_dict['total_loss'] < best_loss and self.cfg.training.save_best:
                     validation_best = True
                     best_loss = val_loss_dict['total_loss']
                     checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "validation_best.pth")
                     self.save_checkpoint(checkpoint_file, epoch=epoch)
 
                 # Save latest checkpoint every epoch.
-                if self.cfg.save_latest:
+                if self.cfg.training.save_latest:
                     checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", "latest.pth")
                     self.save_checkpoint(checkpoint_file, epoch=epoch)
 
 
-                if (epoch + 1) % self.cfg.save_every == 0:
+                if (epoch + 1) % self.cfg.training.save_every == 0:
                     checkpoint_file = os.path.join(self.cfg.output_dir, "checkpoints", f"epoch_{epoch}.pth")
                     self.save_checkpoint(checkpoint_file, epoch=epoch)
 
             #############################################
             ############## COCO Evaluation ##############
             #############################################
-            if (epoch + 1) % self.cfg.val_every == 0:
+            if (epoch + 1) % self.cfg.training.val_every == 0:
 
                 self.logger.info("Predict validation set with latest model...")
                 coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)

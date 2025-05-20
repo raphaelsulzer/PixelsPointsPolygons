@@ -11,10 +11,10 @@ def main(cfg):
     setup_hydraconf(cfg)
             
     cfg.eval.split = "test"
-    cfg.country = "Switzerland"
+    cfg.experiment.country = "Switzerland"
     
     # ### MODALITY ABLATION ###
-    # cfg.eval.eval_file = f"{cfg.eval.eval_file}_modality_ablation_{cfg.country}_{cfg.eval.split}.csv"
+    # cfg.eval.eval_file = f"{cfg.eval.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.eval.split}.csv"
     
     # # load time from time table
     # time_table = cfg.eval.eval_file.replace("metrics", "time")
@@ -32,7 +32,7 @@ def main(cfg):
 
     
     ### GSD ABLATION ###
-    # cfg.eval.eval_file = f"{cfg.eval.eval_file}_image_res_ablation_{cfg.country}_{cfg.eval.split}.csv"
+    # cfg.eval.eval_file = f"{cfg.eval.eval_file}_image_res_ablation_{cfg.experiment.country}_{cfg.eval.split}.csv"
     # ee = Evaluator(cfg)
     # caption = r"\textbf{Ground sampling distance ablation}. We compare a ViT~\cite{vit}~+~FFL~\cite{ffl} model trained and tested on aerial images with a GSD of 15 and 25~cm. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
     # ee.to_latex(csv_file=cfg.eval.eval_file, 
@@ -41,7 +41,7 @@ def main(cfg):
     #             type="resolution")
     
     ### DENSITY ABLATION ###
-    cfg.eval.eval_file = f"{cfg.eval.eval_file}_lidar_density_ablation_{cfg.country}_{cfg.eval.split}.csv"
+    cfg.eval.eval_file = f"{cfg.eval.eval_file}_lidar_density_ablation_{cfg.experiment.country}_{cfg.eval.split}.csv"
     ee = Evaluator(cfg)
     caption = r"\textbf{Density ablation}. We compare a ViT~\cite{vit}~+~FFL~\cite{ffl} model trained and tested on increasingly dense LiDAR point clouds. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."
     ee.to_latex(csv_file=cfg.eval.eval_file, 
@@ -50,8 +50,8 @@ def main(cfg):
                 type="density")
     
     #### ALL COUNTRIES ####
-    # cfg.country = "all"
-    # cfg.eval.eval_file = f"{cfg.eval.eval_file}_all_countries_{cfg.country}_{cfg.eval.split}.csv"
+    # cfg.experiment.country = "all"
+    # cfg.eval.eval_file = f"{cfg.eval.eval_file}_all_countries_{cfg.experiment.country}_{cfg.eval.split}.csv"
     # ee = Evaluator(cfg)
     
     # caption = r"\textbf{Multimodal building polygon prediction}. We compare the baseline models with fusion encoders on the full dataset. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores."

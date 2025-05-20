@@ -1,9 +1,9 @@
 defaults:
   - host: gin
   - run_type: release
-  - polygonization: asm_acm
   - dataset: p3
   - experiment: ffl_fusion
+  - training: default
   # - experiment: ffl_image
   # - experiment: lidar_density_ablation256.yaml
   # - experiment: hisup_fusion
@@ -26,34 +26,15 @@ checkpoint: null
 # checkpoint: latest
 checkpoint_file: null
 
-save_best: true
-save_latest: true
-save_every: 10
-val_every: 1
-best_val_loss: 10000000.0
-best_val_iou: 0.0
-
-multi_gpu: false
-device: cuda
 log_to_wandb: ${.run_type.log_to_wandb}
 num_workers: ${.run_type.num_workers}
-update_pbar_every: 2
-
-# country: all
-# country: NY
-# country: NZ
-country: all
-
 
 # dataset:
 #   size: 224015
 
-use_lidar: ${.experiment.encoder.use_lidar}
-use_images: ${.experiment.encoder.use_images}
-
 eval:
   split: val # do not change this here, because it could cause that during training, test predictions are overwritten
-  pred_file: ${..output_dir}/predictions_${..country}_${.split}/${..checkpoint}.json
+  pred_file: ${..output_dir}/predictions_${..experiment.country}_${.split}/${..checkpoint}.json
   modes:
     - ldof
     # - hausdorff

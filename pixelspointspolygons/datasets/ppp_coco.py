@@ -56,8 +56,8 @@ class PPPDataset(Dataset):
 
         self.logger.info(f"Loaded {len(self.coco.anns.items())} annotations from {len(self.coco.imgs.items())} images from {self.ann_file}")
 
-        self.use_lidar = cfg.use_lidar
-        self.use_images = cfg.use_images
+        self.use_lidar = cfg.experiment.encoder.use_lidar
+        self.use_images = cfg.experiment.encoder.use_images
         self.transform = transform
         self.model_type = cfg.experiment.model.name
         for key, value in kwargs.items():

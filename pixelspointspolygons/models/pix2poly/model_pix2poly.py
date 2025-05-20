@@ -236,11 +236,11 @@ class EncoderDecoder(nn.Module):
 
     def forward(self, x_images, x_lidar, y):
         
-        if self.cfg.use_images and not self.cfg.use_lidar:
+        if self.cfg.experiment.encoder.use_images and not self.cfg.experiment.encoder.use_lidar:
             features = self.encoder(x_images)
-        elif not self.cfg.use_images and self.cfg.use_lidar:
+        elif not self.cfg.experiment.encoder.use_images and self.cfg.experiment.encoder.use_lidar:
             features = self.encoder(x_lidar)
-        elif self.cfg.use_images and self.cfg.use_lidar:
+        elif self.cfg.experiment.encoder.use_images and self.cfg.experiment.encoder.use_lidar:
             features = self.encoder(x_images, x_lidar)
         else:
             raise ValueError("At least one of use_images or use_lidar must be True")
@@ -275,21 +275,21 @@ class Pix2PolyModel(torch.nn.Module):
         
         self.cfg = cfg
                 
-        if self.cfg.use_images and self.cfg.use_lidar:
+        if self.cfg.experiment.encoder.use_images and self.cfg.experiment.encoder.use_lidar:
 
             if self.cfg.experiment.encoder.name == "early_fusion_vit":
                 encoder = EarlyFusionViT(self.cfg,local_rank=local_rank)
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
-        elif self.cfg.use_images:
+        elif self.cfg.experiment.encoder.use_images:
             
             if self.cfg.experiment.encoder.name == "vit":
                 encoder = ViT(self.cfg,bottleneck=True,local_rank=local_rank)
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
-        elif self.cfg.use_lidar: 
+        elif self.cfg.experiment.encoder.use_lidar: 
             
             if self.cfg.experiment.encoder.name == "pointpillars_vit":
                 encoder = PointPillarsViT(self.cfg,bottleneck=True,local_rank=local_rank)
@@ -313,9 +313,9 @@ class Pix2PolyModel(torch.nn.Module):
             decoder=decoder,
             cfg=self.cfg
         )
-        model.to(self.cfg.device)
+        model.to(self.cfg.host.device)
         
-        if self.cfg.multi_gpu:
+        if self.cfg.host.multi_gpu:
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = DDP(model, device_ids=[local_rank], find_unused_parameters=True)
     

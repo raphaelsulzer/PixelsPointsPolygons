@@ -1,8 +1,10 @@
 defaults:
   - /encoder: vit_cnn
   - /model: ffl
+  - /polygonization: asm_acm
   - _self_
 
 name: debug
 group_name: v2_${.model.name}
 
+country: all

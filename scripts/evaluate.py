@@ -14,7 +14,7 @@ def main(cfg):
     modes_str = "_".join(cfg.eval.modes)
     cfg.eval.eval_file = f"{cfg.eval.eval_file}_{cfg.experiment.name}_{modes_str}.csv"
     
-    print(f"Evaluate {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.country}/{cfg.eval.split}")
+    print(f"Evaluate {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.experiment.country}/{cfg.eval.split}")
 
     ee = Evaluator(cfg)
     ee.pbar_disable = False

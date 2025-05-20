@@ -56,7 +56,7 @@ class FFLTrainer(Trainer):
     
     def setup_loss_fn_dict(self):
         loss_func = build_combined_loss(self.cfg).to(self.local_rank)
-        # if self.cfg.multi_gpu:
+        # if self.cfg.host.multi_gpu:
         #     loss_func = DDP(loss_func, device_ids=[self.local_rank])
         self.loss_func = loss_func
 
@@ -65,7 +65,7 @@ class FFLTrainer(Trainer):
         self.model.eval()
 
         batch = next(iter(loader))
-        batch = batch_to_cuda(batch, device=self.cfg.device)
+        batch = batch_to_cuda(batch, device=self.cfg.host.device)
         pred = self.model(batch)
         
         outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
@@ -79,7 +79,7 @@ class FFLTrainer(Trainer):
                     break
                 coco_anns[ann["image_id"]].append(ann)
         
-        if self.cfg.use_lidar:
+        if self.cfg.experiment.encoder.use_lidar:
             lidar_batches = torch.unbind(batch["lidar"], dim=0)
             
         names = get_tile_names_from_dataloader(loader, batch["image_id"].cpu().numpy().flatten().tolist())
@@ -89,12 +89,12 @@ class FFLTrainer(Trainer):
             fig, ax = plt.subplots(1,2,figsize=(8, 4), dpi=150)
             ax = ax.flatten()
 
-            if self.cfg.use_images:
+            if self.cfg.experiment.encoder.use_images:
 
                 image = denormalize_image_for_visualization(batch["image"][i], self.cfg)
                 plot_image(image, ax=ax[0])
                 plot_image(image, ax=ax[1])
-            if self.cfg.use_lidar:
+            if self.cfg.experiment.encoder.use_lidar:
                 plot_point_cloud(lidar_batches[i], ax=ax[0])
                 plot_point_cloud(lidar_batches[i], ax=ax[1])
                 
@@ -137,7 +137,7 @@ class FFLTrainer(Trainer):
 
         for batch in loader:
             
-            batch = batch_to_cuda(batch, device=self.cfg.device)
+            batch = batch_to_cuda(batch, device=self.cfg.host.device)
             pred = self.model(batch)
             loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch, normalize=False)
 
@@ -162,7 +162,7 @@ class FFLTrainer(Trainer):
         loader = self.progress_bar(self.train_loader)
         for batch in loader:
             
-            batch = batch_to_cuda(batch, device=self.cfg.device)
+            batch = batch_to_cuda(batch, device=self.cfg.host.device)
             pred = self.model(batch)
             loss, loss_dict, extra_dict = self.loss_func(pred, batch, epoch=epoch, normalize=False)
                 
@@ -249,7 +249,7 @@ class FFLTrainer(Trainer):
             ############## COCO Evaluation ##############
             #############################################
             val_metrics_dict = {}
-            if (epoch + 1) % self.cfg.val_every == 0:
+            if (epoch + 1) % self.cfg.training.val_every == 0:
 
                 self.logger.info("Predict validation set with latest model...")
                 coco_predictions = predictor.predict_from_loader(self.model,self.val_loader)
@@ -285,7 +285,7 @@ class FFLTrainer(Trainer):
                     val_metrics_dict = evaluator.evaluate()
                     evaluator.print_dict_results(val_metrics_dict)
                     
-                    if val_metrics_dict['IoU'] > self.cfg.best_val_iou:
+                    if val_metrics_dict['IoU'] > self.cfg.training.best_val_iou:
                         best_prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", "best_val_iou.json")
                         shutil.copyfile(prediction_outfile, best_prediction_outfile)
                         self.logger.info(f"Copied predictions to {best_prediction_outfile}")
@@ -302,7 +302,7 @@ class FFLTrainer(Trainer):
                             wandb.log(wandb_dict)
                             
                 # Sync all processes before next epoch
-                if self.cfg.multi_gpu:
+                if self.cfg.host.multi_gpu:
                     dist.barrier()
 
 

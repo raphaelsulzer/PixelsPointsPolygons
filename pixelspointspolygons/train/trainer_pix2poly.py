@@ -87,7 +87,7 @@ class Pix2PolyTrainer(Trainer):
     def setup_loss_fn_dict(self):
         
         # Get loss functions
-        weight = torch.ones(self.cfg.experiment.model.tokenizer.pad_idx + 1, device=self.cfg.device)
+        weight = torch.ones(self.cfg.experiment.model.tokenizer.pad_idx + 1, device=self.cfg.host.device)
         weight[self.tokenizer.num_bins:self.tokenizer.BOS_code] = 0.0
         self.loss_fn_dict["vertex"] = nn.CrossEntropyLoss(ignore_index=self.cfg.experiment.model.tokenizer.pad_idx, label_smoothing=self.cfg.experiment.model.label_smoothing, weight=weight)
         self.loss_fn_dict["perm"] = nn.BCELoss()
@@ -100,11 +100,11 @@ class Pix2PolyTrainer(Trainer):
         x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids = next(iter(loader))
         
         # TODO: maybe plot y_sequence instead of y_corner_mask, because it is the input to the model
-        if self.cfg.use_images:
-            x_image = x_image.to(self.cfg.device, non_blocking=True)
+        if self.cfg.experiment.encoder.use_images:
+            x_image = x_image.to(self.cfg.host.device, non_blocking=True)
             x_image = x_image[:num_images]
-        if self.cfg.use_lidar:
-            x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+        if self.cfg.experiment.encoder.use_lidar:
+            x_lidar = x_lidar.to(self.cfg.host.device, non_blocking=True)
             x_lidar = x_lidar.unbind()
             x_lidar = list(x_lidar)[:num_images]
             x_lidar = torch.nested.nested_tensor(x_lidar, layout=torch.jagged)
@@ -122,7 +122,7 @@ class Pix2PolyTrainer(Trainer):
                     break
                 coco_anns[ann["image_id"]].append(ann)
                 
-        if self.cfg.use_lidar:
+        if self.cfg.experiment.encoder.use_lidar:
             lidar_batches = torch.unbind(x_lidar, dim=0)
             
         names = get_tile_names_from_dataloader(loader, tile_ids.cpu().numpy().flatten().tolist())
@@ -132,11 +132,11 @@ class Pix2PolyTrainer(Trainer):
             fig, ax = plt.subplots(1,2,figsize=(8, 4), dpi=150)
             ax = ax.flatten()
 
-            if self.cfg.use_images:
+            if self.cfg.experiment.encoder.use_images:
                 image = denormalize_image_for_visualization(x_image[i], self.cfg)
                 plot_image(image, ax=ax[0])
                 plot_image(image, ax=ax[1])
-            if self.cfg.use_lidar:
+            if self.cfg.experiment.encoder.use_lidar:
                 plot_point_cloud(lidar_batches[i], ax=ax[0])
                 plot_point_cloud(lidar_batches[i], ax=ax[1])
                 
@@ -182,15 +182,15 @@ class Pix2PolyTrainer(Trainer):
         
         for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
             
-            batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
+            batch_size = x_image.size(0) if self.cfg.experiment.encoder.use_images else x_lidar.size(0)
             
-            if self.cfg.use_images:
-                x_image = x_image.to(self.cfg.device, non_blocking=True)
-            if self.cfg.use_lidar:
-                x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)    
+            if self.cfg.experiment.encoder.use_images:
+                x_image = x_image.to(self.cfg.host.device, non_blocking=True)
+            if self.cfg.experiment.encoder.use_lidar:
+                x_lidar = x_lidar.to(self.cfg.host.device, non_blocking=True)    
             
-            y_sequence = y_sequence.to(self.cfg.device, non_blocking=True)
-            y_perm = y_perm.to(self.cfg.device, non_blocking=True)
+            y_sequence = y_sequence.to(self.cfg.host.device, non_blocking=True)
+            y_perm = y_perm.to(self.cfg.host.device, non_blocking=True)
 
             y_input = y_sequence[:, :-1]
             y_expected = y_sequence[:, 1:]
@@ -249,15 +249,15 @@ class Pix2PolyTrainer(Trainer):
 
         for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids in loader:
                         
-            batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)     
+            batch_size = x_image.size(0) if self.cfg.experiment.encoder.use_images else x_lidar.size(0)     
             
-            if self.cfg.use_images:
-                x_image = x_image.to(self.cfg.device, non_blocking=True)
-            if self.cfg.use_lidar:
-                x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+            if self.cfg.experiment.encoder.use_images:
+                x_image = x_image.to(self.cfg.host.device, non_blocking=True)
+            if self.cfg.experiment.encoder.use_lidar:
+                x_lidar = x_lidar.to(self.cfg.host.device, non_blocking=True)
             
-            y_sequence = y_sequence.to(self.cfg.device, non_blocking=True)
-            y_perm = y_perm.to(self.cfg.device, non_blocking=True)
+            y_sequence = y_sequence.to(self.cfg.host.device, non_blocking=True)
+            y_perm = y_perm.to(self.cfg.host.device, non_blocking=True)
 
             y_input = y_sequence[:, :-1]
             y_expected = y_sequence[:, 1:]
@@ -365,7 +365,7 @@ class Pix2PolyTrainer(Trainer):
                 ############## COCO Evaluation ##############
                 #############################################
                 val_metrics_dict = {}
-                if (epoch + 1) % self.cfg.val_every == 0:
+                if (epoch + 1) % self.cfg.training.val_every == 0:
 
                     self.logger.info("Predict validation set with latest model...")
                     coco_predictions = predictor.predict_from_loader(self.model,self.tokenizer,self.val_loader)
@@ -373,7 +373,7 @@ class Pix2PolyTrainer(Trainer):
                     
                     self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
                     
-                    if self.cfg.multi_gpu:
+                    if self.cfg.host.multi_gpu:
                         
                         # Gather the list of dictionaries from all ranks
                         gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects
@@ -403,7 +403,7 @@ class Pix2PolyTrainer(Trainer):
                         val_metrics_dict = evaluator.evaluate()
                         evaluator.print_dict_results(val_metrics_dict)
                         
-                        if val_metrics_dict['IoU'] > self.cfg.best_val_iou:
+                        if val_metrics_dict['IoU'] > self.cfg.training.best_val_iou:
                             best_prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", "best_val_iou.json")
                             shutil.copyfile(prediction_outfile, best_prediction_outfile)
                             self.logger.info(f"Copied predictions to {best_prediction_outfile}")
@@ -420,7 +420,7 @@ class Pix2PolyTrainer(Trainer):
                             wandb.log(wandb_dict)
                             
                 # Sync all processes before next epoch
-                if self.cfg.multi_gpu:
+                if self.cfg.host.multi_gpu:
                     dist.barrier()
 
         

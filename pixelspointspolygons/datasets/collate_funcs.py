@@ -10,13 +10,13 @@ def collate_fn_ffl(batch, cfg):
         for key,val in sample.items():
             batch_dict[key].append(val)
             
-    if cfg.use_images:
+    if cfg.experiment.encoder.use_images:
         assert (len(batch_dict["image"]) > 0), "Image batch is empty"
         batch_dict["image"] = torch.stack(batch_dict["image"])
     else:
         del batch_dict["image"]
     
-    if cfg.use_lidar:
+    if cfg.experiment.encoder.use_lidar:
         assert (len(batch_dict["lidar"]) > 0), "LiDAR batch is empty"
         batch_dict["lidar"] = torch.nested.nested_tensor(batch_dict["lidar"], layout=torch.jagged)
     # else:
@@ -37,9 +37,9 @@ def collate_fn_hisup(batch, cfg):
     
     image_batch, lidar_batch, annotations_batch, tile_id_batch = [], [], [], []
     for image, lidar, ann, tile_id in batch:
-        if cfg.use_images:
+        if cfg.experiment.encoder.use_images:
             image_batch.append(image)
-        if cfg.use_lidar:
+        if cfg.experiment.encoder.use_lidar:
             # lidar_pcd_id = torch.full((len(lidar),), i, dtype=torch.long)
             # lidar_pcd_id_batch.append(lidar_pcd_id)
             lidar_batch.append(lidar)
@@ -47,12 +47,12 @@ def collate_fn_hisup(batch, cfg):
         annotations_batch.append(ann)
         tile_id_batch.append(tile_id)
 
-    if cfg.use_images:
+    if cfg.experiment.encoder.use_images:
         image_batch = torch.stack(image_batch)
     else:
         image_batch = None
         
-    if cfg.use_lidar:
+    if cfg.experiment.encoder.use_lidar:
         lidar_batch = torch.nested.nested_tensor(lidar_batch, layout=torch.jagged)
     else:
         lidar_batch = None
@@ -76,9 +76,9 @@ def collate_fn_pix2poly(batch, cfg):
     
     image_batch, lidar_batch, lidar_pcd_id_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, tile_id_batch = [], [], [], [], [], [], [], []
     for i, (image, lidar, mask, c_mask, seq, perm_mat, idx) in enumerate(batch):
-        if cfg.use_images:
+        if cfg.experiment.encoder.use_images:
             image_batch.append(image)
-        if cfg.use_lidar:
+        if cfg.experiment.encoder.use_lidar:
             # lidar_pcd_id = torch.full((len(lidar),), i, dtype=torch.long)
             # lidar_pcd_id_batch.append(lidar_pcd_id)
             lidar_batch.append(lidar)
@@ -99,12 +99,12 @@ def collate_fn_pix2poly(batch, cfg):
         pad = torch.ones(coords_seq_batch.size(0), max_len - coords_seq_batch.size(1)).fill_(pad_idx).long()
         coords_seq_batch = torch.cat([coords_seq_batch, pad], dim=1)
 
-    if cfg.use_images:
+    if cfg.experiment.encoder.use_images:
         image_batch = torch.stack(image_batch)
     else:
         image_batch = None
         
-    if cfg.use_lidar:
+    if cfg.experiment.encoder.use_lidar:
         # lidar_batch = torch.cat(lidar_batch)
         # lidar_pcd_id_batch = torch.cat(lidar_pcd_id_batch)
         ### try nested tensor instead of manuel indexing

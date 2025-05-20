@@ -44,7 +44,7 @@ class Evaluator:
         
         self.verbosity = getattr(logging, cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger("Evaluator",level=self.verbosity)
-        self.pbar_updata_every = cfg.update_pbar_every
+        self.pbar_updata_every = cfg.host.update_pbar_every
         self.pbar_disable = self.verbosity >= logging.INFO
 
 

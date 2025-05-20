@@ -1,3 +1,8 @@
 name: default
 data_root: data
 model_root: results
+
+multi_gpu: false
+device: cuda
+
+update_pbar_every: 1
