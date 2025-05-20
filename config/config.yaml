@@ -3,7 +3,7 @@ defaults:
   - run_type: release
   - polygonization: asm_acm
   - dataset: p3
-  - experiment: hisup_fusion
+  - experiment: ffl_fusion
   # - experiment: ffl_image
   # - experiment: lidar_density_ablation256.yaml
   # - experiment: hisup_fusion
@@ -41,7 +41,7 @@ update_pbar_every: 2
 # country: all
 # country: NY
 # country: NZ
-country: CH
+country: all
 
 
 # dataset:

@@ -1,9 +1,12 @@
 import os
 import logging
+import fnmatch
+
 from multiprocessing import Pool, cpu_count
-from huggingface_hub import HfApi, HfFolder, upload_file
+from huggingface_hub import HfApi, HfFolder, upload_file, list_repo_files
 from huggingface_hub.utils import HfHubHTTPError
 from huggingface_hub import HfApi
+
 api = HfApi()
 
 
@@ -85,6 +88,7 @@ def delete_hf_folder(repo_path):
         
 def delete_hf_file(repo_file):
     try:
+        logger.info(f"Delete {repo_file}.")
         api.delete_file(
             path_in_repo=repo_file,
             repo_id=REPO_ID,
@@ -94,29 +98,68 @@ def delete_hf_file(repo_file):
     except HfHubHTTPError as e:
         logger.error(f"Failed to delete {repo_file}: {e}")
 
+
+def delete_matching_files(pattern):
+    try:
+        all_files = list_repo_files(repo_id=REPO_ID, repo_type=REPO_TYPE)
+        matched_files = fnmatch.filter(all_files, pattern)
+        
+        if not matched_files:
+            logger.info("No files matched.")
+            return
+
+        for f in matched_files:
+            try:
+                api.delete_file(path_in_repo=f, repo_id=REPO_ID, repo_type=REPO_TYPE)
+                logger.info(f"Deleted: {f}")
+            except HfHubHTTPError as e:
+                logger.error(f"Failed to delete {f}: {e}")
+
+    except Exception as e:
+        logger.error(f"Failed to list or delete files: {e}")
+        
+        
+        
 if __name__ == "__main__":
     
     ################ UPLOAD LARGE FOLDER ################   
     # upload_hf_large_folder(LOCAL_DIR)
     ################ UPLOAD LARGE FOLDER ################   
 
+    # TODO: NY and NZ train images need to be checked for completeness again, rest should be fine
 
     ################ UPLOAD FOLDER ################   
     splits = ["train", "val", "test"]
-    countries = ["NY","NZ"]
-    modalities = ["images","lidar"]
+    countries = ["CH","NY","NZ"]
+    modalities = ["images","lidar","annotations","ffl"]
     
-    countries = ["NZ"]
+    # countries = ["NZ"]
     # modalities = ["images"]
     # splits = ["test"]
     
-    for split in splits:
+    for modality in modalities:
         
-        for country in countries:
+        if modality == "annotations":
             
-            for modality in modalities:
+            assert os.path.isdir(in_folder), f"Expected {in_folder} to be a directory."
         
-                all_folders = f"/data/rsulzer/lidarpoly/224/{modality}/{split}/{country}"
+            in_folder = f"/data/rsulzer/PixelsPointsPolygons/data/224/{modality}"
+            repo_folder = f"data/224/{modality}"
+            
+            try:
+                upload_hf_folder(in_folder, repo_folder)
+            except Exception as e:
+                logger.error(f"Failed to upload folder {in_folder}: {e}")
+                continue
+            
+            continue
+
+        for split in splits:
+        
+            
+            for country in countries:
+
+                all_folders = f"/data/rsulzer/PixelsPointsPolygons/data/224/{modality}/{split}/{country}"
                 
                 sub_folders = os.listdir(all_folders)
                 
@@ -136,8 +179,17 @@ if __name__ == "__main__":
           
     
     ################ DELETE FILES ################
-    # repo_file = "data/224/images/test/NZ/0/asd"
+    # for country in ["NZ","NY","all"]:
+    #     for split in ["train", "val", "test"]:
+    #         repo_file = f"data/224/annotations_{country}_{split}.json"
+    #         delete_hf_file(repo_file)
+    #         repo_file = f"data/224/annotations_ffl_{country}_{split}.json"
+    #         delete_hf_file(repo_file)
+    # repo_file = "data/224/annotations*"
     # delete_hf_file(repo_file)
+    
+    # repo_file = "annotations_*.json"
+    # delete_matching_files(repo_file)
     ################ DELETE FILES ################
 
     ################ DELETE FOLDER ################
