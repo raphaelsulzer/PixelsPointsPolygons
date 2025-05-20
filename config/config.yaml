@@ -1,5 +1,5 @@
 defaults:
-  - host: gin
+  - host: default
   - run_type: release
   - dataset: p3
   - experiment: p2p_fusion
