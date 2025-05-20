@@ -6,3 +6,5 @@ defaults:
 
 name: lidar_pp_vit_cnn_bs2x16_mnv64
 group_name: v2_${.model.name}
+
+country: all

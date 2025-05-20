@@ -49,7 +49,7 @@ class FFLPredictor(Predictor):
         if self.local_rank == 0:
 
             for k,coco_predictions in annotations.items():
-                outfile = os.path.join(os.path.dirname(self.cfg.eval.pred_file), k, f"{self.cfg.checkpoint}.json")
+                outfile = os.path.join(os.path.dirname(self.cfg.evaluation.pred_file), k, f"{self.cfg.checkpoint}.json")
                 os.makedirs(os.path.dirname(outfile), exist_ok=True)
                 self.logger.info(f"Saving prediction {k} to {outfile}")
                 with open(outfile, "w") as fp:
@@ -57,7 +57,7 @@ class FFLPredictor(Predictor):
             
             self.logger.info(f"Copy acm.tol_1 to predictions_{split}/{self.cfg.checkpoint}.json")
             if "acm.tol_1" in annotations.keys():
-                outfile = os.path.join(os.path.dirname(self.cfg.eval.pred_file), f"{self.cfg.checkpoint}.json")
+                outfile = os.path.join(os.path.dirname(self.cfg.evaluation.pred_file), f"{self.cfg.checkpoint}.json")
                 os.makedirs(os.path.dirname(outfile), exist_ok=True)
                 with open(outfile, "w") as fp:
                     fp.write(json.dumps(annotations["acm.tol_1"]))
@@ -68,7 +68,7 @@ class FFLPredictor(Predictor):
     def predict_from_loader(self, model, loader):
         
         self.logger.debug(f"Prediction from {self.cfg.checkpoint}")
-        self.logger.debug(f"Polygonization with method {self.cfg.polygonization.method}")
+        self.logger.debug(f"Polygonization with method {self.cfg.experiment.polygonization.method}")
         
         if isinstance(loader.dataset, torch.utils.data.Subset):
             self.logger.warning("You are predicting only a subset of the validation dataset. However, the coco evaluation expects the full validation set, so the its metrics will not be very useful.")
@@ -79,7 +79,7 @@ class FFLPredictor(Predictor):
         
         for batch in self.progress_bar(loader):
             
-            batch_size = batch["image"].shape[0] if self.cfg.use_images else batch["lidar"].shape[0]
+            batch_size = batch["image"].shape[0] if self.cfg.experiment.encoder.use_images else batch["lidar"].shape[0]
                         
             # --- Inference, add result to batch_list
             if self.cfg.experiment.model.eval.patch_size is not None:
@@ -96,7 +96,7 @@ class FFLPredictor(Predictor):
             #     # --- Polygonize
             try:
                 batch["polygons"], batch["polygon_probs"] = polygonize.polygonize(
-                    self.cfg.polygonization, batch["seg"],
+                    self.cfg.experiment.polygonization, batch["seg"],
                     crossfield_batch=batch.get("crossfield", None),
                     pool=pool)
             except Exception as e:
@@ -115,7 +115,7 @@ class FFLPredictor(Predictor):
                     
         # else:
         #     self.logger.info(f"Rank {self.local_rank} waiting until polygonization is done...")
-        if self.cfg.multi_gpu:
+        if self.cfg.host.multi_gpu:
             # dist.barrier()
                         
             # Gather the list of dictionaries from all ranks

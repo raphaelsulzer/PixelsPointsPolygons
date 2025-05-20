@@ -24,7 +24,7 @@ from copy import deepcopy
 
 from torch_lydorn.torch.utils.data import __repr__
 
-from data_transforms import get_offline_transform_patch
+from ffl.data_transforms import get_offline_transform_patch
 
 from pixelspointspolygons.misc import make_logger, setup_hydraconf
 
@@ -51,7 +51,7 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         self.stats = None
         if os.path.exists(self.stats_filepath):
             self.stats = torch.load(self.stats_filepath)
-        self.processed_flag_filepath = os.path.join(self.processed_dir, f"processed-flag-{self.cfg.country}")
+        self.processed_flag_filepath = os.path.join(self.processed_dir, f"processed-flag-{self.cfg.experiment.country}")
 
         self.ann_ffl_file = self.ann_file.replace("annotations_","annotations_ffl_")        
 
@@ -140,11 +140,13 @@ class FFLPreprocessing(torch.utils.data.Dataset):
             image_info["absolute_img_filepath"] = os.path.join(self.root, image_info["file_name"])
             
             image_info["name"] = os.path.basename(image_info["file_name"]).replace(".tif", ".pt")
-            image_info["pt_outfile"] = os.path.join(self.processed_dir, image_info["name"])
+            
+            pt_file = image_info["file_name"].replace(".tif", ".pt").replace("images", "ffl")
+            image_info["pt_outfile"] = os.path.join(self.root, pt_file)
             
             image_info_list.append(image_info)
 
-            image_info_with_pt_file["ffl_pt_path"] = f"ffl/{self.fold}/{image_info['name']}"
+            image_info_with_pt_file["ffl_pt_path"] = pt_file
             image_info_with_pt_file_list.append(image_info_with_pt_file)
             
         
@@ -277,6 +279,7 @@ def preprocess_one(image_info, pre_transform):
             if k in ['image_id', 'gt_polygons_image', 'distances', 'sizes', 'gt_crossfield_angle']:
                 data_needed_in_ppp[k] = v
 
+        os.makedirs(os.path.dirname(image_info["pt_outfile"]), exist_ok=True)
         torch.save(data_needed_in_ppp, image_info["pt_outfile"])
 
     else:
