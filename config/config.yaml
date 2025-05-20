@@ -2,7 +2,7 @@ defaults:
   - host: gin
   - run_type: release
   - dataset: p3
-  - experiment: ffl_fusion
+  - experiment: p2p_fusion
   - training: default
   - evaluation: val
   # - experiment: ffl_image

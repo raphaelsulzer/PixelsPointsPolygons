@@ -214,12 +214,10 @@ class Pix2PolyTrainer(Trainer):
             x_lidar = list(x_lidar)
             for tensor in x_lidar:
                 n_points += tensor.shape[0]
-            
-        
-        n_images = len(self.val_loader.dataset)
-        area = n_images * 3136
-        self.logger.debug(f"Validation pts/m2 {n_points/area}")
-
+                    
+        # n_images = len(self.val_loader.dataset)
+        # area = n_images * 3136
+        # self.logger.debug(f"Validation pts/m2 {n_points/area}")
 
         self.logger.debug(f"Validation loss: {loss_meter.global_avg:.3f}")
         loss_dict = {
