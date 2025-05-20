@@ -22,24 +22,418 @@ We present the P<sup>3</sup> dataset, a large-scale multimodal benchmark for bui
 
 ## Dataset
 
-### Download
-
-You can download the dataset at [huggingface.co/datasets/rsi/PixelsPointsPolygons](https://huggingface.co/datasets/rsi/PixelsPointsPolygons) .
-
-
-
-
 ### Overview
 
 <div align="left">
     <img src="./worldmap.jpg" width=60% height=50%>
 </div>
 
+### Download
 
-<!-- ### Prepare custom tile size
+```
+git lfs install
+git clone https://huggingface.co/datasets/rsi/PixelsPointsPolygons $DATA_ROOT
+```
 
-See [datasets preprocessing](data_preprocess) for instructions on preparing a dataset with different tile sizes. -->
+### Structure
 
+<details>
+<summary>📁 Click to expand folder structure</summary -->
+
+```text
+PixelsPointsPolygons/data/224
+├── annotations
+│   ├── annotations_all_test.json
+│   ├── annotations_all_train.json
+│   └── annotations_all_val.json
+│       ... (24 files total)
+├── images
+│   ├── train
+│   │   ├── CH
+│   │   │   ├── 0
+│   │   │   │   ├── image0_CH_train.tif
+│   │   │   │   ├── image1000_CH_train.tif
+│   │   │   │   └── image1001_CH_train.tif
+│   │   │   │       ... (5000 files total)
+│   │   │   ├── 5000
+│   │   │   │   ├── image5000_CH_train.tif
+│   │   │   │   ├── image5001_CH_train.tif
+│   │   │   │   └── image5002_CH_train.tif
+│   │   │   │       ... (5000 files total)
+│   │   │   └── 10000
+│   │   │       ├── image10000_CH_train.tif
+│   │   │       ├── image10001_CH_train.tif
+│   │   │       └── image10002_CH_train.tif
+│   │   │           ... (5000 files total)
+│   │   │       ... (11 dirs total)
+│   │   ├── NY
+│   │   │   ├── 0
+│   │   │   │   ├── image0_NY_train.tif
+│   │   │   │   ├── image1000_NY_train.tif
+│   │   │   │   └── image1001_NY_train.tif
+│   │   │   │       ... (5000 files total)
+│   │   │   ├── 5000
+│   │   │   │   ├── image5000_NY_train.tif
+│   │   │   │   ├── image5001_NY_train.tif
+│   │   │   │   └── image5002_NY_train.tif
+│   │   │   │       ... (5000 files total)
+│   │   │   └── 10000
+│   │   │       ├── image10000_NY_train.tif
+│   │   │       ├── image10001_NY_train.tif
+│   │   │       └── image10002_NY_train.tif
+│   │   │           ... (5000 files total)
+│   │   │       ... (11 dirs total)
+│   │   └── NZ
+│   │       ├── 0
+│   │       │   ├── image0_NZ_train.tif
+│   │       │   ├── image1000_NZ_train.tif
+│   │       │   └── image1001_NZ_train.tif
+│   │       │       ... (5000 files total)
+│   │       ├── 5000
+│   │       │   ├── image5000_NZ_train.tif
+│   │       │   ├── image5001_NZ_train.tif
+│   │       │   └── image5002_NZ_train.tif
+│   │       │       ... (5000 files total)
+│   │       └── 10000
+│   │           ├── image10000_NZ_train.tif
+│   │           ├── image10001_NZ_train.tif
+│   │           └── image10002_NZ_train.tif
+│   │               ... (5000 files total)
+│   │           ... (11 dirs total)
+│   ├── val
+│   │   ├── CH
+│   │   │   └── 0
+│   │   │       ├── image0_CH_val.tif
+│   │   │       ├── image100_CH_val.tif
+│   │   │       └── image101_CH_val.tif
+│   │   │           ... (529 files total)
+│   │   ├── NY
+│   │   │   └── 0
+│   │   │       ├── image0_NY_val.tif
+│   │   │       ├── image100_NY_val.tif
+│   │   │       └── image101_NY_val.tif
+│   │   │           ... (529 files total)
+│   │   └── NZ
+│   │       └── 0
+│   │           ├── image0_NZ_val.tif
+│   │           ├── image100_NZ_val.tif
+│   │           └── image101_NZ_val.tif
+│   │               ... (529 files total)
+│   └── test
+│       ├── CH
+│       │   ├── 0
+│       │   │   ├── image0_CH_test.tif
+│       │   │   ├── image1000_CH_test.tif
+│       │   │   └── image1001_CH_test.tif
+│       │   │       ... (5000 files total)
+│       │   ├── 5000
+│       │   │   ├── image5000_CH_test.tif
+│       │   │   ├── image5001_CH_test.tif
+│       │   │   └── image5002_CH_test.tif
+│       │   │       ... (5000 files total)
+│       │   └── 10000
+│       │       ├── image10000_CH_test.tif
+│       │       ├── image10001_CH_test.tif
+│       │       └── image10002_CH_test.tif
+│       │           ... (4400 files total)
+│       ├── NY
+│       │   ├── 0
+│       │   │   ├── image0_NY_test.tif
+│       │   │   ├── image1000_NY_test.tif
+│       │   │   └── image1001_NY_test.tif
+│       │   │       ... (5000 files total)
+│       │   ├── 5000
+│       │   │   ├── image5000_NY_test.tif
+│       │   │   ├── image5001_NY_test.tif
+│       │   │   └── image5002_NY_test.tif
+│       │   │       ... (5000 files total)
+│       │   └── 10000
+│       │       ├── image10000_NY_test.tif
+│       │       ├── image10001_NY_test.tif
+│       │       └── image10002_NY_test.tif
+│       │           ... (4400 files total)
+│       └── NZ
+│           ├── 0
+│           │   ├── image0_NZ_test.tif
+│           │   ├── image1000_NZ_test.tif
+│           │   └── image1001_NZ_test.tif
+│           │       ... (5000 files total)
+│           ├── 5000
+│           │   ├── image5000_NZ_test.tif
+│           │   ├── image5001_NZ_test.tif
+│           │   └── image5002_NZ_test.tif
+│           │       ... (5000 files total)
+│           └── 10000
+│               ├── image10000_NZ_test.tif
+│               ├── image10001_NZ_test.tif
+│               └── image10002_NZ_test.tif
+│                   ... (4400 files total)
+├── lidar
+│   ├── train
+│   │   ├── CH
+│   │   │   ├── 0
+│   │   │   │   ├── lidar0_CH_train.copc.laz
+│   │   │   │   ├── lidar1000_CH_train.copc.laz
+│   │   │   │   └── lidar1001_CH_train.copc.laz
+│   │   │   │       ... (5000 files total)
+│   │   │   ├── 5000
+│   │   │   │   ├── lidar5000_CH_train.copc.laz
+│   │   │   │   ├── lidar5001_CH_train.copc.laz
+│   │   │   │   └── lidar5002_CH_train.copc.laz
+│   │   │   │       ... (5000 files total)
+│   │   │   └── 10000
+│   │   │       ├── lidar10000_CH_train.copc.laz
+│   │   │       ├── lidar10001_CH_train.copc.laz
+│   │   │       └── lidar10002_CH_train.copc.laz
+│   │   │           ... (5000 files total)
+│   │   │       ... (11 dirs total)
+│   │   ├── NY
+│   │   │   ├── 0
+│   │   │   │   ├── lidar0_NY_train.copc.laz
+│   │   │   │   ├── lidar10_NY_train.copc.laz
+│   │   │   │   └── lidar1150_NY_train.copc.laz
+│   │   │   │       ... (1071 files total)
+│   │   │   ├── 5000
+│   │   │   │   ├── lidar5060_NY_train.copc.laz
+│   │   │   │   ├── lidar5061_NY_train.copc.laz
+│   │   │   │   └── lidar5062_NY_train.copc.laz
+│   │   │   │       ... (2235 files total)
+│   │   │   └── 10000
+│   │   │       ├── lidar10000_NY_train.copc.laz
+│   │   │       ├── lidar10001_NY_train.copc.laz
+│   │   │       └── lidar10002_NY_train.copc.laz
+│   │   │           ... (4552 files total)
+│   │   │       ... (11 dirs total)
+│   │   └── NZ
+│   │       ├── 0
+│   │       │   ├── lidar0_NZ_train.copc.laz
+│   │       │   ├── lidar1000_NZ_train.copc.laz
+│   │       │   └── lidar1001_NZ_train.copc.laz
+│   │       │       ... (5000 files total)
+│   │       ├── 5000
+│   │       │   ├── lidar5000_NZ_train.copc.laz
+│   │       │   ├── lidar5001_NZ_train.copc.laz
+│   │       │   └── lidar5002_NZ_train.copc.laz
+│   │       │       ... (5000 files total)
+│   │       └── 10000
+│   │           ├── lidar10000_NZ_train.copc.laz
+│   │           ├── lidar10001_NZ_train.copc.laz
+│   │           └── lidar10002_NZ_train.copc.laz
+│   │               ... (4999 files total)
+│   │           ... (11 dirs total)
+│   ├── val
+│   │   ├── CH
+│   │   │   └── 0
+│   │   │       ├── lidar0_CH_val.copc.laz
+│   │   │       ├── lidar100_CH_val.copc.laz
+│   │   │       └── lidar101_CH_val.copc.laz
+│   │   │           ... (529 files total)
+│   │   ├── NY
+│   │   │   └── 0
+│   │   │       ├── lidar0_NY_val.copc.laz
+│   │   │       ├── lidar100_NY_val.copc.laz
+│   │   │       └── lidar101_NY_val.copc.laz
+│   │   │           ... (529 files total)
+│   │   └── NZ
+│   │       └── 0
+│   │           ├── lidar0_NZ_val.copc.laz
+│   │           ├── lidar100_NZ_val.copc.laz
+│   │           └── lidar101_NZ_val.copc.laz
+│   │               ... (529 files total)
+│   └── test
+│       ├── CH
+│       │   ├── 0
+│       │   │   ├── lidar0_CH_test.copc.laz
+│       │   │   ├── lidar1000_CH_test.copc.laz
+│       │   │   └── lidar1001_CH_test.copc.laz
+│       │   │       ... (5000 files total)
+│       │   ├── 5000
+│       │   │   ├── lidar5000_CH_test.copc.laz
+│       │   │   ├── lidar5001_CH_test.copc.laz
+│       │   │   └── lidar5002_CH_test.copc.laz
+│       │   │       ... (5000 files total)
+│       │   └── 10000
+│       │       ├── lidar10000_CH_test.copc.laz
+│       │       ├── lidar10001_CH_test.copc.laz
+│       │       └── lidar10002_CH_test.copc.laz
+│       │           ... (4400 files total)
+│       ├── NY
+│       │   ├── 0
+│       │   │   ├── lidar0_NY_test.copc.laz
+│       │   │   ├── lidar1000_NY_test.copc.laz
+│       │   │   └── lidar1001_NY_test.copc.laz
+│       │   │       ... (4964 files total)
+│       │   ├── 5000
+│       │   │   ├── lidar5000_NY_test.copc.laz
+│       │   │   ├── lidar5001_NY_test.copc.laz
+│       │   │   └── lidar5002_NY_test.copc.laz
+│       │   │       ... (4953 files total)
+│       │   └── 10000
+│       │       ├── lidar10000_NY_test.copc.laz
+│       │       ├── lidar10001_NY_test.copc.laz
+│       │       └── lidar10002_NY_test.copc.laz
+│       │           ... (4396 files total)
+│       └── NZ
+│           ├── 0
+│           │   ├── lidar0_NZ_test.copc.laz
+│           │   ├── lidar1000_NZ_test.copc.laz
+│           │   └── lidar1001_NZ_test.copc.laz
+│           │       ... (5000 files total)
+│           ├── 5000
+│           │   ├── lidar5000_NZ_test.copc.laz
+│           │   ├── lidar5001_NZ_test.copc.laz
+│           │   └── lidar5002_NZ_test.copc.laz
+│           │       ... (5000 files total)
+│           └── 10000
+│               ├── lidar10000_NZ_test.copc.laz
+│               ├── lidar10001_NZ_test.copc.laz
+│               └── lidar10002_NZ_test.copc.laz
+│                   ... (4400 files total)
+└── ffl
+    ├── train
+    │   ├── CH
+    │   │   ├── 0
+    │   │   │   ├── image0_CH_train.pt
+    │   │   │   ├── image1000_CH_train.pt
+    │   │   │   └── image1001_CH_train.pt
+    │   │   │       ... (5000 files total)
+    │   │   ├── 5000
+    │   │   │   ├── image5000_CH_train.pt
+    │   │   │   ├── image5001_CH_train.pt
+    │   │   │   └── image5002_CH_train.pt
+    │   │   │       ... (5000 files total)
+    │   │   └── 10000
+    │   │       ├── image10000_CH_train.pt
+    │   │       ├── image10001_CH_train.pt
+    │   │       └── image10002_CH_train.pt
+    │   │           ... (5000 files total)
+    │   │       ... (11 dirs total)
+    │   ├── NY
+    │   │   ├── 0
+    │   │   │   ├── image0_NY_train.pt
+    │   │   │   ├── image1000_NY_train.pt
+    │   │   │   └── image1001_NY_train.pt
+    │   │   │       ... (5000 files total)
+    │   │   ├── 5000
+    │   │   │   ├── image5000_NY_train.pt
+    │   │   │   ├── image5001_NY_train.pt
+    │   │   │   └── image5002_NY_train.pt
+    │   │   │       ... (5000 files total)
+    │   │   └── 10000
+    │   │       ├── image10000_NY_train.pt
+    │   │       ├── image10001_NY_train.pt
+    │   │       └── image10002_NY_train.pt
+    │   │           ... (5000 files total)
+    │   │       ... (11 dirs total)
+    │   ├── NZ
+    │   │   ├── 0
+    │   │   │   ├── image0_NZ_train.pt
+    │   │   │   ├── image1000_NZ_train.pt
+    │   │   │   └── image1001_NZ_train.pt
+    │   │   │       ... (5000 files total)
+    │   │   ├── 5000
+    │   │   │   ├── image5000_NZ_train.pt
+    │   │   │   ├── image5001_NZ_train.pt
+    │   │   │   └── image5002_NZ_train.pt
+    │   │   │       ... (5000 files total)
+    │   │   └── 10000
+    │   │       ├── image10000_NZ_train.pt
+    │   │       ├── image10001_NZ_train.pt
+    │   │       └── image10002_NZ_train.pt
+    │   │           ... (5000 files total)
+    │   │       ... (11 dirs total)
+    │   ├── processed-flag-all
+    │   ├── processed-flag-CH
+    │   └── processed-flag-NY
+    │       ... (8 files total)
+    ├── val
+    │   ├── CH
+    │   │   └── 0
+    │   │       ├── image0_CH_val.pt
+    │   │       ├── image100_CH_val.pt
+    │   │       └── image101_CH_val.pt
+    │   │           ... (529 files total)
+    │   ├── NY
+    │   │   └── 0
+    │   │       ├── image0_NY_val.pt
+    │   │       ├── image100_NY_val.pt
+    │   │       └── image101_NY_val.pt
+    │   │           ... (529 files total)
+    │   ├── NZ
+    │   │   └── 0
+    │   │       ├── image0_NZ_val.pt
+    │   │       ├── image100_NZ_val.pt
+    │   │       └── image101_NZ_val.pt
+    │   │           ... (529 files total)
+    │   ├── processed-flag-all
+    │   ├── processed-flag-CH
+    │   └── processed-flag-NY
+    │       ... (8 files total)
+    └── test
+        ├── CH
+        │   ├── 0
+        │   │   ├── image0_CH_test.pt
+        │   │   ├── image1000_CH_test.pt
+        │   │   └── image1001_CH_test.pt
+        │   │       ... (5000 files total)
+        │   ├── 5000
+        │   │   ├── image5000_CH_test.pt
+        │   │   ├── image5001_CH_test.pt
+        │   │   └── image5002_CH_test.pt
+        │   │       ... (5000 files total)
+        │   └── 10000
+        │       ├── image10000_CH_test.pt
+        │       ├── image10001_CH_test.pt
+        │       └── image10002_CH_test.pt
+        │           ... (4400 files total)
+        ├── NY
+        │   ├── 0
+        │   │   ├── image0_NY_test.pt
+        │   │   ├── image1000_NY_test.pt
+        │   │   └── image1001_NY_test.pt
+        │   │       ... (5000 files total)
+        │   ├── 5000
+        │   │   ├── image5000_NY_test.pt
+        │   │   ├── image5001_NY_test.pt
+        │   │   └── image5002_NY_test.pt
+        │   │       ... (5000 files total)
+        │   └── 10000
+        │       ├── image10000_NY_test.pt
+        │       ├── image10001_NY_test.pt
+        │       └── image10002_NY_test.pt
+        │           ... (4400 files total)
+        ├── NZ
+        │   ├── 0
+        │   │   ├── image0_NZ_test.pt
+        │   │   ├── image1000_NZ_test.pt
+        │   │   └── image1001_NZ_test.pt
+        │   │       ... (5000 files total)
+        │   ├── 5000
+        │   │   ├── image5000_NZ_test.pt
+        │   │   ├── image5001_NZ_test.pt
+        │   │   └── image5002_NZ_test.pt
+        │   │       ... (5000 files total)
+        │   └── 10000
+        │       ├── image10000_NZ_test.pt
+        │       ├── image10001_NZ_test.pt
+        │       └── image10002_NZ_test.pt
+        │           ... (4400 files total)
+        ├── processed-flag-all
+        ├── processed-flag-CH
+        └── processed-flag-NY
+            ... (8 files total)
+```
+
+</details>
+
+## Pretrained model weights
+
+### Download
+
+```
+git lfs install
+git clone https://huggingface.co/rsi/PixelsPointsPolygons $MODEL_ROOT
+```
 
 ## Code 
 
@@ -49,7 +443,7 @@ See [datasets preprocessing](data_preprocess) for instructions on preparing a da
 git clone https://github.com/raphaelsulzer/PixelsPointsPolygons
 ```
 
-### Requirements
+### Installation
 
 To create a conda environment named `p3` and install the repository as a python package with all dependencies run
 ```
@@ -80,59 +474,75 @@ pip install .
 | Pix2Poly                  |\<pix2poly>| PointPillars (PP) + ViT   | \<pp_vit>             |       | ✅    | 0.80      | 0.88      |
 | Pix2Poly                  |\<pix2poly>| PP+ViT \& ViT             | \<fusion_vit>         | ✅    |✅     | 0.78      | 0.85      | -->
 
-### Configuration
+### Setup
 
-The project supports hydra configurations which allow to modify any parameter from the command line, such as the model and encoder types from the table above.
-To view all available options run
+The project supports hydra configuration which allows to modify any parameter either from a `.yaml` file of directly from the command line.
+
+To setup the project structure we recommend to specify your `$DATA_ROOT` and `$MODEL_ROOT` in `config/host/default.yaml`.
+
+To view all available configuration options run
 ```
 python scripts/train.py --help
 ```
+
+
 
 <!-- The most important parameters are described below:
 <details>
 <summary>CLI Parameters</summary>
 
-- **experiment:** Path to an experiment.yaml file
-- **model:** Overwrite for a specific model
+```text
+        ├── processed-flag-all
+        ├── processed-flag-CH
+        └── processed-flag-NY
+            ... (8 files total)
+```
 
 </details> -->
 
-### Training
+### Predict a single tile
 
-Start training with the following command:
-
-```
-torchrun --nproc_per_node=<num GPUs> scripts/train.py model=<model> encoder=<encoder> model.batch_size=<batch size> ...
+TODO
 
 ```
-
-### Prediction
-
-```
-torchrun --nproc_per_node=<num GPUs> scripts/predict.py model=<model> checkpoint=best_val_iou ...
-
+python scripts/predict_demo.py
 ```
 
-### Evaluation
+### Reproduce paper results
+
+To reproduce the results from the paper you can run any of the following commands
 
 ```
-python scripts/evaluate.py model=<model> checkpoint=best_val_iou
+python scripts/modality_ablation.py
+python scripts/lidar_density_ablation.py
+python scripts/all_countries.py
 ```
-<!-- ## Trained models
 
-asd -->
+### Custom training, prediction and evaluation
 
+We recommend to first setup a custom `$EXP_FILE` in `config/experiment` following the structure of one of the existing experiment files, e.g. `ffl_fusion.yaml`. You can then run:
 
-<!-- ## Results
+```
+# train your model (on multiple GPUs)
+torchrun --nproc_per_node=$NUM_GPU scripts/train.py experiment=$EXP_FILE
+# predict the test set with your model (on multiple GPUs)
+torchrun --nproc_per_node=$NUM_GPU scripts/predict.py evaluation=test checkpoint=best_val_iou
+# evaluate your prediction of the test set
+python scripts/evaluate.py model=<model> evaluation=test checkpoint=best_val_iou
+```
 
-#TODO Put paper main results table here -->
+You could also continue training from a provided pretrained model with
 
+```
+# train your model (on a single GPU)
+python scripts/train.py experiment=p2p_fusion checkpoint=latest
+```
 
 ## Citation
 
 If you find our work useful, please consider citing:
 ```bibtex
-...
+TODO
 ```
 
 ## Acknowledgements
