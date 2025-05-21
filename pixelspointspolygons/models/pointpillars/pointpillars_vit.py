@@ -1,6 +1,7 @@
 import torch
 import logging
 import timm
+import os
 
 import torch.nn as nn
 
@@ -35,10 +36,8 @@ class PointPillarsViT(torch.nn.Module):
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
 
-        # # Redirect timm logs to your logger
-        # logging.getLogger('timm').handlers = []
-        # logging.getLogger('timm').propagate = False
-        # logging.getLogger('timm').addHandler(self.logger.handlers[0])
+        if not os.path.isfile(cfg.experiment.encoder.vit.checkpoint_file):
+            raise FileNotFoundError(f"Checkpoint file {cfg.experiment.encoder.vit.checkpoint_file} not found.")
         logging.getLogger('timm').setLevel(logging.WARNING)
         self.vit = timm.create_model(
             model_name=cfg.experiment.encoder.vit.type,
