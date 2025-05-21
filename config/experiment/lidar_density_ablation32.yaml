@@ -3,6 +3,7 @@ defaults:
   - /model: ffl
   - /polygonization: asm_acm
   - _self_
+  
 name: v5_lidar_bs2x16_mnv32
 group_name: v2_${.model.name}
 

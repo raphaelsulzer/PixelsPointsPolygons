@@ -571,7 +571,7 @@ python scripts/train.py experiment=p2p_fusion checkpoint=latest
 
 ## Citation
 
-If you find our work useful, please consider citing:
+If you use our work please cite
 ```bibtex
 TODO
 ```
