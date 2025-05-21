@@ -1,4 +1,6 @@
 import os
+import shutil
+
 from glob import glob
 from distutils.dir_util import copy_tree
 
@@ -63,6 +65,32 @@ def copy():
             infolder,outfolder
         )
 
+def copy_latest():
+
+    for model, experiment in experiments:
+        
+        if "ffl" in model or "lidar_density_ablation" in model:
+            model = "ffl"
+        elif "hisup" in model:
+            model = "hisup"
+        elif "p2p" in model:
+            model = "pix2poly"
+        else:
+            raise ValueError(f"Unknown model name: {model}")
+
+        
+        infile = f"/data/rsulzer/{model}_outputs/lidarpoly/224/{experiment}/checkpoints/latest.pth"
+        outfile = f"/data/rsulzer/PixelsPointsPolygons_output/{model}/224/{experiment}/checkpoints/latest.pth"
+        
+        
+        if not os.path.isfile(infile):
+            print(f"File {infile} does not exist")
+            continue
+        
+        print(f"Copying {infile} to {outfile}")
+        # Copy the folder
+        
+        shutil.copyfile(infile, outfile)
 
 def clean():
 
@@ -104,5 +132,6 @@ def clean():
 if __name__ == "__main__":
     
     # copy()
-    clean()
+    copy_latest()
+    # clean()
     
