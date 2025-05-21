@@ -105,15 +105,6 @@ class HiSupPredictor(Predictor):
     
     def predict_file(self,img_infile=None,lidar_infile=None,outfile=None):
         
-        if img_infile is not None and not os.path.isfile(img_infile):
-            raise FileExistsError(f"Image file {img_infile} not found.")
-        
-        if lidar_infile is not None and not os.path.isfile(lidar_infile):
-            raise FileExistsError(f"Image file {lidar_infile} not found.")
-        
-        if img_infile is None and lidar_infile is None:
-            raise ValueError("Either image or lidar file must be provided.")
-        
         if img_infile is not None:
             image_pil = np.array(Image.open(img_infile).convert("RGB"))
             image = torch.from_numpy(image_pil).permute(2, 0, 1).unsqueeze(0).to(self.cfg.host.device).to(torch.float32)
@@ -125,14 +116,14 @@ class HiSupPredictor(Predictor):
             las = laspy.read(lidar_infile)
             lidar = np.vstack((las.x, las.y, las.z)).transpose()
             
-            img_dim = 512
+            img_dim = 224
             img_res = 0.25
 
             lidar[:, :2] = (lidar[:, :2] - np.min(lidar,axis=0)[:2]) / img_res
             lidar[:, 1] = img_dim - lidar[:, 1]
 
             # # scale z vals to [0,100]
-            scaler = MinMaxScaler(feature_range=(0,512))
+            scaler = MinMaxScaler(feature_range=(0,224))
             lidar[:, -1] = scaler.fit_transform(lidar[:, -1].reshape(-1, 1)).squeeze()
             
             lidar = torch.from_numpy(lidar).unsqueeze(0).to(self.cfg.host.device).to(torch.float32).contiguous()

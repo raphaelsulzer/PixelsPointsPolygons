@@ -3,10 +3,7 @@ defaults:
   - /model: pix2poly
   - _self_
 
-name: debug
+name: lidar_pp_vit_bs2x16_mnv64
 group_name: v2_${.model.name}
 
-encoder:
-  max_num_points_per_voxel: 64
-
-country: all
+country: CH

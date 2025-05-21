@@ -52,7 +52,8 @@
             "args": [
                 "run_type=debug",
                 "host=gin",
-                "run_type.log_to_wandb=false",
+                "+image_file=demo_data/image0_CH_val.tif",
+                "+lidar_file=demo_data/lidar0_CH_val.copc.laz",
             ],
             "justMyCode": false
         },
