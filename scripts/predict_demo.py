@@ -22,21 +22,30 @@ def main(cfg):
         raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
     
     
-    image_file = None
-    lidar_file = None
-    
-    if 'image_file' in cfg and not os.path.isfile(cfg.image_file):
-        raise FileExistsError(f"Image file {cfg.image_file} not found.")
-    else:
+    if 'image_file' in cfg:
+        if not os.path.isfile(cfg.image_file):
+            raise FileExistsError(f"Image file {cfg.image_file} not found.")
+        if not cfg.experiment.encoder.use_images:
+            raise ValueError("Image file provided but images are not used in the encoder. Please choose and appropriate model.")
         image_file = cfg.image_file
-    
-    if 'lidar_file' in cfg and not os.path.isfile(cfg.lidar_file):
-        raise FileExistsError(f"Image file {cfg.lidar_file} not found.")
     else:
-        lidar_file = cfg.lidar_file
+        if cfg.experiment.encoder.use_images:
+            raise ValueError("No image file provided but images are used in the encoder. Please choose and appropriate model.")
+        image_file = None
     
+    if 'lidar_file' in cfg:
+        if not os.path.isfile(cfg.lidar_file):
+            raise FileExistsError(f"Image file {cfg.lidar_file} not found.")
+        if not cfg.experiment.encoder.use_lidar:
+            raise ValueError("LiDAR file provided but LiDAR is not used in the encoder. Please choose and appropriate model.")
+        lidar_file = cfg.lidar_file
+    else:
+        if cfg.experiment.encoder.use_lidar:
+            raise ValueError("No LiDAR file provided but LiDAR is used in the encoder. Please choose and appropriate model.")
+        lidar_file = None
+        
     if 'image_file' not in cfg and 'lidar_file' not in cfg:
-        raise ValueError("Either an image_file or lidar_file must be provided.")
+        raise ValueError("Either an image_file or lidar_file must be provided using +image_file=$FILE_NAME or +lidar_file=$FILE_NAME.")
     
     predictor.predict_file(img_infile=image_file, lidar_infile=lidar_file)
     
