@@ -559,7 +559,7 @@ torchrun --nproc_per_node=$NUM_GPU scripts/train.py experiment=$EXP_FILE
 torchrun --nproc_per_node=$NUM_GPU scripts/predict.py experiment=$EXP_FILE evaluation=test checkpoint=best_val_iou
 
 # evaluate your prediction of the test set
-python scripts/evaluate.py model=<model> experiment=$EXP_FILE evaluation=test checkpoint=best_val_iou
+python scripts/evaluate.py experiment=$EXP_FILE evaluation=test checkpoint=best_val_iou
 ```
 
 You could also continue training from a provided pretrained model with
