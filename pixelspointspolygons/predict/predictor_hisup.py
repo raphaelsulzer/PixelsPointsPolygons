@@ -12,10 +12,7 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PIL import Image
-from torchvision.transforms import functional as F
 from shapely.geometry import Polygon
-from sklearn.preprocessing import MinMaxScaler
 
 from ..misc import *
 from ..misc.shared_utils import to_single_device
@@ -24,7 +21,7 @@ from ..models.hisup import HiSupModel
 from .predictor import Predictor
 
 from ..datasets import get_train_loader, get_val_loader, get_test_loader
-
+from ..misc.debug_visualisations import plot_image, plot_point_cloud, plot_mask, plot_shapely_polygons
 
 class HiSupPredictor(Predictor):
 
@@ -105,70 +102,17 @@ class HiSupPredictor(Predictor):
     
     def predict_file(self,img_infile=None,lidar_infile=None,outfile=None):
         
-        if img_infile is not None:
-            image_pil = np.array(Image.open(img_infile).convert("RGB"))
-            image = torch.from_numpy(image_pil).permute(2, 0, 1).unsqueeze(0).to(self.cfg.host.device).to(torch.float32)
-            image = F.normalize(image, mean=self.cfg.dataset.image_mean, std=self.cfg.dataset.image_std)
-        else:
-            image = None
 
-        if lidar_infile is not None:
-            las = laspy.read(lidar_infile)
-            lidar = np.vstack((las.x, las.y, las.z)).transpose()
-            
-            img_dim = 224
-            img_res = 0.25
-
-            lidar[:, :2] = (lidar[:, :2] - np.min(lidar,axis=0)[:2]) / img_res
-            lidar[:, 1] = img_dim - lidar[:, 1]
-
-            # # scale z vals to [0,100]
-            scaler = MinMaxScaler(feature_range=(0,224))
-            lidar[:, -1] = scaler.fit_transform(lidar[:, -1].reshape(-1, 1)).squeeze()
-            
-            lidar = torch.from_numpy(lidar).unsqueeze(0).to(self.cfg.host.device).to(torch.float32).contiguous()
-        
-        
-        
-            
-            
-        else:
-            lidar = None
-        
-        if outfile is None:
-            outfile = "prediction.png"
+        image, image_pillow = self.load_image_from_file(img_infile)
+        lidar = self.load_lidar_from_file(lidar_infile)
         
         self.setup_model_and_load_checkpoint()
-        
-
-        px = 1/plt.rcParams['figure.dpi']
-        # fig, ax = plt.subplots(1, 1, figsize=(image_pil.shape[0]*px, image_pil.shape[1]*px))
-        fig, ax = plt.subplots(1, 1, figsize=(512*px, 512*px))
-        
         
         with torch.no_grad():
 
             output, loss = self.model.forward_val(x_images=image, x_lidar=lidar, y=None)
 
-            if not len(output['polys_pred'][0]):
-                self.logger.warning(f"No polygons predicted.")
-                return
-            
-            polygons = []
-            for poly in output['polys_pred'][0]:
-                polygons.append(Polygon(poly))
-                
-            if img_infile is not None:
-                plot_image(image_pil, ax=ax)
-            
-            if lidar_infile is not None:
-                plot_point_cloud(lidar, ax=ax)
-                
-            plot_mask(output["mask_pred"][0]>0.5, color=[1,0,1,0.5], ax=ax)
-            
-            plot_shapely_polygons(polygons, ax=ax,pointcolor=[1,1,0],edgecolor=[1,0,1])
-            
-            self.logger.info(f"Save prediction to {outfile}")
-            plt.savefig(outfile)
+            self.plot_prediction(output['polys_pred'][0], image=image, image_pillow=image_pillow, lidar=lidar, outfile=outfile)
+
             
             

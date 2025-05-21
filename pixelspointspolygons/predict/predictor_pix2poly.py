@@ -33,13 +33,19 @@ class Pix2PolyPredictor(Predictor):
         self.cfg.experiment.model.tokenizer.pad_idx = self.tokenizer.PAD_code
         self.cfg.experiment.model.tokenizer.max_len = self.cfg.experiment.model.tokenizer.n_vertices*2+2
         self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.n_vertices*2+1
+        
+    def setup_model_and_load_checkpoint(self):
+        
+        self.setup_tokenizer()
+        self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
+        self.model.eval()
+        self.model.to(self.cfg.host.device)
+        self.load_checkpoint()
+    
     
     def predict_dataset(self, split="val"):
         
-
-        self.setup_tokenizer()
-        self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
-        self.load_checkpoint()
+        self.setup_model_and_load_checkpoint()
         
         if split == "train":
             self.loader = get_train_loader(self.cfg,tokenizer=self.tokenizer,logger=self.logger)
@@ -72,9 +78,7 @@ class Pix2PolyPredictor(Predictor):
 
     
     def predict_from_loader(self, model, tokenizer, loader):
-        
-        model.eval()
-        
+                
         if isinstance(loader.dataset, torch.utils.data.Subset):
             self.logger.warning("You are predicting only a subset of the dataset. Your coco evaluation will not be very useful.")
         
@@ -94,7 +98,27 @@ class Pix2PolyPredictor(Predictor):
                 coco_predictions.extend(generate_coco_ann(polys,image_ids[i].item()))
                 
         return coco_predictions
-    
+
+
+    def predict_file(self,img_infile=None,lidar_infile=None,outfile=None):
+                
+        image, image_pillow = self.load_image_from_file(img_infile)
+        lidar = self.load_lidar_from_file(lidar_infile)
+
+        self.setup_model_and_load_checkpoint()
+        
+        with torch.no_grad():
+            
+            if self.cfg.experiment.encoder.use_images:
+                image = image.to(self.device, non_blocking=True)
+            if self.cfg.experiment.encoder.use_lidar:
+                lidar = lidar.to(self.device, non_blocking=True)
+            
+            batch_polygons = self.batch_to_polygons(image, lidar, self.model, self.tokenizer)
+            self.plot_prediction(batch_polygons[0], image=image, image_pillow=image_pillow, lidar=lidar, outfile=outfile)
+
+            
+            
     def batch_to_polygons(self, x_images, x_lidar, model, tokenizer):
         """Takes one batch with samples of images and/or lidar data and returns the polygons for each sample of the batch."""
         

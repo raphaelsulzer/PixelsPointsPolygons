@@ -487,7 +487,6 @@ pip install .
 ⚠️ **Warning**: The implementation of the LiDAR point cloud encoder uses Open3D-ML. Currently, Open3D-ML officially only supports the PyTorch version specified in `requirements-torch-cuda.txt`.
 
 
-
 <!-- ## Model Zoo
 
 
@@ -529,13 +528,16 @@ python scripts/train.py --help
 
 </details> -->
 
-### Predict a single tile
+### Predict demo tile
 
-TODO
+After downloading the model weights and setting up the code you can predict a demo tile by running
 
 ```
-python scripts/predict_demo.py
+python scripts/predict_demo.py checkpoint=best_val_iou experiment=$MODEL_$MODALITY +image_file=demo_data/image0_CH_val.tif +lidar_file=demo_data/lidar0_CH_val.copc.laz
 ```
+At least one of `image_file` or `lidar_file` has to be specified. `$MODEL` can be one of the following: `ffl`, `hisup` or `p2p`. `$MODALITY` can be `image`, `lidar` or `fusion`.
+The result will be stored in `prediction.png`.
+
 
 ### Reproduce paper results
 
