@@ -7,13 +7,23 @@ os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 import time
 import json
 import torch
+import laspy
+
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 import torch.distributed as dist
+import numpy as np
+import matplotlib.pyplot as plt
+
+from PIL import Image
+from torchvision.transforms import functional as F
+from shapely.geometry import Polygon
+from sklearn.preprocessing import MinMaxScaler
 
 from ..models.ffl.local_utils import batch_to_cpu, split_batch, list_of_dicts_to_dict_of_lists, flatten_dict
 from ..models.ffl.model_ffl import FFLModel
 from ..datasets import get_train_loader, get_val_loader, get_test_loader
+from ..misc.debug_visualisations import plot_image, plot_point_cloud, plot_mask, plot_shapely_polygons
 
 from .predictor import Predictor
 
@@ -23,13 +33,19 @@ from .ffl import polygonize
 
 class FFLPredictor(Predictor):
     
+    def setup_model_and_load_checkpoint(self):
+        
+        self.model = FFLModel(self.cfg, self.local_rank)
+        self.model.eval()
+        self.model.to(self.cfg.host.device)
+        self.load_checkpoint()
+    
     def predict_dataset(self, split="val"):
         
         self.logger.info(f"Starting prediction and polygonization...")
 
         # Loading model
-        self.model = FFLModel(self.cfg, self.local_rank)
-        self.load_checkpoint()
+        self.setup_model_and_load_checkpoint()
         
         if split == "train":
             self.loader = get_train_loader(self.cfg,logger=self.logger)
@@ -131,3 +147,33 @@ class FFLPredictor(Predictor):
             return annotations
         else:
             return dict()
+        
+        
+        
+    def predict_file(self,img_infile=None,lidar_infile=None,outfile=None):
+        
+        
+        image, image_pillow = self.load_image_from_file(img_infile)
+        lidar = self.load_lidar_from_file(lidar_infile)
+        
+        self.setup_model_and_load_checkpoint()
+        
+            
+        batch = {}
+        if image is not None:
+            batch["image"] = image
+        if lidar is not None:
+            batch["lidar"] = lidar
+        
+        batch = inference.inference_no_patching(self.cfg, self.model, batch)
+        batch["polygons"], batch["polygon_probs"] = polygonize.polygonize(
+            self.cfg.experiment.polygonization, batch["seg"],
+            crossfield_batch=batch.get("crossfield", None),
+            pool=None)
+        batch = batch_to_cpu(batch)
+        sample_list = split_batch(batch,batch_size=1)
+        
+        self.plot_prediction(sample_list[0]["polygons"]['acm']['tol_1'], image=image, image_pillow=image_pillow, lidar=lidar, outfile=outfile)
+
+            
+            

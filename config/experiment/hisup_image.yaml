@@ -7,4 +7,4 @@ defaults:
 name: v3_image_vit_cnn_bs4x12
 group_name: v2_${.model.name}
 
-country: all
+country: CH

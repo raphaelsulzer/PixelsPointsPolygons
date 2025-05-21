@@ -3,7 +3,7 @@ defaults:
   - /model: pix2poly
   - _self_
 
-name: debug
+name: v4_image_vit_bs4x16
 group_name: v2_${.model.name}
 
-country: all
+country: CH
