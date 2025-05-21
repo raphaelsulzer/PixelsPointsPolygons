@@ -7,6 +7,16 @@
     <b>Figure 1</b>: A view of our dataset of Zurich, Switzerland
 </div>
 
+## Table of Contents
+
+- [Abstract](#abstract)
+- [Highlights](#highlights)
+- [Dataset](#dataset)
+- [Pretrained model weights](#pretrained-model-weights)
+- [Code](#code)
+- [Citation](#citation)
+- [Acknowledgements](#acknowledgements)
+
 ## Abstract
 
 <div align="justify">
@@ -19,7 +29,6 @@ We present the P<sup>3</sup> dataset, a large-scale multimodal benchmark for bui
 - A library for training and evaluating state-of-the-art deep learning methods on the dataset, available at [github.com/raphaelsulzer/PixelsPointsPolygons](https://github.com/raphaelsulzer/PixelsPointsPolygons)
 - Pretrained model weights, available at [huggingface.co/rsi/PixelsPointsPolygons](https://huggingface.co/rsi/PixelsPointsPolygons) 
 
-
 ## Dataset
 
 ### Overview
@@ -30,15 +39,26 @@ We present the P<sup>3</sup> dataset, a large-scale multimodal benchmark for bui
 
 ### Download
 
+The recommended and fastest way to download the dataset is to run
+
+```
+pip install huggingface_hub
+python scripts/download_dataset.py --dataset-root $DATA_ROOT
+```
+
+Optionally you can also download the dataset by running
+
 ```
 git lfs install
 git clone https://huggingface.co/datasets/rsi/PixelsPointsPolygons $DATA_ROOT
 ```
 
+Both options will download the full dataset, including aerial images (as .tif), aerial lidar point clouds (as .copc.laz) and building polygon annotaions (as MS-COCO .json) into `$DATA_ROOT` . The size of the dataset is around 163GB.
+
 ### Structure
 
 <details>
-<summary>📁 Click to expand folder structure</summary -->
+<summary>📁 Click to expand dataset folder structure</summary -->
 
 ```text
 PixelsPointsPolygons/data/224
@@ -430,12 +450,21 @@ PixelsPointsPolygons/data/224
 
 ### Download
 
+The recommended and fastest way to download the pretrained model weights is to run
+
 ```
-git lfs install
+python scripts/download_pretrained.py --model-root $MODEL_ROOT
+```
+
+Optionally you can also download the weights by running
+
+```
 git clone https://huggingface.co/rsi/PixelsPointsPolygons $MODEL_ROOT
 ```
 
-## Code 
+Both options will download all checkpoints (as .pth) and results presented in the paper (as MS-COCO .json) into `$MODEL_ROOT` .
+
+## Code
 
 ### Download
 
@@ -476,7 +505,7 @@ pip install .
 
 ### Setup
 
-The project supports hydra configuration which allows to modify any parameter either from a `.yaml` file of directly from the command line.
+The project supports hydra configuration which allows to modify any parameter either from a `.yaml` file or directly from the command line.
 
 To setup the project structure we recommend to specify your `$DATA_ROOT` and `$MODEL_ROOT` in `config/host/default.yaml`.
 
@@ -510,7 +539,7 @@ python scripts/predict_demo.py
 
 ### Reproduce paper results
 
-To reproduce the results from the paper you can run any of the following commands
+To reproduce the results from the paper you can run the following commands
 
 ```
 python scripts/modality_ablation.py
@@ -525,8 +554,10 @@ We recommend to first setup a custom experiment file `$EXP_FILE` in `config/expe
 ```
 # train your model (on multiple GPUs)
 torchrun --nproc_per_node=$NUM_GPU scripts/train.py experiment=$EXP_FILE
+
 # predict the test set with your model (on multiple GPUs)
 torchrun --nproc_per_node=$NUM_GPU scripts/predict.py experiment=$EXP_FILE evaluation=test checkpoint=best_val_iou
+
 # evaluate your prediction of the test set
 python scripts/evaluate.py model=<model> experiment=$EXP_FILE evaluation=test checkpoint=best_val_iou
 ```
