@@ -575,7 +575,15 @@ python scripts/train.py experiment=p2p_fusion checkpoint=latest
 
 If you use our work please cite
 ```bibtex
-TODO
+@misc{sulzer2025p3datasetpixelspoints,
+      title={The P$^3$ dataset: Pixels, Points and Polygons for Multimodal Building Vectorization}, 
+      author={Raphael Sulzer and Liuyun Duan and Nicolas Girard and Florent Lafarge},
+      year={2025},
+      eprint={2505.15379},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2505.15379}, 
+}
 ```
 
 ## Acknowledgements
