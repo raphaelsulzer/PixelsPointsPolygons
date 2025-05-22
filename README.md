@@ -28,6 +28,7 @@ We present the P<sup>3</sup> dataset, a large-scale multimodal benchmark for bui
 - A global, multimodal dataset of aerial images, aerial LiDAR point clouds and building outline polygons, available at [huggingface.co/datasets/rsi/PixelsPointsPolygons](https://huggingface.co/datasets/rsi/PixelsPointsPolygons) 
 - A library for training and evaluating state-of-the-art deep learning methods on the dataset, available at [github.com/raphaelsulzer/PixelsPointsPolygons](https://github.com/raphaelsulzer/PixelsPointsPolygons)
 - Pretrained model weights, available at [huggingface.co/rsi/PixelsPointsPolygons](https://huggingface.co/rsi/PixelsPointsPolygons) 
+- A paper with an extensive experimental validation, available at [arxiv.org/abs/2505.15379](https://arxiv.org/abs/2505.15379)
 
 ## Dataset
 
