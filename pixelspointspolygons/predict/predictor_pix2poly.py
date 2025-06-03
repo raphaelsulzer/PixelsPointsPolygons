@@ -115,7 +115,7 @@ class Pix2PolyPredictor(Predictor):
                 lidar = lidar.to(self.device, non_blocking=True)
             
             batch_polygons = self.batch_to_polygons(image, lidar, self.model, self.tokenizer)
-            self.plot_prediction(batch_polygons[0], image=image, image_pillow=image_pillow, lidar=lidar, outfile=outfile)
+            self.plot_prediction(batch_polygons[0], image=image, image_np=image_pillow, lidar=lidar, outfile=outfile)
 
             
             

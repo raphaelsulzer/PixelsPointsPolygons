@@ -1,5 +1,5 @@
 <div align="center">
-    <h1 align="center">The P<sup>3</sup> dataset: Pixels, Points and Polygons <br> for Multimodal Building Vectorization</h1>
+    <h1 align="center">The P<sup>3</sup> Dataset: Pixels, Points and Polygons <br> for Multimodal Building Vectorization</h1>
     <h3><align="center">Raphael Sulzer<sup>1,2</sup> &nbsp;&nbsp;&nbsp; Liuyun Duan<sup>1</sup>
     &nbsp;&nbsp;&nbsp; Nicolas Girard<sup>1</sup>&nbsp;&nbsp;&nbsp; Florent Lafarge<sup>2</sup></a></h3>
     <align="center"><sup>1</sup>LuxCarta Technology <br>  <sup>2</sup>Centre Inria d'Université Côte d'Azur
@@ -28,6 +28,7 @@ We present the P<sup>3</sup> dataset, a large-scale multimodal benchmark for bui
 - A global, multimodal dataset of aerial images, aerial LiDAR point clouds and building outline polygons, available at [huggingface.co/datasets/rsi/PixelsPointsPolygons](https://huggingface.co/datasets/rsi/PixelsPointsPolygons) 
 - A library for training and evaluating state-of-the-art deep learning methods on the dataset, available at [github.com/raphaelsulzer/PixelsPointsPolygons](https://github.com/raphaelsulzer/PixelsPointsPolygons)
 - Pretrained model weights, available at [huggingface.co/rsi/PixelsPointsPolygons](https://huggingface.co/rsi/PixelsPointsPolygons) 
+- A paper with an extensive experimental validation, available at [arxiv.org/abs/2505.15379](https://arxiv.org/abs/2505.15379)
 
 ## Dataset
 
@@ -575,7 +576,15 @@ python scripts/train.py experiment=p2p_fusion checkpoint=latest
 
 If you use our work please cite
 ```bibtex
-TODO
+@misc{sulzer2025p3datasetpixelspoints,
+      title={The P$^3$ dataset: Pixels, Points and Polygons for Multimodal Building Vectorization}, 
+      author={Raphael Sulzer and Liuyun Duan and Nicolas Girard and Florent Lafarge},
+      year={2025},
+      eprint={2505.15379},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2505.15379}, 
+}
 ```
 
 ## Acknowledgements

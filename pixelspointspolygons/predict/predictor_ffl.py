@@ -152,13 +152,11 @@ class FFLPredictor(Predictor):
         
     def predict_file(self,img_infile=None,lidar_infile=None,outfile=None):
         
-        
-        image, image_pillow = self.load_image_from_file(img_infile)
+        image, image_np = self.load_image_from_file(img_infile)
         lidar = self.load_lidar_from_file(lidar_infile)
         
         self.setup_model_and_load_checkpoint()
         
-            
         batch = {}
         if image is not None:
             batch["image"] = image
@@ -173,7 +171,6 @@ class FFLPredictor(Predictor):
         batch = batch_to_cpu(batch)
         sample_list = split_batch(batch,batch_size=1)
         
-        self.plot_prediction(sample_list[0]["polygons"]['acm']['tol_1'], image=image, image_pillow=image_pillow, lidar=lidar, outfile=outfile)
-
-            
-            
+        polygons = sample_list[0]["polygons"].get('acm',{}).get('tol_1',[])
+        
+        self.plot_prediction(polygons, image=image, image_np=image_np, lidar=lidar, outfile=outfile)
