@@ -53,9 +53,9 @@
                 "run_type=debug",
                 "host=gin",
                 "checkpoint=best_val_iou",
-                "experiment=ffl_fusion",
-                "+image_file=demo_data/image0_CH_val.tif",
-                "+lidar_file=demo_data/lidar0_CH_val.copc.laz",
+                "experiment=ffl_image",
+                "+image_file=/user/rsulzer/home/image1860_NZ_test.tif",
+                // "+lidar_file=demo_data/lidar0_CH_val.copc.laz",
             ],
             "justMyCode": false
         },
