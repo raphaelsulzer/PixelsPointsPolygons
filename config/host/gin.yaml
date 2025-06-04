@@ -1,5 +1,5 @@
 name: gin
-data_root: /data/rsulzer/${..dataset.name}
+data_root: /data/rsulzer/${..dataset.name}_dataset
 model_root: /data/rsulzer/${..dataset.name}_output
 
 multi_gpu: false
