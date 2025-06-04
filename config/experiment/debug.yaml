@@ -1,5 +1,5 @@
 defaults:
-  - /encoder: pointpillars_vit_cnn
+  - /encoder: vit_cnn
   - /model: ffl
   - /polygonization: asm_acm
   - _self_
