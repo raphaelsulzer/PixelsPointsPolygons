@@ -2,11 +2,7 @@
 set -e
 
 # Local variables
-<<<<<<< HEAD
 ENV_NAME=p3
-=======
-ENV_NAME=ppp_v100
->>>>>>> v100
 PYTHON=3.11.11
 
 # Installation script for Miniconda3 environments
