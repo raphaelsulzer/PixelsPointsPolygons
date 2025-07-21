@@ -52,8 +52,13 @@ def collate_fn_hisup(batch, cfg):
     else:
         image_batch = None
         
+<<<<<<< HEAD
     if cfg.experiment.encoder.use_lidar:
         lidar_batch = torch.nested.nested_tensor(lidar_batch, layout=torch.jagged)
+=======
+    if cfg.use_lidar:
+        lidar_batch = torch.nested.nested_tensor(lidar_batch)
+>>>>>>> v100
     else:
         lidar_batch = None
         

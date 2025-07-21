@@ -20,7 +20,7 @@ dependencies = [
     "laspy[lazrs]",
     "matplotlib",
     "numpy==1.25.2", # this line is only necessary when installing with open3d, i.e. pytorch 2.2, not necessary with the newest pytorch
-    "open3d",
+    "open3d==0.18.0",
     "pandas",
     "pycocotools",
     "rasterio",
