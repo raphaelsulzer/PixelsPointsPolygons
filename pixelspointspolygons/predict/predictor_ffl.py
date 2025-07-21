@@ -87,10 +87,10 @@ class FFLPredictor(Predictor):
         self.logger.debug(f"Polygonization with method {self.cfg.experiment.polygonization.method}")
         
         if isinstance(loader.dataset, torch.utils.data.Subset):
-            self.logger.warning("You are predicting only a subset of the validation dataset. However, the coco evaluation expects the full validation set, so the its metrics will not be very useful.")
+            self.logger.warning(f"You are predicting only a subset of the {self.cfg.evaluation.split} split. However, the evaluation expects the full split. Specify `evaluation.modes=subset_iou` to have a meaningful metric.")
         
         model.eval()
-            
+        
         annotations_list = []
         
         for batch in self.progress_bar(loader):
@@ -127,7 +127,8 @@ class FFLPredictor(Predictor):
             
             for sample in sample_list:
                 annotations = save_utils.poly_coco(sample["polygons"], sample["polygon_probs"], sample["image_id"])
-                annotations_list.append(annotations)  # annotations could be a dict, or a list
+                if len(annotations) > 0:
+                    annotations_list.append(annotations)  # annotations could be a dict, or a list
                     
         # else:
         #     self.logger.info(f"Rank {self.local_rank} waiting until polygonization is done...")

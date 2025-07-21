@@ -2,7 +2,7 @@ defaults:
   - host: default
   - run_type: release
   - dataset: p3
-  - experiment: debug
+  - experiment: default
   - training: default
   - evaluation: val
   # - experiment: ffl_image

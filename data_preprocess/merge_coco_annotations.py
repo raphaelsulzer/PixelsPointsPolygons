@@ -24,7 +24,6 @@ def merge_coco_annotations(input_files, output_file):
 
     for file_path in input_files:
         with open(file_path, 'r') as f:
-            print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
             print("Loading", file_path)
             data = json.load(f)
 
