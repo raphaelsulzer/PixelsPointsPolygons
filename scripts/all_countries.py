@@ -7,7 +7,7 @@ from tqdm import tqdm
 from logging import getLogger
 
 from pixelspointspolygons.predict import FFLPredictor, HiSupPredictor, Pix2PolyPredictor
-from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf, count_trainable_parameters
+from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf
 from pixelspointspolygons.eval import Evaluator
 
 def parse_cli_overrides():
