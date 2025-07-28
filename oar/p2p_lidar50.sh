@@ -23,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release host.multi_gpu=true checkpoint=null experiment=p2p_fusion_droplidar50 experiment.name=p2p_fusion_droplidar50_bs2x16 country=CH
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release experiment=p2p_fusion_droplidar50 experiment.name=p2p_fusion_droplidar50_bs2x16 country=CH
