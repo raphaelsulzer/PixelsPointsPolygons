@@ -1,9 +1,0 @@
-defaults:
-  - /encoder: pointpillars_vit_cnn
-  - /model: hisup
-  - _self_
-
-name: lidar_NZ_ft
-group_name: v2_${.model.name}
-
-

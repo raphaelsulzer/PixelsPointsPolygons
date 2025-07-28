@@ -1,5 +1,7 @@
 import timm
 import logging
+import os
+
 import torch.nn as nn
 
 from ...misc import make_logger
@@ -14,8 +16,15 @@ class ViT(nn.Module):
         
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
-    
+
+        if cfg.experiment.encoder.checkpoint_file is None:
+            self.logger.warning("No checkpoint file specified, using default timm model initialization.")
+            
+        
+        if not os.path.isfile(cfg.experiment.encoder.checkpoint_file):
+            raise FileNotFoundError(f"Checkpoint file {cfg.experiment.encoder.checkpoint_file} not found.")
         logging.getLogger('timm').setLevel(logging.WARNING)
+
         self.vit = timm.create_model(
             model_name=cfg.experiment.encoder.type,
             num_classes=0,
@@ -23,7 +32,7 @@ class ViT(nn.Module):
             pretrained=cfg.experiment.encoder.pretrained,
             checkpoint_path=cfg.experiment.encoder.checkpoint_file
         )
-        
+                
         if bottleneck:
             self.bottleneck = nn.AdaptiveAvgPool1d(cfg.experiment.encoder.out_feature_dim)
         else:

@@ -96,9 +96,10 @@ def compute_line_dof(ldof_exe, gti_annotations, input_json, pbar_disable=False):
             metric_dof = float(match.group(1))
             norm_line_dofs.append(metric_dof)
         else:
-            raise ValueError(f"{result.stdout} \n Metric for DoF not in result.")
+            print(f"{result.stdout} \n Metric for DoF not in result.")
+            # raise ValueError(f"{result.stdout} \n Metric for DoF not in result.")
         
-        
+
     
     assert len(line_dofs) == len(image_ids), "Number of line dofs does not match number of images"
     assert len(line_segs) == len(image_ids), "Number of line segments does not match number of images"

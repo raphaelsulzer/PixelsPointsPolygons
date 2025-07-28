@@ -1,0 +1,9 @@
+defaults:
+  - /encoder: vit_dinov2
+  - /model: pix2poly
+  - _self_
+
+name: dinov2
+group_name: v3_${.model.name}
+
+country: CH

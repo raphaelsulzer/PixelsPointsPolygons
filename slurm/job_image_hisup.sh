@@ -33,4 +33,4 @@ set -x
 
 # Run your Python script
 
-torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release multi_gpu=true checkpoint=latest model.batch_size=12 experiment_name=v3_image_vit_cnn_bs4x12 model=hisup encoder=vit_cnn
+torchrun --nproc_per_node=4 scripts/train.py log_to_wandb=true host=jz run_type=release host.multi_gpu=true checkpoint=latest model.batch_size=12 experiment_name=v3_image_vit_cnn_bs4x12 model=hisup encoder=vit_cnn

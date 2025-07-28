@@ -1,8 +1,10 @@
 defaults:
   - /encoder: vit_cnn
   - /model: ffl
+  - /polygonization: asm_acm
   - _self_
 
-name: debug
+name: v4_image_bs4x16
 group_name: v2_${.model.name}
 
+country: CH

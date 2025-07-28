@@ -1,10 +1,10 @@
 import torch
 import logging
 import timm
+import os
 
 import torch.nn as nn
 
-# from .pointpillars_ori import PointPillarsEncoder
 from ..pointpillars.pointpillars_o3d import PointPillarsEncoder
 
 from ...misc.logger import make_logger
@@ -49,6 +49,9 @@ class EarlyFusionViTCNN(torch.nn.Module):
         }
         self.lidar_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
         
+        if not os.path.isfile(cfg.experiment.encoder.vit.checkpoint_file):
+            raise FileNotFoundError(f"Checkpoint file {cfg.experiment.encoder.vit.checkpoint_file} not found.")
+        logging.getLogger('timm').setLevel(logging.WARNING)
         ###### Image encoder #######
         self.vit = timm.create_model(
             model_name=cfg.experiment.encoder.vit.type,
