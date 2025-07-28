@@ -1,6 +1,7 @@
 defaults:
-  - /encoder: vit_cnn
-  - /model: ffl
+  - /encoder: vit_dinov2
+  # - /encoder: vit
+  - /model: pix2poly
   - /polygonization: asm_acm
   - _self_
 
