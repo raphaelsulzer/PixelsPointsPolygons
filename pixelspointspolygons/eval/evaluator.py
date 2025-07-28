@@ -21,6 +21,7 @@ from .polis import compute_polis
 from .topdig_metrics import compute_mask_metrics
 from .line_dof import compute_line_dof
 from .hausdorff import compute_hausdorff_chamfer
+from .polis_chamfer_hausdorff import PointBasedMetrics
 
 # Format the DataFrame to display only two digits after the comma
 pd.options.display.float_format = "{:.2f}".format
@@ -33,8 +34,6 @@ class Evaluator:
         
         self.cfg = cfg
         
-        # self.gt_file = cfg.eval.gt_file
-        # self.pred_file = cfg.eval.pred_file
         self.gt_file = None
         self.pred_file = None
         
@@ -43,7 +42,7 @@ class Evaluator:
         
         self.verbosity = getattr(logging, cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger("Evaluator",level=self.verbosity)
-        self.pbar_updata_every = cfg.update_pbar_every
+        self.pbar_updata_every = cfg.host.update_pbar_every
         self.pbar_disable = self.verbosity >= logging.INFO
 
 
@@ -223,38 +222,47 @@ class Evaluator:
             self.print_info()
                     
         with suppress_stdout():
-
-            if "polis" in self.cfg.eval.modes:  
-                self.logger.info("Computing POLIS...")
-                res_dict.update(compute_polis(self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
-            if "hausdorff" in self.cfg.eval.modes: 
-                self.logger.info("Computing Hausdorff and Chamfer distance...") 
-                res_dict.update(compute_hausdorff_chamfer(self.gt_file, self.pred_file, 
-                                                          pbar_disable=self.pbar_disable,
-                                                          workers=self.cfg.num_workers))
-            if "ldof" in self.cfg.eval.modes:
+            
+            
+            if bool(set(self.cfg.evaluation.modes) & set(["polis", "chamfer", "hausdorff"])):  
+                self.logger.info("Computing point-based metrics...")
+                gt_coco = COCO(self.gt_file)
+                dt_coco = gt_coco.loadRes(self.pred_file)
+                polisEval = PointBasedMetrics(gt_coco, dt_coco, iou_threshold=0.5, pbar_disable=self.pbar_disable, num_workers=self.cfg.num_workers)
+                res_dict.update(polisEval.evaluate())
+                
+                # res_dict.update(compute_polis(self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
+            # if "hausdorff" in self.cfg.evaluation.modes: 
+            #     self.logger.info("Computing Hausdorff and Chamfer distance...") 
+            #     res_dict.update(compute_hausdorff_chamfer(self.gt_file, self.pred_file, 
+            #                                               pbar_disable=self.pbar_disable,
+            #                                               workers=self.cfg.num_workers))
+            if "ldof" in self.cfg.evaluation.modes:
                 self.logger.info("Computing line DoF...")
-                res_dict.update(compute_line_dof(
-                    self.cfg.eval.ldof_exe, self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
-            if "mta" in self.cfg.eval.modes:
+                if os.path.isfile(self.cfg.host.ldof_exe):
+                    res_dict.update(compute_line_dof(
+                        self.cfg.host.ldof_exe, self.gt_file, self.pred_file, pbar_disable=self.pbar_disable))
+                else:
+                    self.logger.warning(f"Line DoF executable {self.cfg.host.ldof_exe} not found. Skipping line DoF evaluation.")
+            if "mta" in self.cfg.evaluation.modes:
                 self.logger.info("Computing MTA...")
                 res_dict.update(compute_max_angle_error(self.gt_file, self.pred_file, num_workers=self.cfg.num_workers))
-            if "iou" in self.cfg.eval.modes:
+            if "iou" in self.cfg.evaluation.modes:
                 self.logger.info("Computing IoU and C-IoU...")
                 res_dict.update(compute_IoU_cIoU(self.pred_file, self.gt_file, pbar_disable=self.pbar_disable))
-            if "subset_iou" in self.cfg.eval.modes:
+            if "subset_iou" in self.cfg.evaluation.modes:
                 self.logger.info("Computing Subset IoU and C-IoU...")
                 res_dict.update(compute_IoU_cIoU(self.pred_file, self.gt_file, subset=True, pbar_disable=self.pbar_disable))
-            if "topdig" in self.cfg.eval.modes:
+            if "topdig" in self.cfg.evaluation.modes:
                 self.logger.info("Computing Topdig...")
                 res_dict.update(compute_mask_metrics(self.pred_file, self.gt_file))
-            if "boundary-coco" in self.cfg.eval.modes:
+            if "boundary-coco" in self.cfg.evaluation.modes:
                 self.logger.info("Computing Boundary COCO...")
                 res_dict.update(self.compute_boundary_coco_metrics())
-            if "coco" in self.cfg.eval.modes:
+            if "coco" in self.cfg.evaluation.modes:
                 self.logger.info("Computing COCO...")
                 res_dict.update(self.compute_coco_metrics())
-            if "stats" in self.cfg.eval.modes:
+            if "stats" in self.cfg.evaluation.modes:
                 self.logger.info("Computing Stats...")
                 res_dict.update(self.compute_coco_stats())
         
@@ -274,78 +282,6 @@ class Evaluator:
         # Pretty print the DataFrame
         print(df)
         
-        
-    def check_if_predictions_exist(self):
-        
-        for item in self.cfg.experiments:
-            
-            for exp in item.experiment_name:
-                
-                name, img_dim, polygonization_method = get_experiment_type(exp)
-                                                
-                pred = self.cfg.checkpoint
-                pred_file = os.path.join(self.cfg.host.data_root,
-                                         f"{item.model}_outputs",self.cfg.dataset.name,
-                                         img_dim,name,
-                                         "predictions",polygonization_method,f"{pred}.json")
-                if not os.path.isfile(pred_file):
-                    raise FileExistsError(f"{pred_file} does not exist!")
-
-        
-        return True
-    
-    def evaluate_all(self):
-        
-        self.logger.warning("evaluate_all() is deprecated. Please use evaluate() instead.")
-
-
-        self.logger.info("Evaluating all models...")
-        
-        # first quickly check if the prediction file exists before doing the more lengthy evaluation
-        self.check_if_predictions_exist()
-        self.logger.debug("All prediction files exist.")
-        
-        res_dict = {}
-        
-        for item in self.cfg.experiments:
-            
-            for exp in item.experiment_name:
-                
-                name, img_dim, polygonization_method = get_experiment_type(exp)
-
-                pred = self.cfg.checkpoint
-
-                self.logger.info(f"Evaluate {item.model}/{exp}/{pred}")
-                
-                pred_file = os.path.join(self.cfg.host.data_root,
-                                         f"{item.model}_outputs",self.cfg.dataset.name,
-                                         img_dim,name,
-                                         "predictions",polygonization_method,f"{pred}.json")                
-                if not os.path.isfile(pred_file):
-                    raise FileExistsError(f"{pred_file} does not exist!")
-                
-                gt_file = os.path.join(self.cfg.host.data_root,self.cfg.dataset.name,img_dim,"annotations_val.json")
-                if not os.path.isfile(gt_file):
-                    raise FileExistsError(f"{gt_file} does not exist!")
-                
-                self.load_gt(gt_file)
-                self.load_predictions(pred_file)
-                
-                res_dict[f"{item.model}/{exp}"]=self.evaluate()
-
-        
-        df = pd.DataFrame.from_dict(res_dict, orient='index')
-
-        # pd.concat(df_list, axis=0, ignore_index=False)
-        # Save the DataFrame to a CSV file
-        # output_dir = os.path.join(self.cfg.host.data_root, "eval_results")
-        
-        print("\n")
-        print(df)
-        print("\n")
-        
-        self.logger.info(f"Save eval file to {self.cfg.eval.eval_file}")
-        df.to_csv(self.cfg.eval.eval_file, index=True, float_format="%.3g")
         
     def get_model_name(self, val):
         model_name = val.split('/')[0]
@@ -410,7 +346,7 @@ class Evaluator:
             elif name == 'C-IoU':
                 temp.append(r'\textbf{C-IoU} $\uparrow$')
             elif name == 'POLIS':
-                temp.append(r'\textbf{POLIS} $\downarrow$')
+                temp.append(r'\textbf{POLIS [m]} $\downarrow$')
             elif name == 'MTA' or name == 'mta':
                 temp.append(r'\textbf{MTA [$^\circ$]} $\downarrow$')
             elif name == 'Boundary IoU':
@@ -420,11 +356,11 @@ class Evaluator:
             elif name == "prediction_time":
                 temp.append(r'\textbf{Time [s]} $\downarrow$')
             elif name == "num_params":
-                temp.append(r'\textbf{Params [M]} $\downarrow$')
+                temp.append(r'\textbf{Params [$\times 10^6$]} $\downarrow$')
             elif name == "AP":
                 temp.append(r'\textbf{AP} $\uparrow$')
             elif name == "AR10":
-                temp.append(r'\textbf{AR$_{10}$} $\uparrow$')
+                temp.append(r'\textbf{AR} $\uparrow$')
             elif name == "hausdorff":
                 temp.append(r'\textbf{HD [m]} $\downarrow$')
             elif name == "chamfer":
@@ -455,12 +391,12 @@ class Evaluator:
     def get_metric_description(self, table_type):
         
 
-        if table_type == "density":
-            desc = r'    &   & \multicolumn{3}{c}{\emph{Point-}} & \emph{Line-}  &  \multicolumn{3}{c}{\emph{Area-based}} &  \multicolumn{3}{c}{\emph{Complexity}}   \\'
+        if table_type == "density" or table_type == "resolution":
+            desc = r'    & & \multicolumn{4}{c}{\emph{Boundary}}  & \multicolumn{3}{c}{\emph{Area}}  &  \multicolumn{3}{c}{\emph{Complexity}} \\'
         elif table_type == "modality":
-            desc = r'    &   & & \multicolumn{3}{c}{\emph{Point-}} & \emph{Line-}&  \multicolumn{3}{c}{\emph{Area-based}} &  \multicolumn{2}{c}{\emph{Efficiency}} \\'
+            desc = r'    & & & \multicolumn{4}{c}{\emph{Boundary}}& \multicolumn{3}{c}{\emph{Area}}  & \emph{Complexity} &  \multicolumn{2}{c}{\emph{Efficiency}} \\'
         elif table_type == "all":
-            desc = r'    &   & \multicolumn{3}{c}{\emph{Point-}} & \emph{Line-}  &  \multicolumn{3}{c}{\emph{Area-based}} &  \multicolumn{3}{c}{\emph{Complexity}}  \\'
+            desc = r'    & & \multicolumn{4}{c}{\emph{Boundary}}  & \multicolumn{3}{c}{\emph{Area}}  &  \multicolumn{3}{c}{\emph{Complexity}} \\'
         else:
             raise ValueError(f"Unknown type: {table_type}")
         
@@ -479,33 +415,42 @@ class Evaluator:
         
 
         if type == "density":
-            df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
+            df = df.filter(items=["Unnamed: 0","POLIS", "chamfer", "hausdorff", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
+        elif type == "resolution":
+            df = df.filter(items=["Unnamed: 0","POLIS", "chamfer", "hausdorff", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
         elif type == "modality":
-            df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU",  "prediction_time", "num_params"])
+            df = df.filter(items=["Unnamed: 0","POLIS", "chamfer", "hausdorff", "MTA", "AP", "AR10", "IoU", "NR", "prediction_time", "num_params"])
         elif type == "all":
-            df = df.filter(items=["Unnamed: 0","POLIS", "hausdorff", "chamfer", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
+            df = df.filter(items=["Unnamed: 0","POLIS", "chamfer", "hausdorff", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
         else:
             raise ValueError(f"Unknown type: {type}")
                     
         lines = []
-        lines.append(r'\begin{table}[H]')
-        lines.append(r'\setlength{\tabcolsep}{3pt}')
+        lines.append(r'\begin{table}[]')
 
-        lines.append(r'\centering')
 
         ##### format metric #####
         cols = self.format_metric_name(df.columns)
         if type == "modality":
             cols = [r'\textbf{Model}', r'\textbf{Modality}'] + cols
-            align = '@{}ll'+ 'H|' + ('c' * (len(cols)-3))  + '@{}'
+            align = '@{}cc@{}'+ 'H|' + ('c' * (len(cols)-3))  + '@{}'
+            lines.append(r'\setlength{\tabcolsep}{2pt}')
         elif type == "density":
             cols = [r'\textbf{Density [$pts/m^2$]}'] + cols
             align = '@{}c'+ 'H|' + ('c' * (len(cols)-2))  + '@{}'
+            lines.append(r'\setlength{\tabcolsep}{2pt}')
+        elif type == "resolution":
+            cols = [r'\textbf{GSD [cm]}'] + cols
+            align = '@{}c'+ 'H|' + ('c' * (len(cols)-2))  + '@{}'
+            lines.append(r'\setlength{\tabcolsep}{2pt}')
         elif type == "all":
             cols = [r'\textbf{Model}'] + cols
             align = '@{}l'+ 'H|' + ('c' * (len(cols)-2))  + '@{}'
+            lines.append(r'\setlength{\tabcolsep}{2pt}')
         else:
             raise ValueError(f"Unknown type: {type}")
+        
+        lines.append(r'\centering')
         lines.append(r'\resizebox{\textwidth}{!}{')
         lines.append(r'\begin{tabular}{' + align + '}')
         lines.append(r'\toprule')
@@ -530,6 +475,9 @@ class Evaluator:
                 density = re.search(r"mnv(\d+)$", density)
                 density = int(density.group(1))//4
                 formatted_row = [str(density)]
+            elif type == "resolution":
+                gsd = [15,25]
+                formatted_row = [str(gsd[i])]
             elif type == "all":
                 model = self.get_model_name(row.iloc[0])
                 formatted_row = [model]
@@ -585,7 +533,7 @@ class Evaluator:
         latex_string = '\n'.join(lines)
         
         if outfile is None:
-            outfile = self.cfg.eval.eval_file.replace('.csv', '.tex')
+            outfile = self.cfg.evaluation.eval_file.replace('.csv', '.tex')
         with open(outfile, 'w') as f:
             f.write(latex_string)
         self.logger.info(f"Saved LaTeX table to {outfile}")

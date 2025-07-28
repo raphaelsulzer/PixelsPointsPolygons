@@ -223,6 +223,7 @@ class TensorPolyOptimizer:
 def contours_batch_to_tensorpoly(contours_batch):
     # Convert a batch of contours to a TensorPoly representation with PyTorch tensors
     tensorpoly = polygons_to_tensorpoly(contours_batch)
+    
     # Pad contours so that we can treat them as closed:
     tensorpoly = tensorpoly_pad(tensorpoly, padding=(0, 1))
     return tensorpoly
@@ -375,6 +376,10 @@ def polygonize(seg_batch, crossfield_batch, config, pool=None, pre_computed=None
         init_contours_batch = pre_computed["init_contours_batch"]
 
     # debug_print("Convert contours to tensorpoly")
+    
+    if not any(init_contours_batch):
+        return [], []
+    
     tensorpoly = contours_batch_to_tensorpoly(init_contours_batch)
 
     # debug_print("Optimize")

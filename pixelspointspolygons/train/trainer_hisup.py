@@ -72,12 +72,12 @@ class HiSupTrainer(Trainer):
         self.model.eval()
         
         x_image, x_lidar, y, tile_ids = next(iter(loader))
-        if self.cfg.use_images:
-            x_image = x_image.to(self.cfg.device, non_blocking=True)
-        if self.cfg.use_lidar:
-            x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+        if self.cfg.experiment.encoder.use_images:
+            x_image = x_image.to(self.cfg.host.device, non_blocking=True)
+        if self.cfg.experiment.encoder.use_lidar:
+            x_lidar = x_lidar.to(self.cfg.host.device, non_blocking=True)
             
-        y=to_single_device(y,self.cfg.device)
+        y=to_single_device(y,self.cfg.host.device)
 
         polygon_output, loss_dict = self.model(x_image, x_lidar, y)
         polygon_output = to_single_device(polygon_output, 'cpu')
@@ -94,7 +94,7 @@ class HiSupTrainer(Trainer):
                     break
                 coco_anns[ann["image_id"]].append(ann)
                 
-        if self.cfg.use_lidar:
+        if self.cfg.experiment.encoder.use_lidar:
             lidar_batches = torch.unbind(x_lidar, dim=0)
             
         names = get_tile_names_from_dataloader(loader, tile_ids.cpu().numpy().flatten().tolist())
@@ -104,11 +104,11 @@ class HiSupTrainer(Trainer):
             fig, ax = plt.subplots(1,2,figsize=(8, 4), dpi=150)
             ax = ax.flatten()
 
-            if self.cfg.use_images:
+            if self.cfg.experiment.encoder.use_images:
                 image = denormalize_image_for_visualization(x_image[i], self.cfg)
                 plot_image(image, ax=ax[0])
                 plot_image(image, ax=ax[1])
-            if self.cfg.use_lidar:
+            if self.cfg.experiment.encoder.use_lidar:
                 plot_point_cloud(lidar_batches[i], ax=ax[0])
                 plot_point_cloud(lidar_batches[i], ax=ax[1])
                 
@@ -127,7 +127,7 @@ class HiSupTrainer(Trainer):
             outfile = os.path.join(outpath, f"{names[i]}.png")
             self.logger.debug(f"Save visualization to {outfile}")
             plt.savefig(outfile)
-            if self.cfg.log_to_wandb and self.local_rank == 0:
+            if self.cfg.run_type.log_to_wandb and self.local_rank == 0:
                 wandb.log({f"{epoch}: {names[i]}": wandb.Image(fig)})            
             plt.close(fig)
     
@@ -145,14 +145,14 @@ class HiSupTrainer(Trainer):
         
         for x_image, x_lidar, y, tile_ids in loader:
             
-            batch_size = x_image.size(0) if self.cfg.use_images else x_lidar.size(0)
+            batch_size = x_image.size(0) if self.cfg.experiment.encoder.use_images else x_lidar.size(0)
             
-            if self.cfg.use_images:
-                x_image = x_image.to(self.cfg.device, non_blocking=True)
-            if self.cfg.use_lidar:
-                x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+            if self.cfg.experiment.encoder.use_images:
+                x_image = x_image.to(self.cfg.host.device, non_blocking=True)
+            if self.cfg.experiment.encoder.use_lidar:
+                x_lidar = x_lidar.to(self.cfg.host.device, non_blocking=True)
                 
-            y=to_single_device(y,self.cfg.device)
+            y=to_single_device(y,self.cfg.host.device)
 
             polygon_output, loss_dict = self.model(x_image, x_lidar, y)
             
@@ -200,12 +200,12 @@ class HiSupTrainer(Trainer):
         for x_image, x_lidar, y, tile_ids in loader:
                         
 
-            y=to_single_device(y,self.cfg.device)
+            y=to_single_device(y,self.cfg.host.device)
             
-            if self.cfg.use_images:
-                x_image = x_image.to(self.cfg.device, non_blocking=True)
-            if self.cfg.use_lidar:
-                x_lidar = x_lidar.to(self.cfg.device, non_blocking=True)
+            if self.cfg.experiment.encoder.use_images:
+                x_image = x_image.to(self.cfg.host.device, non_blocking=True)
+            if self.cfg.experiment.encoder.use_lidar:
+                x_lidar = x_lidar.to(self.cfg.host.device, non_blocking=True)
             
             loss_dict = self.model(x_image, x_lidar, y)
             loss = self.loss_reducer(loss_dict)
@@ -244,10 +244,10 @@ class HiSupTrainer(Trainer):
 
     def train_val_loop(self):
 
-        if self.cfg.checkpoint is not None or self.cfg.checkpoint_file is not None:
+        if self.cfg.checkpoint is not None:
             self.load_checkpoint()
             
-        if self.cfg.log_to_wandb and self.local_rank == 0:
+        if self.cfg.run_type.log_to_wandb and self.local_rank == 0:
             self.setup_wandb()
 
         iter_idx=self.cfg.experiment.model.start_epoch * len(self.train_loader)
@@ -298,12 +298,12 @@ class HiSupTrainer(Trainer):
                 ############## COCO Evaluation ##############
                 #############################################
                 val_metrics_dict = {}
-                if (epoch + 1) % self.cfg.val_every == 0:
+                if (epoch + 1) % self.cfg.training.val_every == 0:
 
                     self.logger.info("Evaluate validation set with latest model...")
 
                     
-                    if self.cfg.multi_gpu:
+                    if self.cfg.host.multi_gpu:
                         
                         # Gather the list of dictionaries from all ranks
                         gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects
@@ -324,7 +324,7 @@ class HiSupTrainer(Trainer):
 
                         wandb_dict[f"val_num_polygons"] = len(coco_predictions)
 
-                        prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", f"epoch_{epoch}.json")
+                        prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.experiment.country}_{self.cfg.evaluation.split}", f"epoch_{epoch}.json")
                         os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
                         with open(prediction_outfile, "w") as fp:
                             fp.write(json.dumps(coco_predictions))
@@ -335,8 +335,8 @@ class HiSupTrainer(Trainer):
                         val_metrics_dict = evaluator.evaluate()
                         evaluator.print_dict_results(val_metrics_dict)
                         
-                        if val_metrics_dict['IoU'] > self.cfg.best_val_iou:
-                            best_prediction_outfile = os.path.join(self.cfg.output_dir, "predictions", "best_val_iou.json")
+                        if val_metrics_dict['IoU'] > self.cfg.training.best_val_iou:
+                            best_prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.experiment.country}_{self.cfg.evaluation.split}", "best_val_iou.json")
                             shutil.copyfile(prediction_outfile, best_prediction_outfile)
                             self.logger.info(f"Copied predictions to {best_prediction_outfile}")
 
@@ -347,11 +347,11 @@ class HiSupTrainer(Trainer):
                     self.save_best_and_latest_checkpoint(epoch, val_loss_dict, val_metrics_dict)
                     for k,v in wandb_dict.items():
                         self.logger.debug(f"{k}: {v}")
-                        if self.cfg.log_to_wandb:
+                        if self.cfg.run_type.log_to_wandb:
                             wandb.log(wandb_dict)
                             
                 # Sync all processes before next epoch
-                if self.cfg.multi_gpu:
+                if self.cfg.host.multi_gpu:
                     dist.barrier()
     
 
