@@ -1,11 +1,11 @@
 #!/bin/bash 
 
 #OAR -q production 
-#OAR -l host=1/gpu=2,walltime=20
+#OAR -l host=1/gpu=2,walltime=14
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
-#OAR -O oar/runs/ffl_lidar_mnv256.out
-#OAR -E oar/runs/ffl_lidar_mnv256.out 
-#OAR -n ffl_lidar_mnv256
+#OAR -O oar/runs/c_ffl_lidar_mnv256.out
+#OAR -E oar/runs/c_ffl_lidar_mnv256.out 
+#OAR -n c_ffl_lidar_mnv256
 
 ## display some information about attributed resources
 hostname 
@@ -23,4 +23,8 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
+<<<<<<< HEAD
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true checkpoint=latest experiment=lidar_density_ablation256 country=Switzerland experiment.name=v5_lidar_bs2x16_mnv256
+=======
 torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release host.multi_gpu=true checkpoint=null experiment=lidar_density_ablation256 country=Switzerland experiment.name=v5_lidar_bs2x16_mnv256
+>>>>>>> 1dfe1362351914765c3bee83b348ca9dd06aee96
