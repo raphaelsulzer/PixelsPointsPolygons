@@ -177,8 +177,11 @@ class Pix2PolyTrainer(Trainer):
         perm_loss_meter = AverageMeter()
 
         loader = self.progress_bar(self.val_loader)
-
-        n_points = 0
+        
+        lidar_dropout = self.cfg.experiment.lidar_dropout
+        if lidar_dropout is not None:
+            self.logger.info("Set LiDAR dropout to 1.0 for validation")
+            self.cfg.experiment.lidar_dropout = 1.0
         
         for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
             
@@ -197,7 +200,6 @@ class Pix2PolyTrainer(Trainer):
 
             preds, perm_mat = self.model(x_image, x_lidar, y_input)
 
-
             vertex_loss_weight = self.cfg.experiment.model.vertex_loss_weight
             perm_loss_weight = self.cfg.experiment.model.perm_loss_weight
             
@@ -210,15 +212,10 @@ class Pix2PolyTrainer(Trainer):
             vertex_loss_meter.update(vertex_loss.item(), batch_size)
             perm_loss_meter.update(perm_loss.item(), batch_size)
             
-            x_lidar = x_lidar.unbind()
-            x_lidar = list(x_lidar)
-            for tensor in x_lidar:
-                n_points += tensor.shape[0]
-                    
-        # n_images = len(self.val_loader.dataset)
-        # area = n_images * 3136
-        # self.logger.debug(f"Validation pts/m2 {n_points/area}")
-
+        if self.cfg.experiment.lidar_dropout is not None:
+            self.logger.info(f"Reset LiDAR dropout to {lidar_dropout} after validation")
+            self.cfg.experiment.lidar_dropout = lidar_dropout
+        
         self.logger.debug(f"Validation loss: {loss_meter.global_avg:.3f}")
         loss_dict = {
             'total_loss': self.average_across_gpus(loss_meter),

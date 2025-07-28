@@ -20,18 +20,9 @@ def predict_all():
     logger = getLogger("HiSupPredictor rank 0")
     
     experiments = [
-        # FFL
-        ("ffl_image", "v4_image_bs4x16"),
-        ("ffl_lidar", "v5_lidar_bs2x16_mnv64"),
-        ("ffl_fusion", "v4_fusion_bs4x16_mnv64"),
-        # # HiSup 
-        ("hisup_image", "v3_image_vit_cnn_bs4x12"),
-        ("hisup_lidar", "lidar_pp_vit_cnn_bs2x16_mnv64"),
-        ("hisup_fusion", "early_fusion_vit_cnn_bs2x16_mnv64"),
         # Pix2Poly
         ("p2p_image", "v4_image_vit_bs4x16"),
-        ("p2p_lidar", "lidar_pp_vit_bs2x16_mnv64"),
-        ("p2p_fusion", "early_fusion_bs2x16_mnv64"),
+        ("p2p_image_dinov2", "dinov2"),
         ]
     
     setup_hydraconf()
@@ -45,7 +36,7 @@ def predict_all():
             
             overrides = cli_overrides + \
                 [f"experiment={experiment}",
-                 f"experiment.name={name}", f"country=Switzerland", f"eval.split=test",
+                 f"experiment.name={name}", f"experiment.country=CH", f"evaluation=test",
                 "checkpoint=best_val_iou"]
             cfg = compose(config_name="config", 
                           overrides=overrides)
@@ -72,8 +63,6 @@ def predict_all():
             
 
             # time_dict = predictor.predict_dataset(split=cfg.evaluation.split)
-            # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
-            # res_dict.update(time_dict)
             # time_dict_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv".replace("metrics", "time")
             # df = pd.read_csv(time_dict_file)
             # time_dict = df.to_dict(orient="records")[0]
@@ -86,16 +75,22 @@ def predict_all():
             #############################################
             
             ### Evaluate
-            ee = Evaluator(cfg)
-            ee.pbar_disable = False
-            ee.load_gt(cfg.dataset.annotations[cfg.evaluation.split])
-            ee.load_predictions(cfg.evaluation.pred_file)
-            res_dict=ee.evaluate(print_info=False)
+            # ee = Evaluator(cfg)
+            # ee.pbar_disable = False
+            # ee.load_gt(cfg.dataset.annotations[cfg.evaluation.split])
+            # ee.load_predictions(cfg.evaluation.pred_file)
+            # res_dict=ee.evaluate(print_info=False)
 
+            res_dict = {}
+            predictor.setup_model_and_load_checkpoint()
+            res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
+            # res_dict.update(time_dict)
             
-            exp_dict[f"{cfg.experiment.model.name}/{cfg.experiment.name}"] = res_dict
+            # exp_dict[f"{cfg.experiment.model.name}/{cfg.experiment.name}"] = res_dict
             
-            pbar.update(1)
+            print(res_dict["num_params"])
+                        
+            # pbar.update(1)
 
         pbar.close()
         df = pd.DataFrame.from_dict(exp_dict, orient='index')
@@ -108,7 +103,7 @@ def predict_all():
         print(df)
         print("\n")
         
-        cfg.evaluation.eval_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv"
+        cfg.evaluation.eval_file = f"{cfg.evaluation.eval_file}_dinov2_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv"
         
         logger.info(f"Save eval file to {cfg.evaluation.eval_file}")
         df.to_csv(cfg.evaluation.eval_file, index=True, float_format="%.3g")
