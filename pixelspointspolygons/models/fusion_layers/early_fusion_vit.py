@@ -127,7 +127,7 @@ class EarlyFusionViT(torch.nn.Module):
                 is_ddp=self.cfg.host.multi_gpu
             )
             
-            if apply_dropout.item() < self.cfg.experiment.lidar_dropout:
+            if apply_dropout:
                 self.logger.debug(f"LiDAR feature dropout applied")
                 x_lidar = torch.zeros_like(x_lidar)
 
