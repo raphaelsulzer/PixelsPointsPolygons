@@ -1,16 +1,16 @@
 #!/bin/bash
 
 #SBATCH --account=cso@h100
-#SBATCH --job-name=p2p_all_bs4x16  # Job name
-#SBATCH --output=./slurm/runs/p2p_all_bs4x16.log       # Standard output and error log
-#SBATCH --error=./slurm/runs/p2p_all_bs4x16.log         # Error log
+#SBATCH --job-name=p2p_droplidar50_bs4x16  # Job name
+#SBATCH --output=./slurm/runs/p2p_droplidar50_bs4x16.log       # Standard output and error log
+#SBATCH --error=./slurm/runs/p2p_droplidar50_bs4x16.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
 #SBATCH --ntasks=4 # reserve 4 tasks (or processes)
 #SBATCH --gres=gpu:4              # Request 2 GPUs
 #SBATCH --constraint=h100
 #SBATCH --cpus-per-task=16         # Request 8 CPU cores
 #SBATCH --qos=qos_gpu_h100-t4 # QoS
-#SBATCH --time=48:00:00           # Time limit (hh:mm:ss)
+#SBATCH --time=24:00:00           # Time limit (hh:mm:ss)
 #SBATCH --mail-user=raphael.sulzer.1@gmail.com  # Email for notifications
 #SBATCH --mail-type=ALL           # When to receive emails (BEGIN, END, FAIL, ALL)
 
@@ -34,4 +34,4 @@ set -x
 
 # Run your Python script
 
-torchrun --nproc_per_node=4 scripts/train.py run_type=release host=g5k experiment=p2p_fusion_droplidar50 experiment.name=p2p_fusion_droplidar50_bs2x16
+torchrun --nproc_per_node=4 scripts/train.py run_type=release host=g5k experiment=p2p_fusion_droplidar50 experiment.name=p2p_fusion_droplidar50_bs4x16

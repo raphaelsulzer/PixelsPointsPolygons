@@ -38,3 +38,5 @@ module load miniforge/24.9.0 && conda activate ppp
 srun --ntasks=2 --gres=gpu:2 --account=cso@v100 --time=01:00:00 --pty bash
 
 srun --ntasks=2 --gres=gpu:2 --account=cso@a100 --qos=qos_gpu_a100-t3 --constraint=a100 --time=01:00:00 --pty bash
+
+srun --ntasks=2 --gres=gpu:2 --account=cso@h100 --qos=qos_gpu_h100-t4 --constraint=h100 --time=00:30:00 --pty bash
