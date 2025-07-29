@@ -35,6 +35,7 @@ class EarlyFusionViT(torch.nn.Module):
         self.cfg = cfg        
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
+        self.local_rank = local_rank
 
         ###### LiDAR encoder #######
         
@@ -92,7 +93,7 @@ class EarlyFusionViT(torch.nn.Module):
     
     def ddp_lidar_dropout(self, p: float, device: torch.device, is_ddp: bool) -> bool:
         if is_ddp:
-            if self.cfg.local_rank == 0:
+            if self.local_rank == 0:
                 flag = torch.rand(1, device=device)
             else:
                 flag = torch.empty(1, device=device)
