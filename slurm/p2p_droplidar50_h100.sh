@@ -3,7 +3,7 @@
 #SBATCH --account=cso@h100
 #SBATCH --job-name=p2p_droplidar50_bs4x16  # Job name
 #SBATCH --output=./slurm/runs/p2p_droplidar50_bs4x16.log       # Standard output and error log
-#SBATCH --error=./slurm/runs/p2p_droplidar50_bs4x16.log         # Error log
+#SBATCH --error=./slurm/runs/p2p_droplidar50_bs4x16_err.log         # Error log
 #SBATCH --nodes=1 # reserve 1 node
 #SBATCH --ntasks=4 # reserve 4 tasks (or processes)
 #SBATCH --gres=gpu:4              # Request 2 GPUs
@@ -34,4 +34,4 @@ set -x
 
 # Run your Python script
 
-torchrun --nproc_per_node=4 scripts/train.py run_type=release host=g5k experiment=p2p_fusion_droplidar50 experiment.name=p2p_fusion_droplidar50_bs4x16
+torchrun --nproc_per_node=4 scripts/train.py run_type=release host=jz experiment=p2p_fusion_droplidar50 experiment.name=p2p_fusion_droplidar50_bs4x16
