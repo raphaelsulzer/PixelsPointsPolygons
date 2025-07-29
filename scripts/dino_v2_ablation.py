@@ -21,8 +21,8 @@ def predict_all():
     
     experiments = [
         # Pix2Poly
-        ("p2p_image", "v4_image_vit_bs4x16"),
         ("p2p_image_dinov2", "dinov2"),
+        ("p2p_image", "v4_image_vit_bs4x16")
         ]
     
     setup_hydraconf()
