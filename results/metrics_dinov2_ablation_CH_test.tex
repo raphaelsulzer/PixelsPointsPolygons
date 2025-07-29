@@ -1,0 +1,17 @@
+\begin{table}[]
+\setlength{\tabcolsep}{2pt}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{@{}cc@{}H|ccccccccc@{}}
+\toprule
+    & & & \multicolumn{4}{c}{\emph{Boundary}}& \multicolumn{3}{c}{\emph{Area}}  & \emph{Complexity} &  \multicolumn{2}{c}{\emph{Efficiency}} \\
+\midrule
+\textbf{Model} & \textbf{Modality} & Unnamed: 0 & \textbf{POLIS [m]} $\downarrow$ & \textbf{CD [m]} $\downarrow$ & \textbf{HD [m]} $\downarrow$ & \textbf{MTA [$^\circ$]} $\downarrow$ & \textbf{AP} $\uparrow$ & \textbf{AR} $\uparrow$ & \textbf{IoU} $\uparrow$ & \textbf{NR=1} & \textbf{Params [$\times 10^6$]} $\downarrow$ \\
+\midrule
+ & \textbf{Fusion} & \detokenize{pix2poly/dinov2} & \cellcolor{blue!25} 3.07 & \cellcolor{blue!25} 2.93 & \cellcolor{blue!25} 14.2 & \cellcolor{blue!25} 39.9 & \cellcolor{blue!25} 0.00736 & \cellcolor{blue!25} 0.000463 & \cellcolor{blue!25} 0.509 & \cellcolor{blue!25} 0.508 & \cellcolor{blue!25} 32.2 \\
+\bottomrule
+\end{tabular}
+}
+\caption{Patch prediction}
+\label{tab:patch}
+\end{table}

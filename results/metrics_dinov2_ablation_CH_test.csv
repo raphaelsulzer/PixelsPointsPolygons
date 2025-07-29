@@ -1,0 +1,2 @@
+,POLIS,chamfer,hausdorff,line_dofs,line_segs,norm_line_dofs,MTA,IoU,C-IoU,NR,AP,AP50,AP75,AP_small,AP_medium,AP_large,AR1,AR10,AR100,AR_small,AR_medium,AR_large,num_params
+pix2poly/dinov2,3.07,2.93,14.2,12.9,8.58,0.791,39.9,0.509,0.508,0.508,0.00736,0.0099,0.0066,0,0.00528,0.0095,0.000383,0.000463,0.000463,0,0.000243,0.00233,32.2

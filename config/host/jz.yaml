@@ -8,3 +8,5 @@ device: cuda
 update_pbar_every: 60
 
 ldof_exe: null
+
+dino_v2_repo: /linkhome/rech/genlgm01/uku93eu/python/dinov2
