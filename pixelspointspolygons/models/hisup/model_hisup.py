@@ -355,6 +355,6 @@ class HiSupModel(torch.nn.Module):
         
         if self.cfg.host.multi_gpu:
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model = DDP(model, device_ids=[local_rank], find_unused_parameters=True)
+            model = DDP(model, device_ids=[local_rank], find_unused_parameters=self.cfg.run_type == "debug")
     
         return model
