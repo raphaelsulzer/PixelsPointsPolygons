@@ -107,9 +107,15 @@ class EarlyFusionViT(torch.nn.Module):
         # else:
         #     x = torch.cat((x_image, x_lidar), dim=1)
         
-        if (self.cfg.experiment.lidar_dropout is not None) and (torch.rand(1).item() < self.cfg.experiment.lidar_dropout):
-            self.logger.debug(f"LiDAR feature dropout applied")
-            x_lidar = torch.zeros_like(x_lidar)
+        if self.cfg.experiment.lidar_dropout is not None:
+            # Create the random value only on rank 0
+            apply_dropout = torch.rand(1, device=x_lidar.device)
+            if self.cfg.host.multi_gpu: # in DDP it is necessary to broadcast the value to all ranks
+                torch.distributed.broadcast(apply_dropout, src=0)
+            
+            if apply_dropout.item() < self.cfg.experiment.lidar_dropout:
+                self.logger.debug(f"LiDAR feature dropout applied")
+                x_lidar = torch.zeros_like(x_lidar)
 
         x = torch.cat((x_image, x_lidar), dim=1)
         
