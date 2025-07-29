@@ -36,7 +36,7 @@ def predict_all():
             
             overrides = cli_overrides + \
                 [f"experiment={experiment}",
-                 f"experiment.name={name}", f"experiment.country=CH", f"evaluation=val",
+                 f"experiment.name={name}", f"experiment.country=CH", f"evaluation=test",
                 "checkpoint=best_val_iou"]
             cfg = compose(config_name="config", 
                           overrides=overrides)
@@ -61,13 +61,12 @@ def predict_all():
             else:
                 raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
             
-
             time_dict = predictor.predict_dataset(split=cfg.evaluation.split)
-            time_dict_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv".replace("metrics", "time")
-            df = pd.read_csv(time_dict_file)
-            time_dict = df.to_dict(orient="records")[0]
+            ### Read time dict from file if needed
+            # time_dict_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv".replace("metrics", "time")
+            # df = pd.read_csv(time_dict_file)
+            # time_dict = df.to_dict(orient="records")[0]
             
-
             logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
             
             #############################################
