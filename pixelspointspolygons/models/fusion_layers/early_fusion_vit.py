@@ -110,7 +110,7 @@ class EarlyFusionViT(torch.nn.Module):
         if self.cfg.experiment.lidar_dropout is not None:
 
             apply_dropout = torch.rand(1, device=x_lidar.device)
-            apply_dropout = apply_dropout.item() < self.cfg.experiment.lidar_dropout
+            apply_dropout = apply_dropout.item() <= self.cfg.experiment.lidar_dropout
             if apply_dropout:
                 self.logger.debug(f"LiDAR feature dropout applied")
                 x_lidar = x_lidar * 0.0
