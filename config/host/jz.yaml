@@ -1,6 +1,6 @@
 name: jeanzay
-data_root: /lustre/fswork/projects/rech/cso/uku93eu/data
-model_root: /lustre/fswork/projects/rech/cso/uku93eu/data
+data_root: /linkhome/rech/genlgm01/uku93eu/data/${..dataset.name}_dataset
+model_root: /linkhome/rech/genlgm01/uku93eu/data/${..dataset.name}_output
 
 multi_gpu: true
 device: cuda
