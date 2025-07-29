@@ -128,8 +128,8 @@ class EarlyFusionViT(torch.nn.Module):
             # )
                
             apply_dropout = torch.rand(1, device=x_lidar.device)
-            if self.cfg.host.multi_gpu:
-                torch.distributed.broadcast(apply_dropout, src=0)
+            # if self.cfg.host.multi_gpu:
+            #     torch.distributed.broadcast(apply_dropout, src=0)
                 
             apply_dropout = apply_dropout.item() < self.cfg.experiment.lidar_dropout
             
