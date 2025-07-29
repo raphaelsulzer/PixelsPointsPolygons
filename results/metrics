@@ -1,4 +1,5 @@
 ,0
+<<<<<<< HEAD
 #images,40000
 GT #images w/ polys,16362
 Pred #images w/ polys,16152
@@ -6,3 +7,8 @@ GT #polygons,29461
 Pred #polygons,29470
 GT #vertices,189274
 Pred #vertices,441023
+=======
+sIoU,0.772
+sC-IoU,0.622
+sNR,0.784
+>>>>>>> 840341d89449ead31e4306d81f3c9ee02b0aedb2

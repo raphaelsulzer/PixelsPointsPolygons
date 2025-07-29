@@ -7,7 +7,7 @@ from tqdm import tqdm
 from logging import getLogger
 
 from pixelspointspolygons.predict import FFLPredictor, HiSupPredictor, Pix2PolyPredictor
-from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf, count_trainable_parameters, parse_cli_overrides
+from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf, parse_cli_overrides
 from pixelspointspolygons.eval import Evaluator
 
 
@@ -25,6 +25,7 @@ def predict_all():
         ("lidar_density_ablation64", "v5_lidar_bs2x16_mnv64"),
         ("lidar_density_ablation128", "v5_lidar_bs2x16_mnv128"),
         ("lidar_density_ablation256", "v5_lidar_bs2x16_mnv256"),
+        ("lidar_density_ablation512", "v5_lidar_bs2x16_mnv512"),
         ]
     
     setup_hydraconf()
@@ -39,13 +40,15 @@ def predict_all():
             overrides = cli_overrides + \
                 [f"experiment={experiment}",
                  f"experiment.name={name}",
-                "checkpoint=best_val_iou"]
+                "checkpoint=best_val_iou",
+                "eval.split=test",
+                "country=Switzerland"]
             cfg = compose(config_name="config", 
                           overrides=overrides)
             OmegaConf.resolve(cfg)
             
-            logger.info(f"Predict {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
-            # pbar.set_description(f"Predict and evaluate {experiment} on {cfg.eval.split}")
+            logger.info(f"Predict {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
+            # pbar.set_description(f"Predict and evaluate {experiment} on {cfg.evaluation.split}")
             pbar.refresh()  
           
             #############################################
@@ -56,11 +59,11 @@ def predict_all():
                         
             predictor = FFLPredictor(cfg, local_rank, world_size)
 
-            # time_dict = predictor.predict_dataset(split=cfg.eval.split)
+            # time_dict = predictor.predict_dataset(split=cfg.evaluation.split)
             # res_dict.update(time_dict)
             # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
             
-            logger.info(f"Evaluate {experiment}/{name} on {cfg.country}/{cfg.eval.split}")
+            logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
             
                       
             #############################################
@@ -70,8 +73,8 @@ def predict_all():
             ### Evaluate
             ee = Evaluator(cfg)
             ee.pbar_disable = False
-            ee.load_gt(cfg.dataset.annotations[cfg.eval.split])
-            ee.load_predictions(cfg.eval.pred_file)
+            ee.load_gt(cfg.dataset.annotations[cfg.evaluation.split])
+            ee.load_predictions(cfg.evaluation.pred_file)
             res_dict=ee.evaluate(print_info=False)
 
             
@@ -90,12 +93,12 @@ def predict_all():
         print(df)
         print("\n")
         
-        cfg.eval.eval_file = f"{cfg.eval.eval_file}_lidar_density_ablation_{cfg.country}_{cfg.eval.split}.csv"
+        cfg.evaluation.eval_file = f"{cfg.evaluation.eval_file}_lidar_density_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv"
         
-        logger.info(f"Save eval file to {cfg.eval.eval_file}")
-        df.to_csv(cfg.eval.eval_file, index=True, float_format="%.3g")
+        logger.info(f"Save eval file to {cfg.evaluation.eval_file}")
+        df.to_csv(cfg.evaluation.eval_file, index=True, float_format="%.3g")
     
-        ee.to_latex(csv_file=cfg.eval.eval_file)
+        ee.to_latex(csv_file=cfg.evaluation.eval_file)
 
 
 

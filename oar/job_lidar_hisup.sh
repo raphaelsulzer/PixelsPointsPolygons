@@ -23,5 +23,5 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true experiment_name=lidar_pp_vit_cnn_bs2x16_mnv64 checkpoint=null model.batch_size=16 encoder=pointpillars_vit_cnn model=hisup
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release host.multi_gpu=true experiment_name=lidar_pp_vit_cnn_bs2x16_mnv64 checkpoint=null model.batch_size=16 encoder=pointpillars_vit_cnn model=hisup
 

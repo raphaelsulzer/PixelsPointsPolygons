@@ -34,4 +34,8 @@ set -x
 
 # Run your Python script
 
+<<<<<<< HEAD
 python scripts/predict.py host=jz run_type=release multi_gpu=false checkpoint=best_val_iou country=all eval.split=test experiment=hisup_fusion experiment.name=v0_all_bs4x16
+=======
+torchrun --nproc_per_node=4 scripts/predict.py host=jz run_type=release host.multi_gpu=true checkpoint=best_val_iou country=all eval.split=test experiment=hisup_fusion experiment.name=v0_all_bs4x16
+>>>>>>> 840341d89449ead31e4306d81f3c9ee02b0aedb2

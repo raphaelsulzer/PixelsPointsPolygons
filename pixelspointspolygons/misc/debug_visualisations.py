@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.patches as Patches
 
-def plot_point_cloud(point_cloud, ax=None, show=False, alpha=0.15):
+def plot_point_cloud(point_cloud, ax=None, show_axis=False, show=False, alpha=0.15, pointsize=0.1):
     
     if isinstance(point_cloud, torch.Tensor):
         point_cloud = point_cloud.detach().cpu().numpy()
@@ -21,13 +21,15 @@ def plot_point_cloud(point_cloud, ax=None, show=False, alpha=0.15):
     z_min, z_max = point_cloud[:, 2].min(), point_cloud[:, 2].max()
     norm = plt.Normalize(vmin=z_min, vmax=z_max)
     # cmap = plt.cm.turbo  # 'turbo' colormap
-    cmap = plt.cm.grey  # 'turbo' colormap
+    cmap = plt.cm.viridis  # 'turbo' colormap
 
     # Plot point cloud below polygons
     ax.scatter(point_cloud[:, 0], point_cloud[:, 1], 
-               c=cmap(norm(point_cloud[:, 2])), s=0.1, zorder=2,
+               c=cmap(norm(point_cloud[:, 2])), s=pointsize, zorder=2,
                alpha=alpha)
-    
+
+    ax.axis(show_axis)
+
     if show:
         plt.show(block=False)
 
@@ -42,9 +44,9 @@ def plot_shapely_polygons(polygons, ax=None, color=[1,0,1,0.7], pointcolor=None,
     
     for poly in polygons:
 
-        ax.add_patch(Patches.Polygon(poly.exterior.coords[:-1], fill=fillcolor, ec=edgecolor, linewidth=linewidth))
+        ax.add_patch(Patches.Polygon(poly.exterior.coords[:-1], fill=fillcolor, ec=edgecolor, linewidth=linewidth, zorder=3))
         juncs = np.array(poly.exterior.coords[:-1])
-        ax.plot(juncs[:, 0], juncs[:, 1], color=pointcolor, marker='.', markersize=pointsize, linestyle='none')
+        ax.plot(juncs[:, 0], juncs[:, 1], color=pointcolor, marker='.', markersize=pointsize, linestyle='none', zorder=3)
         if len(poly.interiors) != 0:
             for inter in poly.interiors:
                 ax.add_patch(Patches.Polygon(inter.coords[:-1], fill=False, ec=edgecolor, linewidth=linewidth))
@@ -217,7 +219,7 @@ def plot_crossfield(crossfield, crossfield_stride=8, ax=None, show_axis='off', m
     if show:
         plt.show(block=False)
 
-def plot_image(image, ax=None, show_axis='off', show=False):
+def plot_image(image, ax=None, show_axis=False, show=False):
     
     if isinstance(image, torch.Tensor):
         image = image.permute(1, 2, 0).cpu().numpy()

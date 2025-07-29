@@ -61,6 +61,7 @@ class Polygonizer():
             polygons_batch, probs_batch = polygonize_acm.polygonize(seg_batch, crossfield_batch,
                                                                     polygonize_params["acm_method"], pool=self.pool,
                                                                     pre_computed=pre_computed)
+            
         elif polygonize_params.method == "asm":
             from . import polygonize_asm
             if crossfield_batch is None:
@@ -69,6 +70,9 @@ class Polygonizer():
             if self.polygonizer_asm is None:
                 self.polygonizer_asm = polygonize_asm.PolygonizerASM(polygonize_params["asm_method"], pool=self.pool)
             polygons_batch, probs_batch = self.polygonizer_asm(seg_batch, crossfield_batch, pre_computed=pre_computed)
+            
+            
+            
         elif polygonize_params.method == "simple":
             polygons_batch, probs_batch = polygonize_simple.polygonize(seg_batch, polygonize_params["simple_method"],
                                                                        pool=self.pool, pre_computed=pre_computed)

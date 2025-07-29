@@ -1,27 +1,19 @@
 \begin{table}[H]
-\setlength{\tabcolsep}{8pt}
+\setlength{\tabcolsep}{3pt}
 \centering
 \resizebox{\textwidth}{!}{
-<<<<<<< HEAD
-\begin{tabular}{llH|ccccc}
+\begin{tabular}{@{}lH|cccccccccc@{}}
 \toprule
-\textbf{Model} & \textbf{Modality} & Unnamed: 0 & \textbf{IoU} $\uparrow$ & \textbf{C-IoU} $\uparrow$ & \textbf{NR=1} & \textbf{Time [s]} $\downarrow$ & \textbf{Params [M]} $\downarrow$ \\
+    & & \multicolumn{4}{c}{\emph{Boundary}}  & \multicolumn{3}{c}{\emph{Area}}  &  \multicolumn{3}{c}{\emph{Complexity}} \\
 \midrule
- & \textbf{Fusion} & \detokenize{hisup/v0_all_bs4x16} & \cellcolor{blue!25} 0.571 & \cellcolor{blue!25} 0.557 & \cellcolor{blue!25} 0.58 & \cellcolor{blue!25} 0.00402 & \cellcolor{blue!25} 33.5 \\
-=======
-\begin{tabular}{lHcccccccccc}
-\toprule
-    &   & \multicolumn{3}{c}{\emph{Point-}} & \emph{Line-}  &  \multicolumn{3}{c}{\emph{Area-based}} &  \multicolumn{3}{c}{\emph{Complexity}}  \\
+\textbf{Model} & Unnamed: 0 & \textbf{POLIS} $\downarrow$ & \textbf{CD [m]} $\downarrow$ & \textbf{HD [m]} $\downarrow$ & \textbf{MTA [$^\circ$]} $\downarrow$ & \textbf{AP} $\uparrow$ & \textbf{AR$_{10}$} $\uparrow$ & \textbf{IoU} $\uparrow$ & \textbf{C-IoU} $\uparrow$ & \textbf{NR=1} & \textbf{DoF} $\downarrow$ \\
 \midrule
-\textbf{Model} & Unnamed: 0 & \textbf{POLIS} $\downarrow$ & \textbf{HD [m]} $\downarrow$ & \textbf{CD [m]} $\downarrow$ & \textbf{MTA [$^\circ$]} $\downarrow$ & \textbf{AP} $\uparrow$ & \textbf{AR$_{10}$} $\uparrow$ & \textbf{IoU} $\uparrow$ & \textbf{C-IoU} $\uparrow$ & \textbf{NR=1} & \textbf{DoF} $\downarrow$ \\
-\midrule
-\textbf{ViT}~\cite{vit}~+~\textbf{FFL}~\cite{ffl} & \detokenize{ffl/v0_all_bs4x16} & 2.41 & \cellcolor{blue!25} 12.3 & \cellcolor{blue!25} 1.51 & 40.4 & 0.286 & 0.43 & 0.832 & 0.763 & 0.848 & 0.808 \\
-\textbf{ViT}~\cite{vit}~+~\textbf{HiSup}~\cite{hisup} & \detokenize{hisup/v0_all_bs4x16} & \cellcolor{blue!10} 2.07 & 13.6 & 1.77 & \cellcolor{blue!10} 36.5 & \cellcolor{blue!10} 0.309 & \cellcolor{blue!10} 0.474 & \cellcolor{blue!25} 0.844 & \cellcolor{blue!10} 0.789 & \cellcolor{blue!10} 0.88 & \cellcolor{blue!10} 0.758 \\
-\textbf{ViT}~\cite{vit}~+~\textbf{Pix2Poly}~\cite{pix2poly} & \detokenize{pix2poly/v0_all_bs4x16} & \cellcolor{blue!25} 1.91 & \cellcolor{blue!10} 13.4 & \cellcolor{blue!10} 1.75 & \cellcolor{blue!25} 34.4 & \cellcolor{blue!25} 0.347 & \cellcolor{blue!25} 0.49 & \cellcolor{blue!10} 0.842 & \cellcolor{blue!25} 0.801 & \cellcolor{blue!25} 0.901 & \cellcolor{blue!25} 0.741 \\
->>>>>>> 80c29a90e6f83a93e93a0f64b3bbf0dafe7d7035
+\textbf{ViT}~\cite{vit}~+~\textbf{FFL}~\cite{ffl} & \detokenize{ffl/v0_all_bs4x16} & 2.41 & 2.11 & 9.34 & 40.4 & 0.286 & 0.43 & 0.832 & 0.763 & 0.848 & 0.808 \\
+\textbf{ViT}~\cite{vit}~+~\textbf{HiSup}~\cite{hisup} & \detokenize{hisup/v0_all_bs4x16} & \cellcolor{blue!10} 2.07 & \cellcolor{blue!10} 2.03 & \cellcolor{blue!10} 9.1 & \cellcolor{blue!10} 36.5 & \cellcolor{blue!10} 0.309 & \cellcolor{blue!10} 0.474 & \cellcolor{blue!25} 0.844 & \cellcolor{blue!10} 0.789 & \cellcolor{blue!10} 0.881 & \cellcolor{blue!10} 0.758 \\
+\textbf{ViT}~\cite{vit}~+~\textbf{Pix2Poly}~\cite{pix2poly} & \detokenize{pix2poly/v0_all_bs4x16} & \cellcolor{blue!25} 1.91 & \cellcolor{blue!25} 1.92 & \cellcolor{blue!25} 8.17 & \cellcolor{blue!25} 34.4 & \cellcolor{blue!25} 0.347 & \cellcolor{blue!25} 0.49 & \cellcolor{blue!10} 0.842 & \cellcolor{blue!25} 0.801 & \cellcolor{blue!25} 0.901 & \cellcolor{blue!25} 0.741 \\
 \bottomrule
 \end{tabular}
 }
-\caption{Patch prediction}
-\label{tab:patch}
+\caption{\textbf{Multimodal building polygon prediction}. We compare the baseline models with fusion encoders on the full dataset. For each metric, we highlight the \colorbox{blue!25}{best} and \colorbox{blue!10}{second best} scores.}
+\label{tab:all_countries}
 \end{table}

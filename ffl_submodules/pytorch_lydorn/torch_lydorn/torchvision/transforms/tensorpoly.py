@@ -67,6 +67,8 @@ def polygons_to_tensorpoly(polygons_batch):
             is_endpoint_list.append(is_endpoint)
             batch_list.append(batch)
             polygon_list.append(polygon)
+    if not len(polygon_list):
+        return None
     pos = np.concatenate(polygon_list, axis=0)
     is_endpoint = np.concatenate(is_endpoint_list, axis=0)
     batch = np.concatenate(batch_list, axis=0)

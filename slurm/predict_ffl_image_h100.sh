@@ -34,4 +34,4 @@ set -x
 
 # Run your Python script
 
-python scripts/predict.py host=jz run_type=release multi_gpu=false checkpoint=best_val_iou country=Switzerland eval.split=test experiment=ffl_image experiment.name=ffl_image_015 dataset.size=224015
+python scripts/predict.py host=jz run_type=release host.multi_gpu=false checkpoint=best_val_iou country=Switzerland eval.split=test experiment=ffl_image experiment.name=ffl_image_015 dataset.size=224015

@@ -1,3 +1,10 @@
 name: g5k
-data_root: /home/rsulzer/data
+data_root: /home/rsulzer/data_group/${..dataset.name}_dataset
+model_root: /home/rsulzer/data_group/${..dataset.name}_output
+
+multi_gpu: true
+device: cuda
+
 update_pbar_every: 60
+
+ldof_exe: null
