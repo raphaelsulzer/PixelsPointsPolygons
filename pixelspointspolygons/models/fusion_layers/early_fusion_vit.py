@@ -119,18 +119,18 @@ class EarlyFusionViT(torch.nn.Module):
         # else:
         #     x = torch.cat((x_image, x_lidar), dim=1)
         
-        if self.cfg.experiment.lidar_dropout is not None:
+        # if self.cfg.experiment.lidar_dropout is not None:
 
-            apply_dropout = self.ddp_lidar_dropout(
-                p=self.cfg.experiment.lidar_dropout,
-                device=x_lidar.device,
-                is_ddp=self.cfg.host.multi_gpu
-            )
+        #     apply_dropout = self.ddp_lidar_dropout(
+        #         p=self.cfg.experiment.lidar_dropout,
+        #         device=x_lidar.device,
+        #         is_ddp=self.cfg.host.multi_gpu
+        #     )
             
-            if apply_dropout:
-                self.logger.debug(f"LiDAR feature dropout applied")
-                x_lidar = torch.zeros_like(x_lidar).detach()
-
+        #     if apply_dropout:
+        #         self.logger.debug(f"LiDAR feature dropout applied")
+        #         x_lidar = torch.zeros_like(x_lidar)
+                
         x = torch.cat((x_image, x_lidar), dim=1)
         
         x = self.fusion_layer(x).flatten(2).transpose(1, 2)
