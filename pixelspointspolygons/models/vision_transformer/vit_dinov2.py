@@ -24,7 +24,7 @@ class ViTDINOv2(nn.Module):
             raise FileNotFoundError(f"Checkpoint file {checkpoint_path} not found.")
         
         # Step 1: Load model architecture
-        self.vit = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
+        self.vit = torch.hub.load(self.cfg.host.dino_v2_repo, 'dinov2_vits14', pretrained=False, source='local')
         self.norm = self.vit.norm
 
         # Step 2: Load checkpoint weights

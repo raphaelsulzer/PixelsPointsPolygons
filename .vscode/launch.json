@@ -174,7 +174,7 @@
             "name": "dino_v2",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/scripts/dino_v2.py",
+            "program": "${workspaceFolder}/scripts/dino_v2_ablation.py",
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",
