@@ -34,4 +34,4 @@ set -x
 
 # Run your Python script
 
-torchrun --nproc_per_node=4 scripts/train.py run_type=release host=jz experiment=p2p_image_dinov2 experiment.name=image_dinov2_bs4x16_jz
+torchrun --nproc_per_node=4 scripts/train.py run_type=release host=jz experiment=p2p_image_dinov2 experiment.name=image_dinov2_bs4x16_jz experiment.group_name=v3_pix2poly
