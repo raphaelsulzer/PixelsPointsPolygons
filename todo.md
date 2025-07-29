@@ -1,3 +1,0 @@
-- implement overlapping tilling
-- think about using the sqlite st_union function for merging predictions from overlapping tiles
-- need to rethink the strategy for tiles with missing LiDAR, because the test set may very well have that, so I cannot just exclude them there

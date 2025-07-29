@@ -23,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release multi_gpu=true checkpoint=null experiment=ffl_fusion experiment.name=v0_NZ_bs2x16 country=NZ
+torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release host.multi_gpu=true checkpoint=null experiment=ffl_fusion experiment.name=v0_NZ_bs2x16 country=NZ

@@ -1,0 +1,11 @@
+defaults:
+  - /encoder: early_fusion_vit
+  - /model: pix2poly
+  - _self_
+
+name: droplidar50
+group_name: v3_${.model.name}
+
+lidar_dropout: 0.5
+
+country: CH

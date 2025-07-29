@@ -10,11 +10,10 @@
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",
-                // "run_type=release",
                 "host=gin",
-                "device=cuda",
-                "log_to_wandb=false",
-                "multi_gpu=false",
+                "run_type.log_to_wandb=false",
+                "experiment.country=CH",
+                "experiment=p2p_fusion_droplidar50",
             ],
             "justMyCode": false,
             "env": {
@@ -29,16 +28,13 @@
             "program": "${workspaceFolder}/scripts/predict.py",
             "console": "integratedTerminal",
             "args": [
-                // "run_type=debug",
                 "run_type=release",
                 "host=gin",
-                "device=cuda",
-                "log_to_wandb=false",
-                "multi_gpu=false",
+                "run_type.log_to_wandb=false",
                 "checkpoint=best_val_iou",
-                "country=Switzerland",
-                "eval.split=test",
-                // "dataset.size=224015"
+                "experiment=ffl_image",
+                "experiment.country=NZ",
+                "evaluation=val"
             ],
             "justMyCode": false,
             "env": {
@@ -55,9 +51,10 @@
             "args": [
                 "run_type=debug",
                 "host=gin",
-                "device=cuda",
-                "log_to_wandb=false",
-                "multi_gpu=false"
+                "checkpoint=best_val_iou",
+                "experiment=hisup_image",
+                "+image_file=demo_data/image0_CH_val.tif",
+                // "+lidar_file=demo_data/lidar0_CH_val.copc.laz",
             ],
             "justMyCode": false
         },
@@ -70,9 +67,7 @@
             "args": [
                 "run_type=debug",
                 "host=gin",
-                "device=cuda",
-                "log_to_wandb=false",
-                "multi_gpu=false"
+                "run_type.log_to_wandb=false",
             ],
             "justMyCode": false
         },
@@ -84,12 +79,8 @@
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",
-                // "run_type=release",
-                // "dataset.val_subset=null",
                 "host=gin",
-                "device=cuda",
-                "log_to_wandb=false",
-                "multi_gpu=false",
+                "run_type.log_to_wandb=false",
             ],
             "justMyCode": false
         },
@@ -101,13 +92,9 @@
             "console": "integratedTerminal",
             "args": [
                 "run_type=debug",
-                // "run_type=release",
-                // "dataset.val_subset=null",
                 "host=gin",
-                "device=cuda",
-                "log_to_wandb=false",
-                "multi_gpu=false",
-                "country=all"
+                "run_type.log_to_wandb=false",
+                "experiment.country=all"
             ],
             "justMyCode": false
         },
@@ -118,13 +105,12 @@
             "program": "${workspaceFolder}/scripts/evaluate.py",
             "console": "integratedTerminal",
             "args": [
-                "run_type=debug",
+                "run_type=release",
                 "host=gin",
-                "device=cuda",
-                "log_to_wandb=false",
-                "multi_gpu=false",
+                "run_type.log_to_wandb=false",
                 "eval.split=test",
-                "checkpoint=best_val_iou"
+                "checkpoint=best_val_iou",
+                "experiment=lidar_density_ablation512"
             ],
             "justMyCode": false
         },
@@ -137,9 +123,8 @@
             "args": [
                 "run_type=release",
                 "host=gin",
-                "device=cuda",
-                "log_to_wandb=false",
-                "multi_gpu=false",
+                "run_type.log_to_wandb=false",
+                "host.multi_gpu=false",
             ],
             "justMyCode": false
         },
@@ -153,10 +138,8 @@
                 // "run_type=release",
                 "run_type=debug",
                 "host=gin",
-                "device=cuda",
-                "log_to_wandb=false",
-                "multi_gpu=false",
-                // "country=NY"
+                "run_type.log_to_wandb=false",
+                // "experiment.country=NY"
                 // "experiment.encoder=pointpillars_vit" // setting an encoder here, simply to load the 224x224 dataset version
             ],
             "justMyCode": false
@@ -170,10 +153,8 @@
                 // "run_type=release",
                 "run_type=debug",
                 "host=gin",
-                "device=cuda",
-                "log_to_wandb=false",
-                "multi_gpu=false",
-                "country=Switzerland"
+                "run_type.log_to_wandb=false",
+                "experiment.country=Switzerland"
                 // "experiment.encoder=pointpillars_vit" // setting an encoder here, simply to load the 224x224 dataset version
             ],
             "justMyCode": false
@@ -188,6 +169,37 @@
                 "run_type=debug",
             ],
             "justMyCode": false
-        }
+        },        
+        {
+            "name": "dino_v2",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/dino_v2.py",
+            "console": "integratedTerminal",
+            "args": [
+                "run_type=debug",
+                "host=gin",
+                "run_type.log_to_wandb=false",
+            ],
+            "justMyCode": false,
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1",
+                "TORCH_USE_CUDA_DSA": "1",
+            }
+        },
+        {
+            "name": "scratch",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/scratch.py",
+            "console": "integratedTerminal",
+            "args": [
+            ],
+            "justMyCode": false,
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1",
+                "TORCH_USE_CUDA_DSA": "1",
+            }
+        },
     ]
 }

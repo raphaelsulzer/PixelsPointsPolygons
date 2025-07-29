@@ -12,7 +12,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from ..pointpillars import PointPillarsViTCNN, PointPillars
 from ..vision_transformer import ViTCNN
 from ..multitask_head import MultitaskHead
-from ..fusion_layers import FusionViTCNN, FusionHRNet, EarlyFusionViTCNN
+from ..fusion_layers import FusionHRNet, EarlyFusionViTCNN
 from ..hrnet import HighResolutionNet as HRNet48v2
 from .afm_module.afm_op import afm
 from .polygon import get_pred_junctions, generate_polygon
@@ -198,11 +198,11 @@ class EncoderDecoder(nn.Module):
         else:
             targets = None
             
-        if self.cfg.use_images and not self.cfg.use_lidar:
+        if self.cfg.experiment.encoder.use_images and not self.cfg.experiment.encoder.use_lidar:
             features = self.encoder(x_images)
-        elif not self.cfg.use_images and self.cfg.use_lidar:
+        elif not self.cfg.experiment.encoder.use_images and self.cfg.experiment.encoder.use_lidar:
             features = self.encoder(x_lidar)
-        elif self.cfg.use_images and self.cfg.use_lidar:
+        elif self.cfg.experiment.encoder.use_images and self.cfg.experiment.encoder.use_lidar:
             features = self.encoder(x_images, x_lidar)
         else:
             raise ValueError("At least one of use_images or use_lidar must be True")
@@ -315,19 +315,17 @@ class HiSupModel(torch.nn.Module):
         
         self.cfg = cfg
                 
-        if self.cfg.use_images and self.cfg.use_lidar:
+        if self.cfg.experiment.encoder.use_images and self.cfg.experiment.encoder.use_lidar:
             
             if self.cfg.experiment.encoder.name == "fusion_hrnet":
                 encoder = FusionHRNet(self.cfg,local_rank=local_rank)
-            elif self.cfg.experiment.encoder.name == "fusion_vit_cnn":
-                encoder = FusionViTCNN(self.cfg,local_rank=local_rank)
             elif self.cfg.experiment.encoder.name == "early_fusion_vit_cnn":
                 encoder = EarlyFusionViTCNN(self.cfg,local_rank=local_rank)
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
             
-        elif self.cfg.use_images:
+        elif self.cfg.experiment.encoder.use_images:
             
             if self.cfg.experiment.encoder.name == "hrnet":
                 encoder = HRNet48v2(self.cfg,local_rank=local_rank)
@@ -336,7 +334,7 @@ class HiSupModel(torch.nn.Module):
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
-        elif self.cfg.use_lidar: 
+        elif self.cfg.experiment.encoder.use_lidar: 
             
             if self.cfg.experiment.encoder.name == "pointpillars":
                 encoder = PointPillars(self.cfg,local_rank=local_rank)
@@ -353,9 +351,9 @@ class HiSupModel(torch.nn.Module):
             cfg=self.cfg
         )
         
-        model.to(self.cfg.device)
+        model.to(self.cfg.host.device)
         
-        if self.cfg.multi_gpu:
+        if self.cfg.host.multi_gpu:
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model = DDP(model, device_ids=[local_rank], find_unused_parameters=True)
     

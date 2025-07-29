@@ -1,6 +1,7 @@
 defaults:
   - /encoder: pointpillars_vit_cnn
   - /model: ffl
+  - /polygonization: asm_acm
   - _self_
 
 name: v5_lidar_bs2x16_mnv16
@@ -8,3 +9,5 @@ group_name: v2_${.model.name}
 
 encoder:
   max_num_points_per_voxel: 16
+
+country: CH

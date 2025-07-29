@@ -1,0 +1,10 @@
+defaults:
+  - /encoder: vit_cnn # This is the encoder used for the model. You can choose from [vit_cnn, vit, pointpillars_vit, pointpillars_vit_cnn, early_fusion_vit_cnn, early_fusion_vit]
+  - /model: ffl # This is the model. You can choose from [ffl, hisup, p2p].
+  - /polygonization: asm_acm # This is the polygonization method used for Frame Field Learning (ffl)
+  - _self_
+
+name: my_experiment # This is the name of the experiment, used as folder name and Weights and Biases run name
+group_name: my_group # This is the Weights and Biases group name
+
+country: CH # This is the country code. You can choose from [NY, CH, NZ, all]
