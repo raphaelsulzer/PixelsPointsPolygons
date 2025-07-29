@@ -17,7 +17,7 @@ def parse_cli_overrides():
 
 def predict_all():
     
-    logger = getLogger("HiSupPredictor rank 0")
+    logger = getLogger("DINO v2 ablation")
     
     experiments = [
         # Pix2Poly
@@ -36,7 +36,7 @@ def predict_all():
             
             overrides = cli_overrides + \
                 [f"experiment={experiment}",
-                 f"experiment.name={name}", f"experiment.country=CH", f"evaluation=test",
+                 f"experiment.name={name}", f"experiment.country=CH", f"evaluation=val",
                 "checkpoint=best_val_iou"]
             cfg = compose(config_name="config", 
                           overrides=overrides)
@@ -62,10 +62,10 @@ def predict_all():
                 raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
             
 
-            # time_dict = predictor.predict_dataset(split=cfg.evaluation.split)
-            # time_dict_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv".replace("metrics", "time")
-            # df = pd.read_csv(time_dict_file)
-            # time_dict = df.to_dict(orient="records")[0]
+            time_dict = predictor.predict_dataset(split=cfg.evaluation.split)
+            time_dict_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv".replace("metrics", "time")
+            df = pd.read_csv(time_dict_file)
+            time_dict = df.to_dict(orient="records")[0]
             
 
             logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
@@ -75,29 +75,23 @@ def predict_all():
             #############################################
             
             ### Evaluate
-            # ee = Evaluator(cfg)
-            # ee.pbar_disable = False
-            # ee.load_gt(cfg.dataset.annotations[cfg.evaluation.split])
-            # ee.load_predictions(cfg.evaluation.pred_file)
-            # res_dict=ee.evaluate(print_info=False)
+            ee = Evaluator(cfg)
+            ee.pbar_disable = False
+            ee.load_gt(cfg.dataset.annotations[cfg.evaluation.split])
+            ee.load_predictions(cfg.evaluation.pred_file)
+            res_dict=ee.evaluate(print_info=False)
 
-            res_dict = {}
-            predictor.setup_model_and_load_checkpoint()
+            # res_dict = {}
+            # predictor.setup_model_and_load_checkpoint()
             res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
-            # res_dict.update(time_dict)
+            res_dict.update(time_dict)
             
-            # exp_dict[f"{cfg.experiment.model.name}/{cfg.experiment.name}"] = res_dict
-            
-            print(res_dict["num_params"])
-                        
-            # pbar.update(1)
+            exp_dict[f"{cfg.experiment.model.name}/{cfg.experiment.name}"] = res_dict
+                                    
+            pbar.update(1)
 
         pbar.close()
         df = pd.DataFrame.from_dict(exp_dict, orient='index')
-
-        # pd.concat(df_list, axis=0, ignore_index=False)
-        # Save the DataFrame to a CSV file
-        # output_dir = os.path.join(self.cfg.host.data_root, "eval_results")
         
         print("\n")
         print(df)

@@ -17,7 +17,7 @@ def parse_cli_overrides():
 
 def predict_all():
     
-    logger = getLogger("HiSupPredictor rank 0")
+    logger = getLogger("Modality ablation")
     
     experiments = [
         # FFL
