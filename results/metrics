@@ -1,4 +1,8 @@
 ,0
-IoU,0.877
-C-IoU,0.785
-NR,0.849
+#images,40000
+GT #images w/ polys,16362
+Pred #images w/ polys,16152
+GT #polygons,29461
+Pred #polygons,29470
+GT #vertices,189274
+Pred #vertices,441023
