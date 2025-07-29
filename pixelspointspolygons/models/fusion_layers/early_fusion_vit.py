@@ -131,7 +131,7 @@ class EarlyFusionViT(torch.nn.Module):
             
             if apply_dropout:
                 self.logger.debug(f"LiDAR feature dropout applied")
-                x_lidar = torch.zeros_like(x_lidar)
+                x_lidar = x_lidar * 0.0
                 
         x = torch.cat((x_image, x_lidar), dim=1)
         
