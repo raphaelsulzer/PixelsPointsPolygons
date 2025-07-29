@@ -6,4 +6,6 @@ defaults:
 name: dinov2
 group_name: v3_${.model.name}
 
+lidar_dropout: null
+
 country: CH

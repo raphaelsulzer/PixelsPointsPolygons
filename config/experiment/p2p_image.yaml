@@ -6,4 +6,6 @@ defaults:
 name: v4_image_vit_bs4x16
 group_name: v2_${.model.name}
 
+lidar_dropout: null
+
 country: CH
