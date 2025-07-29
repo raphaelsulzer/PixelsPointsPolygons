@@ -9,11 +9,10 @@
 #SBATCH --gres=gpu:4              # Request 2 GPUs
 #SBATCH --constraint=h100
 #SBATCH --cpus-per-task=16         # Request 8 CPU cores
-#SBATCH --qos=qos_gpu_h100-t4 # QoS
-#SBATCH --time=24:00:00           # Time limit (hh:mm:ss)
+#SBATCH --qos=qos_gpu_h100-t3 # QoS
+#SBATCH --time=20:00:00           # Time limit (hh:mm:ss)
 #SBATCH --mail-user=raphael.sulzer.1@gmail.com  # Email for notifications
 #SBATCH --mail-type=ALL           # When to receive emails (BEGIN, END, FAIL, ALL)
-
 
 module purge # purge modules inherited by default
 #conda deactivate
