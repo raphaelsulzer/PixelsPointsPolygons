@@ -188,6 +188,23 @@
             }
         },
         {
+            "name": "lidar_dropout50",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/droplidar50_ablation.py",
+            "console": "integratedTerminal",
+            "args": [
+                "run_type=debug",
+                "host=gin",
+                "run_type.log_to_wandb=false",
+            ],
+            "justMyCode": false,
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1",
+                "TORCH_USE_CUDA_DSA": "1",
+            }
+        },
+        {
             "name": "scratch",
             "type": "debugpy",
             "request": "launch",
