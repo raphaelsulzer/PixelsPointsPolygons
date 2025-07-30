@@ -1,0 +1,17 @@
+\begin{table}[]
+\setlength{\tabcolsep}{2pt}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{@{}cc@{}H|cc@{}}
+\toprule
+    & & & \multicolumn{4}{c}{\emph{Boundary}}& \multicolumn{3}{c}{\emph{Area}}  & \emph{Complexity} &  \multicolumn{2}{c}{\emph{Efficiency}} \\
+\midrule
+\textbf{Model} & \textbf{Modality} & Unnamed: 0 & \textbf{IoU} $\uparrow$ & \textbf{NR=1} \\
+\midrule
+ & \textbf{Fusion} & \detokenize{pix2poly/p2p_fusion_droplidar50_bs4x16} & \cellcolor{blue!25} 0.774 & \cellcolor{blue!25} 0.821 \\
+\bottomrule
+\end{tabular}
+}
+\caption{Patch prediction}
+\label{tab:patch}
+\end{table}
