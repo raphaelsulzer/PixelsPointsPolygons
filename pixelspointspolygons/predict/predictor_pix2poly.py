@@ -42,7 +42,6 @@ class Pix2PolyPredictor(Predictor):
         self.model.to(self.cfg.host.device)
         self.load_checkpoint()
     
-    
     def predict_dataset(self, split="val"):
         
         self.setup_model_and_load_checkpoint()
@@ -76,7 +75,6 @@ class Pix2PolyPredictor(Predictor):
 
         return time_dict
 
-    
     def predict_from_loader(self, model, tokenizer, loader):
                 
         if isinstance(loader.dataset, torch.utils.data.Subset):
@@ -99,7 +97,6 @@ class Pix2PolyPredictor(Predictor):
                 
         return coco_predictions
 
-
     def predict_file(self,img_infile=None,lidar_infile=None,outfile=None):
                 
         image, image_pillow = self.load_image_from_file(img_infile)
@@ -117,8 +114,6 @@ class Pix2PolyPredictor(Predictor):
             batch_polygons = self.batch_to_polygons(image, lidar, self.model, self.tokenizer)
             self.plot_prediction(batch_polygons[0], image=image, image_np=image_pillow, lidar=lidar, outfile=outfile)
 
-            
-            
     def batch_to_polygons(self, x_images, x_lidar, model, tokenizer):
         """Takes one batch with samples of images and/or lidar data and returns the polygons for each sample of the batch."""
         
@@ -155,8 +150,6 @@ class Pix2PolyPredictor(Predictor):
             
         return batch_polygons_processed
         
-
-
     def test_generate(self, x_images, x_lidar, top_k=0, top_p=1):
         
         batch_size = x_images.size(0) if x_images is not None else x_lidar.size(0)
@@ -216,8 +209,6 @@ class Pix2PolyPredictor(Predictor):
             perm_preds = self.scores_to_permutations(perm_preds)
 
         return batch_preds.cpu(), confs, perm_preds
-    
-    
     
     def permutations_to_polygons(self, perm, graph, out='torch'):
         B, N, N = perm.shape
@@ -291,11 +282,6 @@ class Pix2PolyPredictor(Predictor):
                 batch.append([])
 
         return batch
-
-
-
-
-
 
     def postprocess(self, batch_preds, batch_confs):
         EOS_idxs = (batch_preds == self.tokenizer.EOS_code).float().argmax(dim=-1)
