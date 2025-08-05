@@ -218,5 +218,21 @@
                 "TORCH_USE_CUDA_DSA": "1",
             }
         },
+        {
+            "name": "evaluate_gt",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/evaluate_gt.py",
+            "console": "integratedTerminal",
+            "args": [
+                "evaluation=gt_eval",
+
+            ],
+            "justMyCode": false,
+            "env": {
+                "CUDA_LAUNCH_BLOCKING": "1",
+                "TORCH_USE_CUDA_DSA": "1",
+            }
+        },
     ]
 }

@@ -21,8 +21,8 @@ def predict_all():
     
     experiments = [
         # Pix2Poly
-        ("p2p_fusion_droplidar50", "p2p_fusion_droplidar50_bs4x16"),
-        # ("p2p_image", "v4_image_vit_bs4x16")
+        # ("p2p_fusion_droplidar50", "p2p_fusion_droplidar50_bs2x16"),
+        ("p2p_image", "image_bs2x16")
         ]
     
     setup_hydraconf()
@@ -36,9 +36,9 @@ def predict_all():
             
             overrides = cli_overrides + \
                 [f"experiment={experiment}",
-                #  f"experiment.lidar_dropout=0.5",
+                #  f"experiment.lidar_dropout=1.0",
                  f"experiment.name={name}", f"experiment.country=CH", f"evaluation=val", 
-                # "checkpoint=best_val_iou"
+                "checkpoint=best_val_iou"
                 ]
                 # "checkpoint=epoch_149"]
             cfg = compose(config_name="config", 
