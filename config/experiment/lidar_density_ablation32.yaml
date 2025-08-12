@@ -11,3 +11,5 @@ encoder:
   max_num_points_per_voxel: 32
 
 country: CH
+
+annotation_type: blocks

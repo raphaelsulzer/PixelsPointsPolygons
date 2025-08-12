@@ -14,7 +14,7 @@ from pixelspointspolygons.eval import Evaluator
 
 def predict_all():
     
-    logger = getLogger("HiSupPredictor rank 0")
+    logger = getLogger("LiDAR density ablation")
     
     experiments = [
         # FFL

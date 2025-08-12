@@ -8,3 +8,5 @@ name: v4_image_bs4x16
 group_name: v2_${.model.name}
 
 country: CH
+
+annotation_type: blocks

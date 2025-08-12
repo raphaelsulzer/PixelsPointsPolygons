@@ -4,6 +4,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
+import rasterio
 import laspy
 import logging
 import torch
@@ -95,10 +96,15 @@ class Predictor:
     def load_image_from_file(self, img_infile):
         
         if img_infile is not None:
-            image_pil = np.array(Image.open(img_infile).convert("RGB"))
-            image = torch.from_numpy(image_pil).permute(2, 0, 1).unsqueeze(0).to(self.cfg.host.device).to(torch.float32)/255.0
+            
+            with rasterio.open(img_infile) as src:
+                image_np = src.read([1, 2, 3])  # shape (3, H, W)
+                image_np = np.moveaxis(image_np, 0, -1)  # shape (H, W, 3)
+            
+            # image_pil = np.array(Image.open(img_infile).convert("RGB"))
+            image = torch.from_numpy(image_np).permute(2, 0, 1).unsqueeze(0).to(self.cfg.host.device).to(torch.float32)/255.0
             image = F.normalize(image, mean=self.cfg.experiment.encoder.image_mean, std=self.cfg.experiment.encoder.image_std)
-            return image, image_pil
+            return image, image_np
         else:
             return None, None
         
@@ -128,7 +134,7 @@ class Predictor:
             return None
     
     
-    def plot_prediction(self, polygons, image=None, image_pillow=None, lidar=None, outfile=None):
+    def plot_prediction(self, polygons, image=None, image_np=None, lidar=None, outfile=None):
         
         if not len(polygons):
             self.logger.warning(f"No polygons predicted.")
@@ -159,7 +165,7 @@ class Predictor:
         alpha = 1.0
         if image is not None:
             alpha = 0.7
-            plot_image(image_pillow, ax=ax)
+            plot_image(image_np, ax=ax)
         
         if lidar is not None:
             if not ax.yaxis_inverted():

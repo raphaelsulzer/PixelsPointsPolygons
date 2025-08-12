@@ -1,7 +1,4 @@
-import os
-import torch
 import hydra
-from omegaconf import OmegaConf
 from pixelspointspolygons.train import FFLTrainer, HiSupTrainer, Pix2PolyTrainer
 
 from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf

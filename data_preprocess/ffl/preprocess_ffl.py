@@ -1,6 +1,5 @@
 import os
 import pathlib
-import warnings
 import hydra
 import json
 import logging
@@ -24,9 +23,43 @@ from copy import deepcopy
 
 from torch_lydorn.torch.utils.data import __repr__
 
-from ffl.data_transforms import get_offline_transform_patch
+import torch_lydorn.torchvision
+import torchvision
 
 from pixelspointspolygons.misc import make_logger, setup_hydraconf
+
+
+def get_offline_transform_patch(raster: bool = True, fill: bool = True, edges: bool = True, vertices: bool = True,
+                                distances: bool = True, sizes: bool = True, angle_field: bool = True):
+    transform_list = []
+    if raster:
+        if not distances and not sizes:
+            rasterize_transform = torch_lydorn.torchvision.transforms.TransformByKey(
+                transform=torch_lydorn.torchvision.transforms.Rasterize(fill=fill, edges=edges, vertices=vertices,
+                                                                        line_width=4, antialiasing=True,
+                                                                        return_distances=False,
+                                                                        return_sizes=False),
+                key=["image", "gt_polygons"], outkey="gt_polygons_image")
+        elif distances and sizes:
+            rasterize_transform = torch_lydorn.torchvision.transforms.TransformByKey(
+                    transform=torch_lydorn.torchvision.transforms.Rasterize(fill=fill, edges=edges, vertices=vertices,
+                                                                            line_width=4, antialiasing=True,
+                                                                            return_distances=True,
+                                                                            return_sizes=True),
+                    key=["image", "gt_polygons"], outkey=["gt_polygons_image", "distances", "sizes"])
+        else:
+            raise NotImplementedError
+        transform_list.append(rasterize_transform)
+    if angle_field:
+        transform_list.append(
+            torch_lydorn.torchvision.transforms.TransformByKey(
+                transform=torch_lydorn.torchvision.transforms.AngleFieldInit(line_width=6),
+                key=["image", "gt_polygons"],
+                outkey="gt_crossfield_angle")
+        )
+
+    return torchvision.transforms.Compose(transform_list)
+
 
 class FFLPreprocessing(torch.utils.data.Dataset):
     def __init__(self, cfg, pre_transform, fold="train"):
@@ -314,23 +347,6 @@ def main(cfg):
                                 pre_transform=get_offline_transform_patch(),
                                 fold=fold)
         dataset._process()
-
-
-    # TODO: need to decide how to integrate this into PPP.
-    # the preprocessing could be done here, but now I need to load this data into PPP, i.e. the stored .pt files
-    # but if I want to do that with my own dataset structure I need to implement a new Dataset class that loads the .pt files
-    # and more importantly, also applies the augmentations
-    # all of this is already done inside DatasetWithPreprocessing, so I could also use this class in PPP
-    # Note: here in this file, I deleted all the augmentation stuff (online transforms), but should be easy to bring it back
-    
-    ## Best thing to do would be to add the pt file path to my original coco annotations file so that I could continue to load
-    ## with my own dataloader and load the pt file in the __getitem__ method and apply augmentations there.
-    ## shouldn't be too hard to augment the frame field
-    
-    ## UPDATE: I should really just add all of this to the ppp_dataset preprocessing and directly store the ffl_info inside the 
-    ## COCO annotations file.
-    ## UPDATE 2: maybe also not a good idea, because the necessary data are tensors, which probably shouldn't go inside the annotatinos.json file
-    ## -> keeping it like this for now
 
     ###########################################
     ########### DEBUG VISUALIZATION ###########

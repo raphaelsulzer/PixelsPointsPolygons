@@ -32,6 +32,10 @@ def main(cfg):
     ee.load_gt(cfg.dataset.annotations[cfg.evaluation.split])
     ee.load_predictions(cfg.evaluation.pred_file)
     res=ee.evaluate()
+    
+    # TODO: 
+    # 1. run an evaluation on the new val set of NY and NZ, have to adjust to new annotation paths
+    # 2. run a training on the building annotations of CH
 
     df = pd.DataFrame.from_dict(res, orient='index')
     

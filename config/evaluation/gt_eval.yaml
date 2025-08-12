@@ -6,5 +6,4 @@ modes:
     - coco
     - iou
     - polis
-    - mta
 eval_file: results/metrics

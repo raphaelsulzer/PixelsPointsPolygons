@@ -35,6 +35,7 @@ class EarlyFusionViT(torch.nn.Module):
         self.cfg = cfg        
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
+        self.local_rank = local_rank
 
         ###### LiDAR encoder #######
         
@@ -67,26 +68,57 @@ class EarlyFusionViT(torch.nn.Module):
 
         self.vit.patch_embed = nn.Identity()
         
+        # if self.cfg.experiment.lidar_dropout is None:
         self.fusion_layer = nn.Sequential(
             nn.Conv2d(self.cfg.experiment.encoder.patch_feature_dim*2, self.cfg.experiment.encoder.patch_feature_dim, kernel_size=3, padding=1),
             nn.BatchNorm2d(self.cfg.experiment.encoder.patch_feature_dim),
             nn.ReLU(inplace=True)
         )
+        #### OPTIONAL: Add a mask channel to the fusion layer
+        # else:
+        #     self.logger.info(f"Using LiDAR dropout with probability {self.cfg.experiment.lidar_dropout}")
+        #     self.fusion_layer = nn.Sequential(
+        #     nn.Conv2d(
+        #         in_channels=self.cfg.experiment.encoder.patch_feature_dim * 2 + 1,
+        #         out_channels=self.cfg.experiment.encoder.patch_feature_dim,
+        #         kernel_size=3,
+        #         padding=1
+        #     ),
+        #     nn.BatchNorm2d(self.cfg.experiment.encoder.patch_feature_dim),
+        #     nn.ReLU(inplace=True)
+        #     )
         
         self.bottleneck = nn.AdaptiveAvgPool1d(cfg.experiment.encoder.out_feature_dim)
-        
-        
+    
     def forward(self, x_image, x_lidar):
         """Extract features from points."""
         
         x_image = self.image_embed(x_image)
         x_lidar = self.lidar_embed(x_lidar,return_flattened=False)
+        
+        #### OPTIONAL: Add a mask channel
+        # if self.cfg.experiment.lidar_dropout is not None:
+        #     if torch.rand(1).item() < self.cfg.experiment.lidar_dropout:
+        #         x_lidar = torch.zeros_like(x_lidar)
+        #         lidar_mask = torch.zeros((x_lidar.size(0), 1, x_lidar.size(2), x_lidar.size(3)), device=x_lidar.device)
+        #     else:
+        #         lidar_mask = torch.ones((x_lidar.size(0), 1, x_lidar.size(2), x_lidar.size(3)), device=x_lidar.device)
+        #     x = torch.cat((x_image, x_lidar, lidar_mask), dim=1)
+        # else:
+        #     x = torch.cat((x_image, x_lidar), dim=1)
+        
+        if self.cfg.experiment.lidar_dropout is not None:
+
+            apply_dropout = torch.rand(1, device=x_lidar.device)
+            apply_dropout = apply_dropout.item() <= self.cfg.experiment.lidar_dropout
+            if apply_dropout:
+                self.logger.debug(f"LiDAR feature dropout applied")
+                x_lidar = x_lidar * 0.0
+                
         x = torch.cat((x_image, x_lidar), dim=1)
         
         x = self.fusion_layer(x).flatten(2).transpose(1, 2)
-        
-        x = self.vit(x)[:, 1:,:]
-        
+        x = self.vit(x)[:, 1:, :]
         x = self.bottleneck(x)
         
         return x

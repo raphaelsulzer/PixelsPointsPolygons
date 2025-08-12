@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Subset
 from torch.utils.data.distributed import DistributedSampler
 
-from .ppp_coco import TestDataset, ValDataset, TrainDataset
+from .p3_coco import TestDataset, ValDataset, TrainDataset
 from .collate_funcs import collate_fn_pix2poly, collate_fn_hisup, collate_fn_ffl
 
 def get_collate_fn(model):

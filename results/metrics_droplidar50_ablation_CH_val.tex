@@ -1,0 +1,17 @@
+\begin{table}[]
+\setlength{\tabcolsep}{2pt}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{@{}cc@{}H|cc@{}}
+\toprule
+    & & & \multicolumn{4}{c}{\emph{Boundary}}& \multicolumn{3}{c}{\emph{Area}}  & \emph{Complexity} &  \multicolumn{2}{c}{\emph{Efficiency}} \\
+\midrule
+\textbf{Model} & \textbf{Modality} & Unnamed: 0 & \textbf{IoU} $\uparrow$ & \textbf{NR=1} \\
+\midrule
+\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}} & \textbf{Image} & \detokenize{pix2poly/image_bs2x16} & \cellcolor{blue!25} 0.749 & \cellcolor{blue!25} 0.812 \\
+\bottomrule
+\end{tabular}
+}
+\caption{Patch prediction}
+\label{tab:patch}
+\end{table}

@@ -8,3 +8,5 @@ device: cuda
 update_pbar_every: 1
 
 ldof_exe: /path/to/calculate_DoF
+
+dino_v2_repo: /path/to/dinov2_repo

@@ -6,4 +6,8 @@ defaults:
 name: early_fusion_bs2x16_mnv64
 group_name: v2_${.model.name}
 
+lidar_dropout: null
+
 country: all
+
+annotation_type: blocks
