@@ -3,7 +3,7 @@
     <h3><align="center">Raphael Sulzer<sup>1,2</sup> &nbsp;&nbsp;&nbsp; Liuyun Duan<sup>1</sup>
     &nbsp;&nbsp;&nbsp; Nicolas Girard<sup>1</sup>&nbsp;&nbsp;&nbsp; Florent Lafarge<sup>2</sup></a></h3>
     <align="center"><sup>1</sup>LuxCarta Technology <br>  <sup>2</sup>Centre Inria d'Université Côte d'Azur
-    <img src="./teaser.jpg" width=100% height=100%>
+    <img src="media/teaser.jpg" width=100% height=100%>
     <b>Figure 1</b>: A view of our dataset of Zurich, Switzerland
 </div>
 
@@ -35,7 +35,7 @@ We present the P<sup>3</sup> dataset, a large-scale multimodal benchmark for bui
 ### Overview
 
 <div align="left">
-    <img src="./worldmap.jpg" width=60% height=50%>
+    <img src="media/worldmap.jpg" width=60% height=50%>
 </div>
 
 ### Download
@@ -539,6 +539,29 @@ python scripts/predict_demo.py checkpoint=best_val_iou experiment=$MODEL_$MODALI
 At least one of `image_file` or `lidar_file` has to be specified. `$MODEL` can be one of the following: `ffl`, `hisup` or `p2p`. `$MODALITY` can be `image`, `lidar` or `fusion`.
 The result will be stored in `prediction.png`.
 
+For example, for Pix2Poly demo predictions the results should look like this:
+
+<!-- | ![Image1](prediction_ffl_image.png) | ![Image2](prediction_ffl_image.png) | ![Image3](prediction_ffl_image.png) |
+|:---------------:|:---------------:|:---------------:|
+| Caption 1       | Caption 2       | Caption 3       | -->
+
+<table style="border-collapse: collapse; border: none;">
+  <tr>
+    <td style="border: none; text-align: center;">
+      <img src="media/Switzerland_val_0_pix2poly_v4_image_vit_bs4x16.jpg" alt="Image1" width="150" />
+      <div style="font-size: small;">Pred. Image</div>
+    </td>
+    <td style="border: none; text-align: center;">
+      <img src="media/Switzerland_val_0_pix2poly_lidar_pp_vit_bs2x16_mnv64.jpg" alt="Image2" width="150" />
+      <div style="font-size: small;">Pred. LiDAR</div>
+    </td>
+    <td style="border: none; text-align: center;">
+      <img src="media/Switzerland_val_0_pix2poly_early_fusion_bs2x16_mnv64.jpg" alt="Image3" width="150" />
+      <div style="font-size: small;">Pred. Fusion</div>
+    </td>
+  </tr>
+</table>
+
 
 ### Reproduce paper results
 
@@ -576,7 +599,7 @@ python scripts/train.py experiment=p2p_fusion checkpoint=latest
 
 If you use our work please cite
 ```bibtex
-@misc{sulzer2025p3datasetpixelspoints,
+@misc{sulzer2025p3dataset,
       title={The P$^3$ dataset: Pixels, Points and Polygons for Multimodal Building Vectorization}, 
       author={Raphael Sulzer and Liuyun Duan and Nicolas Girard and Florent Lafarge},
       year={2025},
