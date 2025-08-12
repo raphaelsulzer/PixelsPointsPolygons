@@ -38,3 +38,5 @@ wandb/*
 oar/runs/*
 
 .vscode/*
+
+config/host/gin.yaml
