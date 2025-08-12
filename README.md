@@ -545,19 +545,25 @@ For example, for Pix2Poly demo predictions the results should look like this:
 |:---------------:|:---------------:|:---------------:|
 | Caption 1       | Caption 2       | Caption 3       | -->
 
-<table style="border-collapse: collapse; border: none;">
+<table style="border-collapse: collapse; border: none; width: 100%;">
   <tr>
-    <td style="border: none; text-align: center;">
-      <img src="media/Switzerland_val_0_pix2poly_v4_image_vit_bs4x16.jpg" alt="Image1" width="150" />
-      <div style="font-size: small;">Pred. Image</div>
+    <td style="border: none; padding: 0; text-align: center; vertical-align: top;">
+      <figure style="margin: 0;">
+        <img src="media/Switzerland_val_0_pix2poly_v4_image_vit_bs4x16.jpg" alt="Image1" width="200" style="border: none; outline: none; display: block; margin: 0 auto;" />
+        <figcaption style="font-size: small; text-align: center; margin-top: 4px;">Pred. Image</figcaption>
+      </figure>
     </td>
-    <td style="border: none; text-align: center;">
-      <img src="media/Switzerland_val_0_pix2poly_lidar_pp_vit_bs2x16_mnv64.jpg" alt="Image2" width="150" />
-      <div style="font-size: small;">Pred. LiDAR</div>
+    <td style="border: none; padding: 0; text-align: center; vertical-align: top;">
+      <figure style="margin: 0;">
+        <img src="media/Switzerland_val_0_pix2poly_lidar_pp_vit_bs2x16_mnv64.jpg" alt="Image2" width="200" style="border: none; outline: none; display: block; margin: 0 auto;" />
+        <figcaption style="font-size: small; text-align: center; margin-top: 4px;">Pred. LiDAR</figcaption>
+      </figure>
     </td>
-    <td style="border: none; text-align: center;">
-      <img src="media/Switzerland_val_0_pix2poly_early_fusion_bs2x16_mnv64.jpg" alt="Image3" width="150" />
-      <div style="font-size: small;">Pred. Fusion</div>
+    <td style="border: none; padding: 0; text-align: center; vertical-align: top;">
+      <figure style="margin: 0;">
+        <img src="media/Switzerland_val_0_pix2poly_early_fusion_bs2x16_mnv64.jpg" alt="Image3" width="200" style="border: none; outline: none; display: block; margin: 0 auto;" />
+        <figcaption style="font-size: small; text-align: center; margin-top: 4px;">Pred. Fusion</figcaption>
+      </figure>
     </td>
   </tr>
 </table>
