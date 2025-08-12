@@ -34,6 +34,9 @@ wandb/*
 # Files ignore
 !teaser.jpg
 !worldmap.jpg
+!Switzerland_val_0_pix2poly_early_fusion_bs2x16_mnv64.jpg
+!Switzerland_val_0_pix2poly_lidar_pp_vit_bs2x16_mnv64.jpg
+!Switzerland_val_0_pix2poly_v4_image_vit_bs4x16.jpg
 
 oar/runs/*
 
