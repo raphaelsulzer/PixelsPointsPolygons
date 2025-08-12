@@ -1,10 +1,10 @@
 defaults:
-  - /encoder: vit
+  - /encoder: vit_dinov2
   - /model: pix2poly
   - _self_
 
-name: v4_image_vit_bs4x16
-group_name: v2_${.model.name}
+name: dinov2
+group_name: v3_${.model.name}
 
 lidar_dropout: null
 

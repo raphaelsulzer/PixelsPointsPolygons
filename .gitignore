@@ -36,3 +36,5 @@ wandb/*
 !worldmap.jpg
 
 oar/runs/*
+
+.vscode/*

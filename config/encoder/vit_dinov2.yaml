@@ -1,10 +1,10 @@
-name: vit
+name: vit_dinov2
 
 use_images: true
 use_lidar: false
 
 type: vit_small_patch${.patch_size}_${.in_size}.dino
-checkpoint_file: ${...host.model_root}/backbones/dino_deitsmall8_pretrain.pth
+checkpoint_file: ${...host.model_root}/backbones/dinov2_vits14_pretrain.pth
 pretrained: True
 
 # image/lidar input dimensions
@@ -13,19 +13,23 @@ in_height: ${.in_size}
 in_width: ${.in_size}
 
 # patching
-patch_size: 8
-patch_feature_size: 28 # this is for the LiDAR encoder
+patch_size: 14
+patch_feature_size: 16 # this is for the LiDAR encoder
 patch_feature_height: ${.patch_feature_size}
 patch_feature_width: ${.patch_feature_size}
 patch_feature_dim: 384
-num_patches: 784  # int((self.cfg.experiment.encoder.in_size // self.cfg.experiment.encoder.patch_size) ** 2)
+num_patches: 256  # int((self.cfg.experiment.encoder.in_size // self.cfg.experiment.encoder.patch_size) ** 2)
 
 out_feature_dim: ${..model.decoder.in_feature_dim}
 
-image_mean: [0.0, 0.0, 0.0]
-image_std: [1.0, 1.0, 1.0]
+# DINO v2 normalization
+image_mean: [0.485, 0.456, 0.406]
+image_std: [0.228, 0.224, 0.225]
 image_max_pixel_value: 255.0
 
+# image_mean: [0.0, 0.0, 0.0]
+# image_std: [1.0, 1.0, 1.0]
+# image_max_pixel_value: 255.0
 
 augmentations:
     - D4

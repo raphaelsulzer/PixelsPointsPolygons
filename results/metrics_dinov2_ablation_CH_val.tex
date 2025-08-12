@@ -1,0 +1,19 @@
+\begin{table}[]
+\setlength{\tabcolsep}{2pt}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{@{}cc@{}H|cccc@{}}
+\toprule
+    & & & \multicolumn{4}{c}{\emph{Boundary}}& \multicolumn{3}{c}{\emph{Area}}  & \emph{Complexity} &  \multicolumn{2}{c}{\emph{Efficiency}} \\
+\midrule
+\textbf{Model} & \textbf{Modality} & Unnamed: 0 & \textbf{IoU} $\uparrow$ & \textbf{NR=1} & \textbf{Time [s]} $\downarrow$ & \textbf{Params [$\times 10^6$]} $\downarrow$ \\
+\midrule
+\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}} & \textbf{Image} & \detokenize{pix2poly/v4_image_vit_bs4x16} & \cellcolor{blue!25} 0.765 & \cellcolor{blue!25} 0.828 & \cellcolor{blue!10} 1.15 & \cellcolor{blue!25} 31.9 \\
+\midrule
+ & \textbf{Fusion} & \detokenize{pix2poly/dinov2} & \cellcolor{blue!10} 0.686 & \cellcolor{blue!10} 0.772 & \cellcolor{blue!25} 0.893 & \cellcolor{blue!10} 32.2 \\
+\bottomrule
+\end{tabular}
+}
+\caption{Patch prediction}
+\label{tab:patch}
+\end{table}

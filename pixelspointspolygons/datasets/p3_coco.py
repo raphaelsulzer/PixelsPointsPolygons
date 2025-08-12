@@ -5,7 +5,6 @@ import torch
 import rasterio
 
 import numpy as np
-from PIL import Image
 
 from sklearn.preprocessing import MinMaxScaler
 from pycocotools.coco import COCO
@@ -66,7 +65,7 @@ class PPPDataset(Dataset):
     def __len__(self):
         return self.num_samples
     
-    def load_lidar_points(self, lidar_file_name, img_info):
+    def load_lidar_points(self, lidar_file_name, img_info):        
 
         if os.path.isfile(lidar_file_name):
             

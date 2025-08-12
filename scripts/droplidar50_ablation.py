@@ -17,21 +17,12 @@ def parse_cli_overrides():
 
 def predict_all():
     
-    logger = getLogger("Modality ablation")
+    logger = getLogger("DINO v2 ablation")
     
     experiments = [
-        # FFL
-        ("ffl_image", "v4_image_bs4x16"),
-        ("ffl_lidar", "v5_lidar_bs2x16_mnv64"),
-        ("ffl_fusion", "v4_fusion_bs4x16_mnv64"),
-        # # HiSup 
-        ("hisup_image", "v3_image_vit_cnn_bs4x12"),
-        ("hisup_lidar", "lidar_pp_vit_cnn_bs2x16_mnv64"),
-        ("hisup_fusion", "early_fusion_vit_cnn_bs2x16_mnv64"),
         # Pix2Poly
-        ("p2p_image", "v4_image_vit_bs4x16"),
-        ("p2p_lidar", "lidar_pp_vit_bs2x16_mnv64"),
-        ("p2p_fusion", "early_fusion_bs2x16_mnv64"),
+        # ("p2p_fusion_droplidar50", "p2p_fusion_droplidar50_bs2x16"),
+        ("p2p_image", "image_bs2x16")
         ]
     
     setup_hydraconf()
@@ -45,8 +36,11 @@ def predict_all():
             
             overrides = cli_overrides + \
                 [f"experiment={experiment}",
-                 f"experiment.name={name}", f"country=Switzerland", f"eval.split=test",
-                "checkpoint=best_val_iou"]
+                #  f"experiment.lidar_dropout=1.0",
+                 f"experiment.name={name}", f"experiment.country=CH", f"evaluation=val", 
+                "checkpoint=best_val_iou"
+                ]
+                # "checkpoint=epoch_149"]
             cfg = compose(config_name="config", 
                           overrides=overrides)
             OmegaConf.resolve(cfg)
@@ -70,15 +64,12 @@ def predict_all():
             else:
                 raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
             
-
-            # time_dict = predictor.predict_dataset(split=cfg.evaluation.split)
-            # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
-            # res_dict.update(time_dict)
+            time_dict = predictor.predict_dataset(split=cfg.evaluation.split)
+            ### Read time dict from file if needed
             # time_dict_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv".replace("metrics", "time")
             # df = pd.read_csv(time_dict_file)
             # time_dict = df.to_dict(orient="records")[0]
             
-
             logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
             
             #############################################
@@ -92,23 +83,23 @@ def predict_all():
             ee.load_predictions(cfg.evaluation.pred_file)
             res_dict=ee.evaluate(print_info=False)
 
+            # res_dict = {}
+            # predictor.setup_model_and_load_checkpoint()
+            # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
+            # res_dict.update(time_dict)
             
             exp_dict[f"{cfg.experiment.model.name}/{cfg.experiment.name}"] = res_dict
-            
+                                    
             pbar.update(1)
 
         pbar.close()
         df = pd.DataFrame.from_dict(exp_dict, orient='index')
-
-        # pd.concat(df_list, axis=0, ignore_index=False)
-        # Save the DataFrame to a CSV file
-        # output_dir = os.path.join(self.cfg.host.data_root, "eval_results")
         
         print("\n")
         print(df)
         print("\n")
         
-        cfg.evaluation.eval_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv"
+        cfg.evaluation.eval_file = f"{cfg.evaluation.eval_file}_droplidar50_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv"
         
         logger.info(f"Save eval file to {cfg.evaluation.eval_file}")
         df.to_csv(cfg.evaluation.eval_file, index=True, float_format="%.3g")

@@ -6,7 +6,7 @@ from timm.models.layers import trunc_normal_
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from ..pointpillars import PointPillarsViT
-from ..vision_transformer import ViT
+from ..vision_transformer import ViT, ViTDINOv2
 from ..fusion_layers import EarlyFusionViT
 
 def generate_square_subsequent_mask(sz,device):
@@ -244,12 +244,10 @@ class EncoderDecoder(nn.Module):
             features = self.encoder(x_images, x_lidar)
         else:
             raise ValueError("At least one of use_images or use_lidar must be True")
-        
-        # TODO: go through bottleneck layer here if necessary
-        
-        preds, feats = self.decoder(features, y)
-        perm_mat1 = self.scorenet1(feats)
-        perm_mat2 = self.scorenet2(feats)
+                
+        preds, features = self.decoder(features, y)
+        perm_mat1 = self.scorenet1(features)
+        perm_mat2 = self.scorenet2(features)
         perm_mat = perm_mat1 + torch.transpose(perm_mat2, 1, 2)
 
         perm_mat = log_optimal_transport(
@@ -286,6 +284,8 @@ class Pix2PolyModel(torch.nn.Module):
             
             if self.cfg.experiment.encoder.name == "vit":
                 encoder = ViT(self.cfg,bottleneck=True,local_rank=local_rank)
+            elif self.cfg.experiment.encoder.name == "vit_dinov2":
+                encoder = ViTDINOv2(self.cfg,bottleneck=True,local_rank=local_rank)
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
@@ -317,6 +317,6 @@ class Pix2PolyModel(torch.nn.Module):
         
         if self.cfg.host.multi_gpu:
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            model = DDP(model, device_ids=[local_rank], find_unused_parameters=True)
+            model = DDP(model, device_ids=[local_rank], find_unused_parameters=self.cfg.run_type == "debug")
     
         return model

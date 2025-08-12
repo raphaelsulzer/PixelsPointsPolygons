@@ -112,7 +112,7 @@ class HiSupPredictor(Predictor):
 
             output, loss = self.model.forward_val(x_images=image, x_lidar=lidar, y=None)
 
-            self.plot_prediction(output['polys_pred'][0], image=image, image_pillow=image_pillow, lidar=lidar, outfile=outfile)
+            self.plot_prediction(output['polys_pred'][0], image=image, image_np=image_pillow, lidar=lidar, outfile=outfile)
 
             
             
