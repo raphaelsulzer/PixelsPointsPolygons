@@ -1,13 +1,13 @@
 defaults:
-  - /encoder: vit_dinov2
+  - /encoder: early_fusion_vit
   - /model: pix2poly
   - _self_
 
-name: dinov2
+name: building_fusion
 group_name: v3_${.model.name}
 
 lidar_dropout: null
 
 country: CH
 
-annotation_type: blocks
+annotation_type: buildings

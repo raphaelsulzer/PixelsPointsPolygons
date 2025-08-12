@@ -8,3 +8,5 @@ name: my_experiment # This is the name of the experiment, used as folder name an
 group_name: my_group # This is the Weights and Biases group name
 
 country: CH # This is the country code. You can choose from [NY, CH, NZ, all]
+
+annotation_type: blocks
