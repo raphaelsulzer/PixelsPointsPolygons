@@ -541,32 +541,13 @@ The result will be stored in `prediction.png`.
 
 For example, for Pix2Poly demo predictions the results should look like this:
 
-<!-- | ![Image1](prediction_ffl_image.png) | ![Image2](prediction_ffl_image.png) | ![Image3](prediction_ffl_image.png) |
-|:---------------:|:---------------:|:---------------:|
-| Caption 1       | Caption 2       | Caption 3       | -->
+<p align="center">
 
-<table style="border-collapse: collapse; border: none; width: 100%;">
-  <tr>
-    <td style="border: none; padding: 0; text-align: center; vertical-align: top;">
-      <figure style="margin: 0;">
-        <img src="media/Switzerland_val_0_pix2poly_v4_image_vit_bs4x16.jpg" alt="Image1" width="200" style="border: none; outline: none; display: block; margin: 0 auto;" />
-        <figcaption style="font-size: small; text-align: center; margin-top: 4px;">Pred. Image</figcaption>
-      </figure>
-    </td>
-    <td style="border: none; padding: 0; text-align: center; vertical-align: top;">
-      <figure style="margin: 0;">
-        <img src="media/Switzerland_val_0_pix2poly_lidar_pp_vit_bs2x16_mnv64.jpg" alt="Image2" width="200" style="border: none; outline: none; display: block; margin: 0 auto;" />
-        <figcaption style="font-size: small; text-align: center; margin-top: 4px;">Pred. LiDAR</figcaption>
-      </figure>
-    </td>
-    <td style="border: none; padding: 0; text-align: center; vertical-align: top;">
-      <figure style="margin: 0;">
-        <img src="media/Switzerland_val_0_pix2poly_early_fusion_bs2x16_mnv64.jpg" alt="Image3" width="200" style="border: none; outline: none; display: block; margin: 0 auto;" />
-        <figcaption style="font-size: small; text-align: center; margin-top: 4px;">Pred. Fusion</figcaption>
-      </figure>
-    </td>
-  </tr>
-</table>
+| ![Pred. Image](media/Switzerland_val_0_pix2poly_v4_image_vit_bs4x16.jpg) | ![Pred. LiDAR](media/Switzerland_val_0_pix2poly_lidar_pp_vit_bs2x16_mnv64.jpg) | ![Pred. Fusion](media/Switzerland_val_0_pix2poly_early_fusion_bs2x16_mnv64.jpg) |
+| :-----------------------------------------------------------------------: | :-------------------------------------------------------------------------: | :------------------------------------------------------------------------: |
+| <sub>Pred. Image</sub>                                                    | <sub>Pred. LiDAR</sub>                                                      | <sub>Pred. Fusion</sub>                                                     |
+
+</p>
 
 
 ### Reproduce paper results
