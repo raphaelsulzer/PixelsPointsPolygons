@@ -9,3 +9,5 @@ group_name: v2_${.model.name}
 lidar_dropout: null
 
 country: CH
+
+annotation_type: blocks

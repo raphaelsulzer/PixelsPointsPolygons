@@ -8,4 +8,6 @@ defaults:
 name: debug
 group_name: debug
 
+annotation_type: blocks
+
 country: CH

@@ -2,10 +2,11 @@ name: PixelsPointsPolygons
 # size: null
 size: ${..experiment.encoder.in_size}
 path: ${host.data_root}/data/${.size}
+# type: buildings
 annotations:
-  train: ${..path}/annotations/annotations_${...experiment.country}_train.json
-  val: ${..path}/annotations/annotations_${...experiment.country}_val.json
-  test: ${..path}/annotations/annotations_${...experiment.country}_test.json
+  train: ${..path}/annotations/${...experiment.annotation_type}/annotations_${...experiment.country}_train.json
+  val: ${..path}/annotations/${...experiment.annotation_type}/annotations_${...experiment.country}_val.json
+  test: ${..path}/annotations/${...experiment.annotation_type}/annotations_${...experiment.country}_test.json
 ffl_stats:
   train: ${..path}/ffl/train/stats-${...experiment.country}.pt
   val: ${..path}/ffl/val/stats-${...experiment.country}.pt
