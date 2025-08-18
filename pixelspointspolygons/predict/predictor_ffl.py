@@ -132,7 +132,7 @@ class FFLPredictor(Predictor):
                     
         # else:
         #     self.logger.info(f"Rank {self.local_rank} waiting until polygonization is done...")
-        if self.cfg.host.multi_gpu:
+        if self.is_ddp:
             # dist.barrier()
                         
             # Gather the list of dictionaries from all ranks

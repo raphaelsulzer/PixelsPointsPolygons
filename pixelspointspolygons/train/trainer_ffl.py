@@ -56,8 +56,6 @@ class FFLTrainer(Trainer):
     
     def setup_loss_fn_dict(self):
         loss_func = build_combined_loss(self.cfg).to(self.local_rank)
-        # if self.cfg.host.multi_gpu:
-        #     loss_func = DDP(loss_func, device_ids=[self.local_rank])
         self.loss_func = loss_func
 
     def visualization(self, loader, epoch, coco=None, show=False, num_images=2):
@@ -302,7 +300,7 @@ class FFLTrainer(Trainer):
                             wandb.log(wandb_dict)
                             
                 # Sync all processes before next epoch
-                if self.cfg.host.multi_gpu:
+                if self.is_ddp:
                     dist.barrier()
 
 

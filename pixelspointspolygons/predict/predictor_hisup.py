@@ -92,6 +92,10 @@ class HiSupPredictor(Predictor):
             time_dict["prediction_time"] = (time.time() - t0) / len(self.loader.dataset)
         
             if self.local_rank == 0:
+                if not len(coco_predictions):
+                    self.logger.warning("No polygons predicted. Check your model and data loader.")
+                else:
+                    self.logger.info(f"Predicted {len(coco_predictions)} polygons.")
                 os.makedirs(os.path.dirname(self.cfg.evaluation.pred_file), exist_ok=True)
                 self.logger.info(f"Writing predictions to {self.cfg.evaluation.pred_file}")
                 with open(self.cfg.evaluation.pred_file, "w") as fp:

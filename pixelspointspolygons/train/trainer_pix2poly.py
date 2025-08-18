@@ -4,13 +4,11 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import os
 os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
-import sys
 import os
 import torch
 import wandb
 import json
 import shutil
-import logging
 import torch
 
 import torch.distributed as dist
@@ -57,20 +55,13 @@ class Pix2PolyTrainer(Trainer):
             max_len=self.cfg.experiment.model.tokenizer.max_len
         )
         self.cfg.experiment.model.tokenizer.pad_idx = self.tokenizer.PAD_code
-        self.cfg.experiment.model.tokenizer.max_len = self.cfg.experiment.model.tokenizer.n_vertices*2+2
-        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.n_vertices*2+1
+        self.cfg.experiment.model.tokenizer.max_len = self.cfg.experiment.model.tokenizer.max_num_vertices*2+2
+        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.max_num_vertices*2+1
     
     def setup_model(self):
-        
         self.setup_tokenizer()
         self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
         
-    def setup_dataloader(self):
-        """Pix2Poly needs a tokenizer in the dataset __get_item__ method to tokenize the polygons. Thus overwrite the setup_dataloader method here."""
-        
-        self.train_loader = get_train_loader(self.cfg,logger=self.logger,tokenizer=self.tokenizer)
-        self.val_loader = get_val_loader(self.cfg,logger=self.logger,tokenizer=self.tokenizer)
-
     def setup_optimizer(self):
         # Get optimizer
         self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.experiment.model.learning_rate, weight_decay=self.cfg.experiment.model.weight_decay, betas=(0.9, 0.95))
@@ -227,6 +218,30 @@ class Pix2PolyTrainer(Trainer):
         return loss_dict
 
 
+    def check_y_perm(self, y_perm):
+        """
+        Check if y_perm is a valid permutation matrix.
+        y_perm should be a binary matrix of shape [batch_size, num_vertices, num_vertices]
+        """
+
+        # Convert to int for exact checks
+        xi = y_perm.to(torch.int32)
+
+
+        # Row & col sum checks
+        row_sums = xi.sum(dim=-1)  # shape: (16, 192)
+        col_sums = xi.sum(dim=-2)  # shape: (16, 192)
+
+        rows_per_matrix = (row_sums == 1).all(dim=1)
+        cols_per_matrix = (col_sums == 1).all(dim=1)
+
+        # Final validity
+        valid_per_matrix = rows_per_matrix & cols_per_matrix
+        
+        assert valid_per_matrix.all(), f"Invalid permutation matrix detected! Rows per matrix: {rows_per_matrix}, Cols per matrix: {cols_per_matrix}"
+
+    
+    
     def train_one_epoch(self, epoch, iter_idx):
         
         self.logger.info(f"Train epoch {epoch}...")
@@ -243,7 +258,11 @@ class Pix2PolyTrainer(Trainer):
         loader = self.progress_bar(self.train_loader)
 
         for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids in loader:
-                        
+            
+            self.check_y_perm(y_perm)
+            
+            continue
+            
             batch_size = x_image.size(0) if self.cfg.experiment.encoder.use_images else x_lidar.size(0)     
             
             if self.cfg.experiment.encoder.use_images:
@@ -368,7 +387,7 @@ class Pix2PolyTrainer(Trainer):
                     
                     self.logger.debug(f"rank {self.local_rank}, device: {self.device}, coco_pred_type: {type(coco_predictions)}, coco_pred_len: {len(coco_predictions)}")
                     
-                    if self.cfg.host.multi_gpu:
+                    if self.is_ddp:
                         
                         # Gather the list of dictionaries from all ranks
                         gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects
@@ -415,7 +434,7 @@ class Pix2PolyTrainer(Trainer):
                             wandb.log(wandb_dict)
                             
                 # Sync all processes before next epoch
-                if self.cfg.host.multi_gpu:
+                if self.is_ddp:
                     dist.barrier()
 
         

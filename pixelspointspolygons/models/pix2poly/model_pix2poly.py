@@ -226,10 +226,10 @@ class EncoderDecoder(nn.Module):
         self.cfg = cfg
         self.encoder = encoder
         self.decoder = decoder
-        self.n_vertices = cfg.experiment.model.tokenizer.n_vertices
+        self.max_num_vertices = cfg.experiment.model.tokenizer.max_num_vertices
         self.sinkhorn_iterations = cfg.experiment.model.sinkhorn_iterations
-        self.scorenet1 = ScoreNet(self.n_vertices)
-        self.scorenet2 = ScoreNet(self.n_vertices)
+        self.scorenet1 = ScoreNet(self.max_num_vertices)
+        self.scorenet2 = ScoreNet(self.max_num_vertices)
         self.bin_score = torch.nn.Parameter(torch.tensor(1.0))
         
         self.bottleneck = nn.AdaptiveAvgPool1d(cfg.experiment.encoder.out_feature_dim)

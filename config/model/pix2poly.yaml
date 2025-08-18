@@ -10,7 +10,7 @@ decoder:
 tokenizer: 
     num_bins: ${...encoder.in_size}
     shuffle_tokens: false
-    n_vertices: 192
+    max_num_vertices: 192
     max_len: null
     pad_idx: null
     generation_steps: null

@@ -31,8 +31,8 @@ class Pix2PolyPredictor(Predictor):
             max_len=self.cfg.experiment.model.tokenizer.max_len
         )
         self.cfg.experiment.model.tokenizer.pad_idx = self.tokenizer.PAD_code
-        self.cfg.experiment.model.tokenizer.max_len = self.cfg.experiment.model.tokenizer.n_vertices*2+2
-        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.n_vertices*2+1
+        self.cfg.experiment.model.tokenizer.max_len = self.cfg.experiment.model.tokenizer.max_num_vertices*2+2
+        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.max_num_vertices*2+1
         
     def setup_model_and_load_checkpoint(self):
         
@@ -66,6 +66,10 @@ class Pix2PolyPredictor(Predictor):
         time_dict["prediction_time"] = (time.time() - t0) / len(self.loader.dataset)
         
         if self.local_rank == 0:
+            if not len(coco_predictions):
+                self.logger.warning("No polygons predicted. Check your model and data loader.")
+            else:
+                self.logger.info(f"Predicted {len(coco_predictions)} polygons.")
             prediction_outfile = self.cfg.evaluation.pred_file
             self.logger.info(f"Saving predictions to {prediction_outfile}")
             os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
@@ -131,7 +135,7 @@ class Pix2PolyPredictor(Predictor):
                 coord = torch.from_numpy(vertex_coords[i])
             else:
                 coord = torch.tensor([])
-            padd = torch.ones((self.cfg.experiment.model.tokenizer.n_vertices - len(coord), 2)).fill_(self.cfg.experiment.model.tokenizer.pad_idx)
+            padd = torch.ones((self.cfg.experiment.model.tokenizer.max_num_vertices - len(coord), 2)).fill_(self.cfg.experiment.model.tokenizer.pad_idx)
             coord = torch.cat([coord, padd], dim=0)
             coords.append(coord)
             
@@ -164,8 +168,7 @@ class Pix2PolyPredictor(Predictor):
             sample = lambda preds: torch.softmax(preds, dim=-1).argmax(dim=-1).view(-1, 1)
 
         with torch.no_grad():
-            ## a bit ugly :/
-            if self.cfg.host.multi_gpu:
+            if self.is_ddp:
                 
                 if self.cfg.experiment.encoder.use_images and not self.cfg.experiment.encoder.use_lidar:
                     features = self.model.module.encoder(x_images)
@@ -189,7 +192,7 @@ class Pix2PolyPredictor(Predictor):
                 
                 
             for i in range(self.cfg.experiment.model.tokenizer.generation_steps):
-                if self.cfg.host.multi_gpu:
+                if self.is_ddp:
                     preds, feats = self.model.module.predict(features, batch_preds)
                 else:
                     preds, feats = self.model.predict(features, batch_preds)
@@ -201,7 +204,7 @@ class Pix2PolyPredictor(Predictor):
                 preds = sample(preds)
                 batch_preds = torch.cat([batch_preds, preds], dim=1)
 
-            if self.cfg.host.multi_gpu:
+            if self.is_ddp:
                 perm_preds = self.model.module.scorenet1(feats) + torch.transpose(self.model.module.scorenet2(feats), 1, 2)
             else:
                 perm_preds = self.model.scorenet1(feats) + torch.transpose(self.model.scorenet2(feats), 1, 2)

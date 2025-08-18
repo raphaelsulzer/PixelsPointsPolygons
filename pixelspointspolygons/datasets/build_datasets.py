@@ -44,26 +44,28 @@ def get_train_loader(cfg,tokenizer=None,logger=None):
     if cfg.dataset.name == 'inria':
         return get_train_loader_inria(cfg,tokenizer,logger)
     elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons"]:
-        return get_train_loader_lidarpoly(cfg,tokenizer,logger)
+        return get_train_loader_p3(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
 
-def get_train_loader_lidarpoly(cfg,tokenizer=None,logger=None):
+def get_train_loader_p3(cfg,tokenizer=None,logger=None):
     
     transforms = []
-    if "D4" in cfg.experiment.encoder.augmentations:
-        transforms.append(A.D4(p=1.0))
-    if "Resize" in cfg.experiment.encoder.augmentations:
-        transforms.append(A.Resize(height=cfg.experiment.encoder.in_height, width=cfg.experiment.encoder.in_width))
-    if "ColorJitter" in cfg.experiment.encoder.augmentations:
-        transforms.append(A.ColorJitter())
-    if "GaussNoise" in cfg.experiment.encoder.augmentations:
-        transforms.append(A.GaussNoise())
-    if "Normalize" in cfg.experiment.encoder.augmentations:
-        # TODO:
-        # check what to do for ImageNet normalization for UNetResNet: https://pytorch.org/vision/stable/models.html
-        # and also this has to probably be removed for ViT. or check what is the correct way for that.
-        transforms.append(A.Normalize(mean=cfg.experiment.encoder.image_mean, std=cfg.experiment.encoder.image_std, max_pixel_value=cfg.experiment.encoder.image_max_pixel_value)) 
+    if cfg.experiment.encoder.augmentations is not None:
+        if "D4" in cfg.experiment.encoder.augmentations:
+            transforms.append(A.D4(p=1.0))
+        if "Resize" in cfg.experiment.encoder.augmentations:
+            transforms.append(A.Resize(height=cfg.experiment.encoder.in_height, width=cfg.experiment.encoder.in_width))
+        if "ColorJitter" in cfg.experiment.encoder.augmentations:
+            transforms.append(A.ColorJitter())
+        if "GaussNoise" in cfg.experiment.encoder.augmentations:
+            transforms.append(A.GaussNoise())
+        if "Normalize" in cfg.experiment.encoder.augmentations:
+            # TODO:
+            # check what to do for ImageNet normalization for UNetResNet: https://pytorch.org/vision/stable/models.html
+            # and also this has to probably be removed for ViT. or check what is the correct way for that.
+            transforms.append(A.Normalize(mean=cfg.experiment.encoder.image_mean, std=cfg.experiment.encoder.image_std, max_pixel_value=cfg.experiment.encoder.image_max_pixel_value)) 
+    
     transforms.append(ToTensorV2())
     train_transforms = A.ReplayCompose(transforms=transforms,
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
@@ -108,10 +110,12 @@ def get_train_loader_lidarpoly(cfg,tokenizer=None,logger=None):
 def get_val_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     
     transforms = []
-    if "Resize" in cfg.experiment.encoder.augmentations:
-        transforms.append(A.Resize(height=cfg.experiment.encoder.in_height, width=cfg.experiment.encoder.in_width))
-    if "Normalize" in cfg.experiment.encoder.augmentations:
-        transforms.append(A.Normalize(mean=cfg.experiment.encoder.image_mean, std=cfg.experiment.encoder.image_std, max_pixel_value=cfg.experiment.encoder.image_max_pixel_value)) 
+    if cfg.experiment.encoder.augmentations is not None:
+        if "Resize" in cfg.experiment.encoder.augmentations:
+            transforms.append(A.Resize(height=cfg.experiment.encoder.in_height, width=cfg.experiment.encoder.in_width))
+        if "Normalize" in cfg.experiment.encoder.augmentations:
+            transforms.append(A.Normalize(mean=cfg.experiment.encoder.image_mean, std=cfg.experiment.encoder.image_std, max_pixel_value=cfg.experiment.encoder.image_max_pixel_value)) 
+            
     transforms.append(ToTensorV2())
     val_transforms = A.ReplayCompose(transforms=transforms,
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
