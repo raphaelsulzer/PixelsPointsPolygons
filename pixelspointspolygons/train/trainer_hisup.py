@@ -302,8 +302,7 @@ class HiSupTrainer(Trainer):
 
                     self.logger.info("Evaluate validation set with latest model...")
 
-                    
-                    if self.cfg.host.multi_gpu:
+                    if self.is_ddp:
                         
                         # Gather the list of dictionaries from all ranks
                         gathered_predictions = [None] * self.world_size  # Placeholder for gathered objects
@@ -351,7 +350,7 @@ class HiSupTrainer(Trainer):
                             wandb.log(wandb_dict)
                             
                 # Sync all processes before next epoch
-                if self.cfg.host.multi_gpu:
+                if self.is_ddp:
                     dist.barrier()
     
 

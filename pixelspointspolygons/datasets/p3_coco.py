@@ -109,16 +109,18 @@ class PPPDataset(Dataset):
             raise FileNotFoundError(f"{filename}")
         return filename
     
-    def apply_augmentations_to_lidar(self, augmentation_replay, lidar):
+    def apply_d4_augmentations_to_lidar(self, augmentation_replay, lidar):
         
         if self.split != 'train':
+            return torch.from_numpy(lidar)
+        
+        if self.cfg.experiment.encoder.augmentations is None or not 'D4' in self.cfg.experiment.encoder.augmentations:
             return torch.from_numpy(lidar)
     
         d4_transform = augmentation_replay["transforms"][0]
         
         assert d4_transform["__class_fullname__"] == "D4"
         
-
         if not d4_transform['applied']:
             return torch.from_numpy(lidar)
         
@@ -259,7 +261,7 @@ class PPPDataset(Dataset):
             augmentations = self.transform(image=image,masks=masks)
             
             if self.use_lidar:
-                ffl_data["lidar"] = self.apply_augmentations_to_lidar(augmentations["replay"], lidar)
+                ffl_data["lidar"] = self.apply_d4_augmentations_to_lidar(augmentations["replay"], lidar)
             
             ffl_data["image"] = augmentations['image']
             
@@ -296,6 +298,8 @@ class PPPDataset(Dataset):
     
     def __getitem__pix2poly(self, index):
         
+        """Get one image and/or LiDAR cloud with all its annotations."""
+        
         if not hasattr(self,"tokenizer"):
             raise ValueError("Tokenizer not set. Please pass a tokenizer to the dataset class when using Pix2Poly.")
         if self.tokenizer is None:
@@ -328,16 +332,16 @@ class PPPDataset(Dataset):
         mask = np.zeros((img_info['width'], img_info['height']))
         corner_coords = []
         corner_mask = np.zeros((img_info['width'], img_info['height']), dtype=np.float32)
-        perm_matrix = np.zeros((self.cfg.experiment.model.tokenizer.n_vertices, self.cfg.experiment.model.tokenizer.n_vertices), dtype=np.float32)
-        for ins in annotations:
-            segmentations = ins['segmentation']
-            for i, segm in enumerate(segmentations):
-                segm = np.array(segm).reshape(-1, 2)
-                segm[:, 0] = np.clip(segm[:, 0], 0, img_info['width'] - 1)
-                segm[:, 1] = np.clip(segm[:, 1], 0, img_info['height'] - 1)
-                points = segm[:-1]
+        perm_matrix = np.zeros((self.cfg.experiment.model.tokenizer.max_num_vertices, self.cfg.experiment.model.tokenizer.max_num_vertices), dtype=np.float32)
+        for ann in annotations:
+            polygons = ann['segmentation']
+            for i, poly in enumerate(polygons):
+                poly = np.array(poly).reshape(-1, 2)
+                poly[:, 0] = np.clip(poly[:, 0], 0, img_info['width'] - 1)
+                poly[:, 1] = np.clip(poly[:, 1], 0, img_info['height'] - 1)
+                points = poly[:-1]
                 corner_coords.extend(points.tolist())
-                mask += self.coco.annToMask(ins)
+                mask += self.coco.annToMask(ann)
         mask = mask / 255. if mask.max() == 255 else mask
         mask = np.clip(mask, 0, 1)
 
@@ -348,23 +352,23 @@ class PPPDataset(Dataset):
 
         ############# START: Generate gt permutation matrix. #############
         v_count = 0
-        for ins in annotations:
-            segmentations = ins['segmentation']
-            for idx, segm in enumerate(segmentations):
-                segm = np.array(segm).reshape(-1, 2)
-                points = segm[:-1]
+        for ann in annotations:
+            polygons = ann['segmentation']
+            for poly in polygons:
+                poly = np.array(poly).reshape(-1, 2)
+                points = poly[:-1]
                 for i in range(len(points)):
                     j = (i + 1) % len(points)
-                    if v_count + i > self.cfg.experiment.model.tokenizer.n_vertices - 1 or v_count + j > self.cfg.experiment.model.tokenizer.n_vertices - 1:
+                    if v_count + i > self.cfg.experiment.model.tokenizer.max_num_vertices - 1 or v_count + j > self.cfg.experiment.model.tokenizer.max_num_vertices - 1:
                         break
                     perm_matrix[v_count + i, v_count + j] = 1.
                 v_count += len(points)
 
-        for i in range(v_count, self.cfg.experiment.model.tokenizer.n_vertices):
+        for i in range(v_count, self.cfg.experiment.model.tokenizer.max_num_vertices):
             perm_matrix[i, i] = 1.
 
         # Workaround for open contours:
-        for i in range(self.cfg.experiment.model.tokenizer.n_vertices):
+        for i in range(self.cfg.experiment.model.tokenizer.max_num_vertices):
             row = perm_matrix[i, :]
             col = perm_matrix[:, i]
             if np.sum(row) == 0 or np.sum(col) == 0:
@@ -374,15 +378,15 @@ class PPPDataset(Dataset):
 
         masks = [mask, corner_mask]
 
-        if len(corner_coords) > self.cfg.experiment.model.tokenizer.n_vertices:
-            corner_coords = corner_coords[:self.cfg.experiment.model.tokenizer.n_vertices]
+        if len(corner_coords) > self.cfg.experiment.model.tokenizer.max_num_vertices:
+            corner_coords = corner_coords[:self.cfg.experiment.model.tokenizer.max_num_vertices]
 
         if self.transform is not None: 
             
             augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
             
             if self.use_lidar:
-                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar)
+                lidar = self.apply_d4_augmentations_to_lidar(augmentations["replay"], lidar)
             
             image = augmentations['image']
             mask = augmentations['masks'][0]
@@ -449,7 +453,7 @@ class PPPDataset(Dataset):
             augmentations = self.transform(image=image, masks=[mask], keypoints=corner_coords)
                         
             if self.use_lidar:
-                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar)
+                lidar = self.apply_d4_augmentations_to_lidar(augmentations["replay"], lidar)
             
             image = augmentations['image']
             corner_coords = np.flip(augmentations['keypoints'],axis=-1)

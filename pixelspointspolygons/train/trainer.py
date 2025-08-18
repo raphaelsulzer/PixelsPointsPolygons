@@ -8,21 +8,16 @@ import sys
 import os
 import torch
 import wandb
-import json
-import shutil
 import logging
 import torch
 
 import torch.distributed as dist
-import numpy as np
 
 from tqdm import tqdm
 from omegaconf import OmegaConf
 
-from ..misc import make_logger, get_lr, seed_everything, smart_load_state_dict
+from ..misc import make_logger, seed_everything, smart_load_state_dict
 from ..datasets import get_train_loader, get_val_loader
-from ..predict import Predictor
-from ..eval import Evaluator
 
 class Trainer:
     def __init__(self, cfg, local_rank, world_size):
@@ -53,6 +48,8 @@ class Trainer:
         self.loss_fn_dict = {}
         
         self.is_ddp = self.cfg.host.multi_gpu
+        
+        self.tokenizer = None
         
         import matplotlib
         matplotlib.use('Agg')  # Use non-GUI backend
@@ -106,8 +103,8 @@ class Trainer:
 
     
     def setup_dataloader(self):
-        self.train_loader = get_train_loader(self.cfg,logger=self.logger)
-        self.val_loader = get_val_loader(self.cfg,logger=self.logger)
+        self.train_loader = get_train_loader(self.cfg, logger=self.logger, tokenizer=self.tokenizer)
+        self.val_loader = get_val_loader(self.cfg, logger=self.logger, tokenizer=self.tokenizer)
 
     def save_checkpoint(self, outfile, **kwargs):
         """Save checkpoint to file. This is a generic function that saves the model, optimizer and scheduler state dicts."""

@@ -8,7 +8,8 @@ class Tokenizer:
         self.width = width
         self.height = height
         self.max_len = max_len
-
+        
+        # define start, end, and pad tokens
         self.BOS_code = num_bins
         self.EOS_code = self.BOS_code + 1
         self.PAD_code = self.EOS_code + 1
