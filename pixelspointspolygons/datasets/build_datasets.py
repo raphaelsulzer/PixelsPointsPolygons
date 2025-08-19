@@ -26,7 +26,7 @@ def get_collate_fn(model):
 def get_test_loader(cfg,tokenizer=None,logger=None):
     if cfg.dataset.name == 'inria':
         raise NotImplementedError
-    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons"]:
+    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons","RoofGraphDataset"]:
         return get_test_loader_lidarpoly(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
@@ -35,7 +35,7 @@ def get_test_loader(cfg,tokenizer=None,logger=None):
 def get_val_loader(cfg,tokenizer=None,logger=None):
     if cfg.dataset.name == 'inria':
         return get_val_loader_inria(cfg,tokenizer,logger)
-    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons"]:
+    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons","RoofGraphDataset"]:
         return get_val_loader_lidarpoly(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
@@ -43,7 +43,7 @@ def get_val_loader(cfg,tokenizer=None,logger=None):
 def get_train_loader(cfg,tokenizer=None,logger=None):
     if cfg.dataset.name == 'inria':
         return get_train_loader_inria(cfg,tokenizer,logger)
-    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons"]:
+    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons","RoofGraphDataset"]:
         return get_train_loader_p3(cfg,tokenizer,logger)
     else:
         raise NotImplementedError

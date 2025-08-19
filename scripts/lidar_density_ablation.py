@@ -84,10 +84,6 @@ def predict_all():
 
         pbar.close()
         df = pd.DataFrame.from_dict(exp_dict, orient='index')
-
-        # pd.concat(df_list, axis=0, ignore_index=False)
-        # Save the DataFrame to a CSV file
-        # output_dir = os.path.join(self.cfg.host.data_root, "eval_results")
         
         print("\n")
         print(df)

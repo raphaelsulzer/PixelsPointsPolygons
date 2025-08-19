@@ -1,6 +1,6 @@
 name: jeanzay
-data_root: /linkhome/rech/genlgm01/uku93eu/data/${..dataset.name}_dataset
-model_root: /linkhome/rech/genlgm01/uku93eu/data/${..dataset.name}_output
+dataset_root: /linkhome/rech/genlgm01/uku93eu/data
+model_root: /linkhome/rech/genlgm01/uku93eu/data
 
 multi_gpu: true
 device: cuda

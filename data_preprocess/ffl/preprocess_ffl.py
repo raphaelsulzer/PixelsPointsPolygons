@@ -72,7 +72,7 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         
         assert fold in ["train", "val", "test"], "Input fold={} should be in [\"train\", \"val\", \"test\"]".format(fold)
 
-        self.root = cfg.dataset.path
+        self.root = cfg.dataset.in_path
         self.fold = fold
         os.makedirs(self.processed_dir, exist_ok=True)
 

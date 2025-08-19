@@ -169,7 +169,7 @@ class Pix2PolyTrainer(Trainer):
 
         loader = self.progress_bar(self.val_loader)
         
-        lidar_dropout = self.cfg.experiment.lidar_dropout
+        lidar_dropout = None if not hasattr(self.cfg.experiment,"lidar_dropout") else self.cfg.experiment.lidar_dropout
         if lidar_dropout is not None:
             self.logger.info("Set LiDAR dropout to 1.0 for validation")
             self.cfg.experiment.lidar_dropout = 1.0
@@ -203,7 +203,7 @@ class Pix2PolyTrainer(Trainer):
             vertex_loss_meter.update(vertex_loss.item(), batch_size)
             perm_loss_meter.update(perm_loss.item(), batch_size)
             
-        if self.cfg.experiment.lidar_dropout is not None:
+        if lidar_dropout is not None:
             self.logger.info(f"Reset LiDAR dropout to {lidar_dropout} after validation")
             self.cfg.experiment.lidar_dropout = lidar_dropout
         

@@ -37,7 +37,7 @@ max_num_voxels: # here: (224/8)**2
 ##############################
 vit:
     type: vit_small_patch${..patch_size}_${..in_size}.dino
-    checkpoint_file: ${....host.data_root}/checkpoints/backbones/dino_deitsmall8_pretrain.pth
+    checkpoint_file: ${....host.model_root}/backbones/dino_deitsmall8_pretrain.pth
     pretrained: True
 
 patch_size: 8
@@ -58,7 +58,7 @@ patch_feature_dim: 384
 hrnet:
     type: HRNet48v2
     pretrained: True
-    checkpoint_file: ${...host.data_root}/checkpoints/backbones/hrnetv2_w48_imagenet_pretrained.pth
+    checkpoint_file: ${...host.dataset_root}/checkpoints/backbones/hrnetv2_w48_imagenet_pretrained.pth
 
 out_feature_size: ${divide:${.in_size},4} # for HRNet this is always in_size / 4
 out_feature_height: ${.out_feature_size}

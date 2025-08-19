@@ -181,7 +181,8 @@ def get_lr(optimizer):
 
 def get_tile_names_from_dataloader(loader, ids):
     names = []
-    img_infos = loader.dataset.coco.loadImgs(ids)
+    # img_infos = loader.dataset.coco.loadImgs(ids)
+    img_infos = np.array(list(loader.dataset.coco.imgs.values()))[ids]
     for i in range(len(ids)):
         names.append(img_infos[i]["file_name"].split("/")[-1].split(".")[0])
     return names

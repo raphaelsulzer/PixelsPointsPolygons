@@ -1,0 +1,12 @@
+defaults:
+  - /encoder: vit
+  - /model: pix2poly
+  - /polygonization: asm_acm
+  - _self_
+
+name: debug
+group_name: debug
+
+annotation_type: polygons
+
+country: rgd
