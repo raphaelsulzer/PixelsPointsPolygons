@@ -5,6 +5,7 @@ defaults:
 
 name: dinov2
 group_name: v3_${.model.name}
+project_name: HiSup
 
 lidar_dropout: null
 

@@ -52,10 +52,10 @@ class Pix2PolyTrainer(Trainer):
             num_bins=self.cfg.experiment.model.tokenizer.num_bins,
             width=self.cfg.experiment.encoder.in_width,
             height=self.cfg.experiment.encoder.in_height,
-            max_len=self.cfg.experiment.model.tokenizer.max_len
+            max_len=self.cfg.experiment.model.tokenizer.max_num_vertices*2+2
         )
         self.cfg.experiment.model.tokenizer.pad_idx = self.tokenizer.PAD_code
-        self.cfg.experiment.model.tokenizer.max_len = self.cfg.experiment.model.tokenizer.max_num_vertices*2+2
+        self.cfg.experiment.model.tokenizer.max_len = self.tokenizer.max_len
         self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.max_num_vertices*2+1
     
     def setup_model(self):
@@ -84,11 +84,13 @@ class Pix2PolyTrainer(Trainer):
         self.loss_fn_dict["perm"] = nn.BCELoss()
     
     
-    def visualization(self,  loader, epoch, predictor=None, coco=None, num_images=2):
+    def visualization(self,  loader, epoch, predictor=None, coco_anns=None, num_images=2):
         
         self.model.eval()
         
         x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids = next(iter(loader))
+        
+        #TODO: make a function or try to see if it exists that goes from y_sequence and y_perm to a polygon, to plot it.
         
         # TODO: maybe plot y_sequence instead of y_corner_mask, because it is the input to the model
         if self.cfg.experiment.encoder.use_images:
@@ -106,12 +108,6 @@ class Pix2PolyTrainer(Trainer):
         
         if predictor is not None:
             batch_polygons = predictor.batch_to_polygons(x_image, x_lidar, self.model, self.tokenizer)
-        coco_anns = defaultdict(list)
-        if coco is not None:
-            for ann in coco:
-                if ann["image_id"] >= num_images: 
-                    break
-                coco_anns[ann["image_id"]].append(ann)
                 
         if self.cfg.experiment.encoder.use_lidar:
             lidar_batches = torch.unbind(x_lidar, dim=0)
@@ -131,19 +127,25 @@ class Pix2PolyTrainer(Trainer):
                 plot_point_cloud(lidar_batches[i], ax=ax[0])
                 plot_point_cloud(lidar_batches[i], ax=ax[1])
                 
-            mask_color = [1,0,1,0.6]
-            plot_mask(y_mask[i], ax=ax[0], color=mask_color)
+            # mask_color = [1,0,1,0.6]
+            # plot_mask(y_mask[i], ax=ax[0], color=mask_color)
             plot_point_activations(y_corner_mask[i], ax=ax[0], color=[1,1,0,1.0])
             
-            if coco is not None:
-                polygons = coco_anns_to_shapely_polys(coco_anns[i])
-            elif predictor is not None:
-                polygons = tensor_to_shapely_polys(batch_polygons[i])
+            if coco_anns is not None:
+                gt_polygons = coco_anns_to_shapely_polys(coco_anns.imgToAnns[tile_ids[i].item()])
             else:
-                polygons = []
+                gt_polygons = []
+            
+            if predictor is not None:
+                pred_polygons = tensor_to_shapely_polys(batch_polygons[i])
+            else:
+                pred_polygons = []
 
-            if len(polygons):
-                plot_shapely_polygons(polygons, ax=ax[1],pointcolor=[1,1,0],edgecolor=[1,0,1])
+            if len(gt_polygons):
+                plot_shapely_polygons(gt_polygons, ax=ax[0],pointcolor=[1,1,0],edgecolor=[0.251, 0.878, 0.816])
+                
+            if len(pred_polygons):
+                plot_shapely_polygons(pred_polygons, ax=ax[1],pointcolor=[1,1,0],edgecolor=[0.251, 0.878, 0.816])
                 
             ax[0].set_title("GT_"+names[i])
             ax[1].set_title("PRED_"+names[i])
@@ -259,9 +261,9 @@ class Pix2PolyTrainer(Trainer):
 
         for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids in loader:
             
-            self.check_y_perm(y_perm)
+            # self.check_y_perm(y_perm)
             
-            continue
+            # continue
             
             batch_size = x_image.size(0) if self.cfg.experiment.encoder.use_images else x_lidar.size(0)     
             
@@ -359,7 +361,7 @@ class Pix2PolyTrainer(Trainer):
             
             with torch.no_grad():
                 if self.local_rank == 0:
-                    self.visualization(self.train_loader,epoch,predictor=predictor)
+                    self.visualization(self.train_loader,epoch,predictor=predictor,coco_anns=self.train_loader.dataset.coco)
                     wandb_dict ={}
                     wandb_dict['epoch'] = epoch
                     for k, v in train_loss_dict.items():
@@ -399,7 +401,8 @@ class Pix2PolyTrainer(Trainer):
                     if not len(coco_predictions):
                         self.logger.info("No polygons predicted. Skipping coco evaluation...")
                     else:
-                        self.visualization(self.val_loader,epoch,coco=coco_predictions)
+                        self.logger.warning("Visualizing validation set predictions needs debugging")
+                        # self.visualization(self.val_loader,epoch,coco_anns=coco_predictions)
                     
                     if self.local_rank == 0 and len(coco_predictions):
                         self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 

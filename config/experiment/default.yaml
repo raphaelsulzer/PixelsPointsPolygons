@@ -6,6 +6,7 @@ defaults:
 
 name: my_experiment # This is the name of the experiment, used as folder name and Weights and Biases run name
 group_name: my_group # This is the Weights and Biases group name
+project_name: my_project # This is the Weights and Biases project name
 
 country: CH # This is the country code. You can choose from [NY, CH, NZ, all]
 
