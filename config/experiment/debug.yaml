@@ -7,6 +7,6 @@ defaults:
 name: debug
 group_name: debug
 
-annotation_type: blocks
+annotation_type: buildings
 
 country: CH
