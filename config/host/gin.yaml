@@ -1,6 +1,6 @@
 name: gin
-data_root: /data/rsulzer/${..dataset.name}_dataset
-model_root: /data/rsulzer/${..dataset.name}_output
+dataset_root: /data/rsulzer
+model_root: /data/rsulzer
 
 multi_gpu: false
 device: cuda

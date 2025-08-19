@@ -1,19 +1,15 @@
 name: PixelsPointsPolygons
-# size: null
 size: ${..experiment.encoder.in_size}
-path: ${host.data_root}/data/${.size}
-# type: buildings
+in_path: ${host.dataset_root}/${..dataset.name}_dataset
+out_path: ${host.model_root}/${..dataset.name}_output
 annotations:
-  train: ${..path}/annotations/${...experiment.annotation_type}/annotations_${...experiment.country}_train.json
-  val: ${..path}/annotations/${...experiment.annotation_type}/annotations_${...experiment.country}_val.json
-  test: ${..path}/annotations/${...experiment.annotation_type}/annotations_${...experiment.country}_test.json
+  train: ${..in_path}/data/${..size}/annotations/${...experiment.annotation_type}/annotations_${...experiment.country}_train.json
+  val: ${..in_path}/data/${..size}/annotations/${...experiment.annotation_type}/annotations_${...experiment.country}_val.json
+  test: ${..in_path}/data/${..size}/annotations/${...experiment.annotation_type}/annotations_${...experiment.country}_test.json
 ffl_stats:
-  train: ${..path}/ffl/train/stats-${...experiment.country}.pt
-  val: ${..path}/ffl/val/stats-${...experiment.country}.pt
-  test: ${..path}/ffl/test/stats-${...experiment.country}.pt
-# train_subset: null
-# val_subset: null
-# test_subset: null
+  train: ${..in_path}/data/${..size}/ffl/train/stats-${...experiment.country}.pt
+  val: ${..in_path}/data/${..size}/ffl/val/stats-${...experiment.country}.pt
+  test: ${..in_path}/data/${..size}/ffl/test/stats-${...experiment.country}.pt
 train_subset: ${..run_type.train_subset}
 val_subset: ${..run_type.val_subset}
 test_subset: ${..run_type.test_subset}

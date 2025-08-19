@@ -30,7 +30,7 @@ class PPPDataset(Dataset):
         self.cfg = cfg
         self.split = split
 
-        self.dataset_dir = self.cfg.dataset.path
+        self.dataset_dir = self.cfg.dataset.in_path
         if not os.path.isdir(self.dataset_dir):
             raise NotADirectoryError(f"Dataset directory {self.dataset_dir} does not exist")
         
@@ -298,7 +298,7 @@ class PPPDataset(Dataset):
     
     def __getitem__pix2poly(self, index):
         
-        """Get one image and/or LiDAR cloud with all its annotations."""
+        """Get one image and/or LiDAR cloud with all its annotations from a numerical index."""
         
         if not hasattr(self,"tokenizer"):
             raise ValueError("Tokenizer not set. Please pass a tokenizer to the dataset class when using Pix2Poly.")
@@ -306,9 +306,7 @@ class PPPDataset(Dataset):
             raise ValueError("Tokenizer not set. Please pass a tokenizer to the dataset class when using Pix2Poly.")
 
         img_id = self.tile_ids[index]
-        img_info = self.coco.loadImgs(img_id)[0]
-        ann_ids = self.coco.getAnnIds(imgIds=img_info['id'])
-        annotations = self.coco.loadAnns(ann_ids)  # annotations of all instances in an image.
+        img_info = self.coco.imgs[img_id]
 
         # load image
         if self.use_images:
@@ -333,6 +331,7 @@ class PPPDataset(Dataset):
         corner_coords = []
         corner_mask = np.zeros((img_info['width'], img_info['height']), dtype=np.float32)
         perm_matrix = np.zeros((self.cfg.experiment.model.tokenizer.max_num_vertices, self.cfg.experiment.model.tokenizer.max_num_vertices), dtype=np.float32)
+        annotations = self.coco.imgToAnns[img_id]  # annotations of this tile
         for ann in annotations:
             polygons = ann['segmentation']
             for i, poly in enumerate(polygons):
@@ -398,7 +397,8 @@ class PPPDataset(Dataset):
         if self.cfg.experiment.model.tokenizer.shuffle_tokens:
             perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
 
-        return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
+        # return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
+        return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([index])
 
 
     def __getitem__hisup(self, index):
