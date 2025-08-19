@@ -1,7 +1,7 @@
 defaults:
   - host: default
   - run_type: release
-  - dataset: p3
+  - dataset: rgd
   - experiment: default
   - training: default
   - evaluation: val

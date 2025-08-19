@@ -6,6 +6,7 @@ defaults:
 
 name: debug
 group_name: debug
+project_name: HiSup
 
 annotation_type: buildings
 

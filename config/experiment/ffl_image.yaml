@@ -6,6 +6,7 @@ defaults:
 
 name: v4_image_bs4x16
 group_name: v2_${.model.name}
+project_name: HiSup
 
 country: CH
 

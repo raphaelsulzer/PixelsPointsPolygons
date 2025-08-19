@@ -5,6 +5,7 @@ defaults:
 
 name: early_fusion_bs2x16_mnv64
 group_name: v2_${.model.name}
+project_name: HiSup
 
 lidar_dropout: null
 

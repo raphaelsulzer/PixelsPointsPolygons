@@ -4,19 +4,23 @@ defaults:
   - /polygonization: asm_acm
   - _self_
 
-name: debug
-group_name: debug
+
+name: rgb
+group_name: 
 project_name: RoofGraphDataset
 
 annotation_type: polygons
 
 country: rgd
 
-
 encoder:
   augmentations:
     - D4
     # - Resize
-    # - ColorJitter
+    - ColorJitter
     # - GaussNoise
     - Normalize
+
+model:
+  tokenizer:
+    max_num_vertices: 60

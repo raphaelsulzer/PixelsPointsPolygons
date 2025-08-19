@@ -74,7 +74,7 @@ def coco_anns_to_shapely_polys(coco_anns):
         
         # xmin, ymin, w, h = ann.get('bbox')
         # bbox_poly = Polygon([(xmin, ymin), (xmin + w, ymin), (xmin + w, ymin + h), (xmin, ymin + h)])
-        if len(poly) > 4:
+        if len(poly) > 2:
             polygons.append(Polygon(poly))
     return polygons
 
@@ -86,6 +86,6 @@ def tensor_to_shapely_polys(polygons_list):
         poly = np.array(poly)
         # xmin, ymin, w, h = ann.get('bbox')
         # bbox_poly = Polygon([(xmin, ymin), (xmin + w, ymin), (xmin + w, ymin + h), (xmin, ymin + h)])
-        if len(poly) > 4:
+        if len(poly) > 2:
             polygons.append(Polygon(poly))
     return polygons

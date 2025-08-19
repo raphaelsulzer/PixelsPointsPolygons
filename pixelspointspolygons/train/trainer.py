@@ -80,7 +80,7 @@ class Trainer:
         # start a new wandb run to track this script
         wandb.init(
             # set the wandb project where this run will be logged
-            project="HiSup",
+            project=self.cfg.experiment.project_name,
             name=self.cfg.experiment.name,
             group=self.cfg.experiment.group_name,
             # track hyperparameters and run metadata

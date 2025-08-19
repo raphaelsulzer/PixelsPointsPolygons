@@ -5,6 +5,7 @@ defaults:
 
 name: droplidar50
 group_name: v3_${.model.name}
+project_name: HiSup
 
 lidar_dropout: 0.5
 

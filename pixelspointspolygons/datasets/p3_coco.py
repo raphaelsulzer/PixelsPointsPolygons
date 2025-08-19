@@ -4,6 +4,12 @@ import cv2
 import torch
 import rasterio
 
+import warnings
+from rasterio.errors import NotGeoreferencedWarning
+import rasterio
+
+warnings.filterwarnings("ignore", category=NotGeoreferencedWarning)
+
 import numpy as np
 
 from sklearn.preprocessing import MinMaxScaler
@@ -397,8 +403,8 @@ class PPPDataset(Dataset):
         if self.cfg.experiment.model.tokenizer.shuffle_tokens:
             perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
 
-        # return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
-        return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([index])
+        return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
+        # return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([index])
 
 
     def __getitem__hisup(self, index):
