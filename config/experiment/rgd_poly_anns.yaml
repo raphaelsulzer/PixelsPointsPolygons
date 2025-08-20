@@ -11,7 +11,7 @@ group_name: v0
 project_name: RoofGraphDataset
 
 dataset:
-  # country: rgd # This is the country code for the dataset, used in the output file names. You can choose from [CH, NY, NZ, all]
+  country: rgd # This is the country code for the dataset, used in the output file names. You can choose from [CH, NY, NZ, all]
   annotation_type: polygons # This is the annotation type for the dataset, used in the output file names. You can choose from [blocks, buildings]
 
 encoder:
