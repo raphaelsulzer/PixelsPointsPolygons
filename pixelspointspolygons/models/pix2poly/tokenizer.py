@@ -67,11 +67,14 @@ class Tokenizer:
         tokens = tokens[1:-1]
         assert len(tokens) % 2 == 0, "Invalid tokens!"
 
-        coords = []
-        for i in range(2, len(tokens)+1, 2):
-            coord = tokens[i-2: i]
-            coords.append([int(item) for item in coord])
-        coords = np.array(coords)
+        ## why so lengthy?
+        # coords = []
+        # for i in range(2, len(tokens)+1, 2):
+        #     coord = tokens[i-2: i]
+        #     coords.append([int(item) for item in coord])
+        # coords = np.array(coords)
+        
+        coords = np.array(tokens).reshape(-1, 2)
         coords = self.dequantize(coords)
 
         if len(coords) > 0:
