@@ -403,6 +403,7 @@ class Pix2PolyTrainer(Trainer):
                         self.logger.info("No polygons predicted. Skipping coco evaluation...")
                     else:
                         self.logger.warning("Visualizing validation set predictions needs debugging")
+                        # TODO: fix visualization for coco predictions
                         # self.visualization(self.val_loader,epoch,coco_anns=coco_predictions)
                     
                     if self.local_rank == 0 and len(coco_predictions):
