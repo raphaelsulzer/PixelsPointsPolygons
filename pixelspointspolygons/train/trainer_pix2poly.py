@@ -13,12 +13,10 @@ import torch
 
 import torch.distributed as dist
 
-from collections import defaultdict
 from torch import nn
 from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
-from ..datasets import get_train_loader, get_val_loader
 from ..models.pix2poly import Tokenizer, Pix2PolyModel
 from ..misc import AverageMeter, get_lr, get_tile_names_from_dataloader, denormalize_image_for_visualization
 from ..predict.predictor_pix2poly import Pix2PolyPredictor as Predictor
@@ -89,10 +87,7 @@ class Pix2PolyTrainer(Trainer):
         self.model.eval()
         
         x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids = next(iter(loader))
-        
-        #TODO: make a function or try to see if it exists that goes from y_sequence and y_perm to a polygon, to plot it.
-        
-        # TODO: maybe plot y_sequence instead of y_corner_mask, because it is the input to the model
+                
         if self.cfg.experiment.encoder.use_images:
             x_image = x_image.to(self.cfg.host.device, non_blocking=True)
             x_image = x_image[:num_images]
@@ -107,7 +102,9 @@ class Pix2PolyTrainer(Trainer):
         self.logger.info(f"Save visualizations to {outpath}")
         
         if predictor is not None:
-            batch_polygons = predictor.batch_to_polygons(x_image, x_lidar, self.model, self.tokenizer)
+            predicted_polygons = predictor.batch_to_polygons(x_image, x_lidar, self.model, self.tokenizer)
+            gt_polygons = predictor.coord_and_perm_to_polygons(y_sequence, y_perm)
+            
                 
         if self.cfg.experiment.encoder.use_lidar:
             lidar_batches = torch.unbind(x_lidar, dim=0)
@@ -132,20 +129,22 @@ class Pix2PolyTrainer(Trainer):
             plot_point_activations(y_corner_mask[i], ax=ax[0], color=[1,1,0,1.0])
             
             if coco_anns is not None:
-                gt_polygons = coco_anns_to_shapely_polys(coco_anns.imgToAnns[tile_ids[i].item()])
+                coco_polys = coco_anns_to_shapely_polys(coco_anns.imgToAnns[tile_ids[i].item()])
             else:
-                gt_polygons = []
+                coco_polys = []
             
             if predictor is not None:
-                pred_polygons = tensor_to_shapely_polys(batch_polygons[i])
+                pred_polys = tensor_to_shapely_polys(predicted_polygons[i])
+                gt_polys = tensor_to_shapely_polys(gt_polygons[i])
             else:
-                pred_polygons = []
-
-            if len(gt_polygons):
-                plot_shapely_polygons(gt_polygons, ax=ax[0],pointcolor=[1,1,0],edgecolor=[0.251, 0.878, 0.816])
+                pred_polys = []
+                gt_polys = []
                 
-            if len(pred_polygons):
-                plot_shapely_polygons(pred_polygons, ax=ax[1],pointcolor=[1,1,0],edgecolor=[0.251, 0.878, 0.816])
+            if len(gt_polys):
+                plot_shapely_polygons(gt_polys, ax=ax[0],pointcolor=[1,1,0],edgecolor=[0.251, 0.878, 0.816])
+                
+            if len(pred_polys):
+                plot_shapely_polygons(pred_polys, ax=ax[1],pointcolor=[1,1,0],edgecolor=[0.251, 0.878, 0.816])
                 
             ax[0].set_title("GT_"+names[i])
             ax[1].set_title("PRED_"+names[i])
@@ -363,7 +362,7 @@ class Pix2PolyTrainer(Trainer):
             
             with torch.no_grad():
                 if self.local_rank == 0:
-                    self.visualization(self.train_loader,epoch,predictor=predictor,coco_anns=self.train_loader.dataset.coco)
+                    self.visualization(self.train_loader,epoch,predictor=predictor)
                     wandb_dict ={}
                     wandb_dict['epoch'] = epoch
                     for k, v in train_loss_dict.items():

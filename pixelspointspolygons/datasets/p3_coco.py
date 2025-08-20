@@ -340,10 +340,11 @@ class PPPDataset(Dataset):
         annotations = self.coco.imgToAnns[img_id]  # annotations of this tile
         for ann in annotations:
             polygons = ann['segmentation']
-            for i, poly in enumerate(polygons):
+            for poly in polygons:
                 poly = np.array(poly).reshape(-1, 2)
                 poly[:, 0] = np.clip(poly[:, 0], 0, img_info['width'] - 1)
                 poly[:, 1] = np.clip(poly[:, 1], 0, img_info['height'] - 1)
+                assert (poly[0] == poly[-1]).all(), "COCO annotations should repeat first polygon point at the end."
                 points = poly[:-1]
                 corner_coords.extend(points.tolist())
                 mask += self.coco.annToMask(ann)
@@ -357,10 +358,12 @@ class PPPDataset(Dataset):
 
         ############# START: Generate gt permutation matrix. #############
         v_count = 0
+        kl=0
         for ann in annotations:
             polygons = ann['segmentation']
             for poly in polygons:
                 poly = np.array(poly).reshape(-1, 2)
+                assert (poly[0] == poly[-1]).all(), "COCO annotations should repeat first polygon point at the end."
                 points = poly[:-1]
                 for i in range(len(points)):
                     j = (i + 1) % len(points)
@@ -403,8 +406,17 @@ class PPPDataset(Dataset):
         if self.cfg.experiment.model.tokenizer.shuffle_tokens:
             perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
 
+        # from ..misc.debug_visualisations import plot_shapely_polygons
+        # from ..misc.coco_conversions import coco_anns_to_shapely_polys, tensor_to_shapely_polys
+        # import matplotlib.pyplot as plt
+        
+        # polys = coco_anns_to_shapely_polys(annotations)
+        
+        # fig, ax = plt.subplots(figsize=(5, 5), dpi=100)
+        # plot_shapely_polygons(polys, ax=ax)
+        # plt.savefig(f"debug_{index}.png", bbox_inches='tight', pad_inches=0.1, dpi=100)
+        
         return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
-        # return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([index])
 
 
     def __getitem__hisup(self, index):
