@@ -7,6 +7,6 @@ annotations:
   train: ${..in_path}/annotations/${..annotation_type}/annotations_train.json
   val: ${..in_path}/annotations/${..annotation_type}/annotations_val.json
   test: ${..in_path}/annotations/${..annotation_type}/annotations_test.json
-train_subset: ${..run_type.train_subset}
+train_subset: ${...run_type.train_subset}
 val_subset: ${...run_type.val_subset}
 test_subset: ${...run_type.test_subset}
