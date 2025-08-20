@@ -311,6 +311,8 @@ class Pix2PolyTrainer(Trainer):
             # if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
             #     break
             
+            break
+            
         
         self.logger.debug(f"Train loss: {loss_meter.global_avg:.3f}")
         loss_dict = {

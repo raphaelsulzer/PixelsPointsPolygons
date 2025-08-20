@@ -118,16 +118,10 @@ class Pix2PolyPredictor(Predictor):
             batch_polygons = self.batch_to_polygons(image, lidar, self.model, self.tokenizer)
             self.plot_prediction(batch_polygons[0], image=image, image_np=image_pillow, lidar=lidar, outfile=outfile)
 
-    def batch_to_polygons(self, x_images, x_lidar, model, tokenizer):
-        """Takes one batch with samples of images and/or lidar data and returns the polygons for each sample of the batch."""
+    
+    def prediction_to_polygons(self, coord_preds, perm_preds):
         
-        ### need this so I do not have to pass the model and tokenizer to the several polygonization functions
-        self.tokenizer = tokenizer
-        self.model = model
-        
-        batch_preds, batch_confs, perm_preds = self.test_generate(x_images,x_lidar)
-        
-        vertex_coords, _ = self.postprocess(batch_preds, batch_confs)
+        vertex_coords = self.postprocess(coord_preds)
 
         coords = []
         for i in range(len(vertex_coords)):
@@ -153,6 +147,20 @@ class Pix2PolyPredictor(Predictor):
             batch_polygons_processed.append(polys)
             
         return batch_polygons_processed
+        
+        
+    
+    def batch_to_polygons(self, x_images, x_lidar, model, tokenizer):
+        """Takes one batch with samples of images and/or lidar data and returns the polygons for each sample of the batch."""
+        
+        ### need this so I do not have to pass the model and tokenizer to the several polygonization functions
+        self.tokenizer = tokenizer
+        self.model = model
+        
+        coord_preds, coord_confs, perm_preds = self.test_generate(x_images,x_lidar)
+        
+        return self.prediction_to_polygons(coord_preds, perm_preds)
+
         
     def test_generate(self, x_images, x_lidar, top_k=0, top_p=1):
         
@@ -286,26 +294,26 @@ class Pix2PolyPredictor(Predictor):
 
         return batch
 
-    def postprocess(self, batch_preds, batch_confs):
+    def postprocess(self, batch_preds):
         EOS_idxs = (batch_preds == self.tokenizer.EOS_code).float().argmax(dim=-1)
         ## sanity check
         invalid_idxs = ((EOS_idxs - 1) % 2 != 0).nonzero().view(-1)
         EOS_idxs[invalid_idxs] = 0
 
         all_coords = []
-        all_confs = []
+        # all_confs = []
         for i, EOS_idx in enumerate(EOS_idxs.tolist()):
             if EOS_idx == 0:
                 all_coords.append(None)
-                all_confs.append(None)
+                # all_confs.append(None)
                 continue
             coords = self.tokenizer.decode(batch_preds[i, :EOS_idx+1])
-            confs = [round(batch_confs[j][i].item(), 3) for j in range(len(coords))]
+            # confs = [round(batch_confs[j][i].item(), 3) for j in range(len(coords))]
 
             all_coords.append(coords)
-            all_confs.append(confs)
+            # all_confs.append(confs)
 
-        return all_coords, all_confs
+        return all_coords
 
     def scores_to_permutations(self, scores):
         """

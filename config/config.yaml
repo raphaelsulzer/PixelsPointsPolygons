@@ -13,7 +13,7 @@ defaults:
   - _self_
 
 
-output_dir: ${.host.model_root}/${.experiment.model.name}/${.experiment.encoder.in_size}/${.experiment.name}
+output_dir: ${.dataset.out_path}/${.experiment.model.name}/${.experiment.encoder.in_size}/${.experiment.name}
 
 checkpoint: null
 

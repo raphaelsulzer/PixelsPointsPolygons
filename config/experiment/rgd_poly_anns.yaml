@@ -5,8 +5,8 @@ defaults:
   - _self_
 
 
-name: rgb
-group_name: 
+name: rgd
+group_name: v0
 project_name: RoofGraphDataset
 
 annotation_type: polygons
