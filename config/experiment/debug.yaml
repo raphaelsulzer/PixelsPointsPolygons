@@ -1,4 +1,5 @@
 defaults:
+  - /dataset: p3
   - /encoder: vit
   - /model: pix2poly
   - /polygonization: asm_acm
@@ -8,6 +9,6 @@ name: debug
 group_name: debug
 project_name: HiSup
 
-annotation_type: buildings
-
-country: CH
+dataset:
+  country: CH # This is the country code for the dataset, used in the output file names. You can choose from [CH, NY, NZ, all]
+  annotation_type: blocks # This is the annotation type for the dataset, used in the output file names. You can choose from [blocks, buildings]

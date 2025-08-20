@@ -6,7 +6,7 @@ use_lidar: false
 hrnet:
     type: HRNet48v2
     pretrained: True
-    checkpoint_file: ${...host.model_root}/backbones/hrnetv2_w48_imagenet_pretrained.pth
+    checkpoint_file: ${..dataset.out_path}/backbones/hrnetv2_w48_imagenet_pretrained.pth
 
 in_size: 224
 in_height: ${.in_size}

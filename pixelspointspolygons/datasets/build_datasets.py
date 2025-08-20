@@ -24,26 +24,26 @@ def get_collate_fn(model):
 
 
 def get_test_loader(cfg,tokenizer=None,logger=None):
-    if cfg.dataset.name == 'inria':
+    if cfg.experiment.dataset.name == 'inria':
         raise NotImplementedError
-    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons","RoofGraphDataset"]:
+    elif cfg.experiment.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons","RoofGraphDataset"]:
         return get_test_loader_lidarpoly(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
     
     
 def get_val_loader(cfg,tokenizer=None,logger=None):
-    if cfg.dataset.name == 'inria':
+    if cfg.experiment.dataset.name == 'inria':
         return get_val_loader_inria(cfg,tokenizer,logger)
-    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons","RoofGraphDataset"]:
+    elif cfg.experiment.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons","RoofGraphDataset"]:
         return get_val_loader_lidarpoly(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
 
 def get_train_loader(cfg,tokenizer=None,logger=None):
-    if cfg.dataset.name == 'inria':
+    if cfg.experiment.dataset.name == 'inria':
         return get_train_loader_inria(cfg,tokenizer,logger)
-    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons","RoofGraphDataset"]:
+    elif cfg.experiment.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons","RoofGraphDataset"]:
         return get_train_loader_p3(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
@@ -79,8 +79,8 @@ def get_train_loader_p3(cfg,tokenizer=None,logger=None):
         transform=train_transforms,
         tokenizer=tokenizer
     )
-    if cfg.dataset.train_subset is not None:
-        indices = list(range(cfg.dataset.train_subset))
+    if cfg.experiment.dataset.train_subset is not None:
+        indices = list(range(cfg.experiment.dataset.train_subset))
         ann_file = train_ds.ann_file
         coco = train_ds.coco
         train_ds = Subset(train_ds, indices)
@@ -130,8 +130,8 @@ def get_val_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     if logger is not None:
         logger.debug(f"Val dataset created with {len(val_ds)} samples.")
     
-    if cfg.dataset.val_subset is not None:
-        indices = list(range(cfg.dataset.val_subset))
+    if cfg.experiment.dataset.val_subset is not None:
+        indices = list(range(cfg.experiment.dataset.val_subset))
         ann_file = val_ds.ann_file
         coco = val_ds.coco
         val_ds = Subset(val_ds, indices)
@@ -178,8 +178,8 @@ def get_test_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     if logger is not None:
         logger.debug(f"Test dataset created with {len(ds)} samples.")
     
-    if cfg.dataset.test_subset is not None:
-        indices = list(range(cfg.dataset.test_subset))
+    if cfg.experiment.dataset.test_subset is not None:
+        indices = list(range(cfg.experiment.dataset.test_subset))
         ann_file = ds.ann_file
         coco = ds.coco
         ds = Subset(ds, indices)
@@ -281,8 +281,8 @@ def get_val_loader_inria(cfg,tokenizer,logger=None):
         tokenizer=tokenizer,
     )
     
-    if cfg.dataset.subset is not None:
-        indices = list(range(cfg.dataset.subset))
+    if cfg.experiment.dataset.subset is not None:
+        indices = list(range(cfg.experiment.dataset.subset))
         val_ds = Subset(val_ds, indices)
     
     ## be aware that the DistributedSampler here will even out the batch sizes on the different devices

@@ -11,7 +11,7 @@ def main(cfg):
     setup_hydraconf(cfg)
     local_rank, world_size = setup_ddp(cfg)
     
-    print(f"Predict {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.experiment.country}/{cfg.evaluation.split}")
+    print(f"Predict {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.experiment.dataset.country}/{cfg.evaluation.split}")
     
     
     if cfg.experiment.model.name == "ffl":
@@ -25,11 +25,11 @@ def main(cfg):
     
     predictor.predict_dataset(split=cfg.evaluation.split)
     
-    print(f"Evaluate {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.experiment.country}/{cfg.evaluation.split}")
+    print(f"Evaluate {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.experiment.dataset.country}/{cfg.evaluation.split}")
 
     ee = Evaluator(cfg)
     ee.pbar_disable = False
-    ee.load_gt(cfg.dataset.annotations[cfg.evaluation.split])
+    ee.load_gt(cfg.experiment.dataset.annotations[cfg.evaluation.split])
     ee.load_predictions(cfg.evaluation.pred_file)
     res=ee.evaluate()
     

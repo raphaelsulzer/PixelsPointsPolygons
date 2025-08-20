@@ -89,36 +89,36 @@ def main(cfg):
                         pre_transform=get_offline_transform_patch(),
                         fold=region)
 
-        file = fflp.processed_flag_filepath.replace(cfg.experiment.country, "all")        
+        file = fflp.processed_flag_filepath.replace(cfg.experiment.dataset.country, "all")        
         pathlib.Path(file).touch()   
         
         
         input_files = [
-            fflp.stats_filepath.replace(cfg.experiment.country, "CH"),
-            fflp.stats_filepath.replace(cfg.experiment.country, "NZ"),
-            fflp.stats_filepath.replace(cfg.experiment.country, "NY"),
+            fflp.stats_filepath.replace(cfg.experiment.dataset.country, "CH"),
+            fflp.stats_filepath.replace(cfg.experiment.dataset.country, "NZ"),
+            fflp.stats_filepath.replace(cfg.experiment.dataset.country, "NY"),
         ]
-        output_file = fflp.stats_filepath.replace(cfg.experiment.country, "all")
+        output_file = fflp.stats_filepath.replace(cfg.experiment.dataset.country, "all")
         merge_pt_files(input_files, output_file)
         
              
         # Example usage
         input_files = [
-            fflp.ann_ffl_file.replace(cfg.experiment.country, "CH"),
-            fflp.ann_ffl_file.replace(cfg.experiment.country, "NZ"),
-            fflp.ann_ffl_file.replace(cfg.experiment.country, "NY"),
+            fflp.ann_ffl_file.replace(cfg.experiment.dataset.country, "CH"),
+            fflp.ann_ffl_file.replace(cfg.experiment.dataset.country, "NZ"),
+            fflp.ann_ffl_file.replace(cfg.experiment.dataset.country, "NY"),
         ]
-        output_file = fflp.ann_ffl_file.replace(cfg.experiment.country, "all")
+        output_file = fflp.ann_ffl_file.replace(cfg.experiment.dataset.country, "all")
         merge_coco_annotations(input_files, output_file)
         
         
         # Example usage
         input_files = [
-            fflp.ann_file.replace(cfg.experiment.country, "CH"),
-            fflp.ann_file.replace(cfg.experiment.country, "NZ"),
-            fflp.ann_file.replace(cfg.experiment.country, "NY"),
+            fflp.ann_file.replace(cfg.experiment.dataset.country, "CH"),
+            fflp.ann_file.replace(cfg.experiment.dataset.country, "NZ"),
+            fflp.ann_file.replace(cfg.experiment.dataset.country, "NY"),
         ]
-        output_file = fflp.ann_file.replace(cfg.experiment.country, "all")
+        output_file = fflp.ann_file.replace(cfg.experiment.dataset.country, "all")
         merge_coco_annotations(input_files, output_file)
 
 

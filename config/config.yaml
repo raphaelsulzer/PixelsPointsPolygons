@@ -1,7 +1,7 @@
 defaults:
   - host: default
   - run_type: release
-  - dataset: rgd
+  # - dataset: rgd
   - experiment: default
   - training: default
   - evaluation: val
@@ -13,7 +13,7 @@ defaults:
   - _self_
 
 
-output_dir: ${.dataset.out_path}/${.experiment.model.name}/${.experiment.encoder.in_size}/${.experiment.name}
+output_dir: ${.experiment.dataset.out_path}/${.experiment.model.name}/${.experiment.encoder.in_size}/${.experiment.name}
 
 checkpoint: null
 
