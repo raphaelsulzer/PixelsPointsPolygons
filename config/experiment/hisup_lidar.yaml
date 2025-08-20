@@ -1,4 +1,5 @@
 defaults:
+  - /dataset: p3
   - /encoder: pointpillars_vit_cnn
   - /model: hisup
   - _self_
@@ -8,6 +9,6 @@ name: lidar_pp_vit_cnn_bs2x16_mnv64
 group_name: v2_${.model.name}
 project_name: HiSup
 
-country: CH
-
-annotation_type: blocks
+dataset:
+  country: CH
+  annotation_type: blocks

@@ -14,11 +14,11 @@ def main(cfg):
     modes_str = "_".join(cfg.evaluation.modes)
     cfg.evaluation.eval_file = f"{cfg.evaluation.eval_file}_{cfg.experiment.name}_{modes_str}.csv"
     
-    print(f"Evaluate {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.experiment.country}/{cfg.evaluation.split}")
+    print(f"Evaluate {cfg.experiment.model.name}/{cfg.experiment.name} on {cfg.experiment.dataset.country}/{cfg.evaluation.split}")
 
     ee = Evaluator(cfg)
     ee.pbar_disable = False
-    ee.load_gt(cfg.dataset.annotations[cfg.evaluation.split])
+    ee.load_gt(cfg.experiment.dataset.annotations[cfg.evaluation.split])
     ee.load_predictions(cfg.evaluation.pred_file)
     res=ee.evaluate()
 

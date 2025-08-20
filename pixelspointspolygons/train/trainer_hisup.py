@@ -255,7 +255,7 @@ class HiSupTrainer(Trainer):
 
         if self.local_rank == 0:
             evaluator = Evaluator(self.cfg)
-            evaluator.load_gt(self.cfg.dataset.annotations["val"])
+            evaluator.load_gt(self.cfg.experiment.dataset.annotations["val"])
         else:
             evaluator = None
         
@@ -323,7 +323,7 @@ class HiSupTrainer(Trainer):
 
                         wandb_dict[f"val_num_polygons"] = len(coco_predictions)
 
-                        prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.experiment.country}_{self.cfg.evaluation.split}", f"epoch_{epoch}.json")
+                        prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.experiment.dataset.country}_{self.cfg.evaluation.split}", f"epoch_{epoch}.json")
                         os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
                         with open(prediction_outfile, "w") as fp:
                             fp.write(json.dumps(coco_predictions))
@@ -335,7 +335,7 @@ class HiSupTrainer(Trainer):
                         evaluator.print_dict_results(val_metrics_dict)
                         
                         if val_metrics_dict['IoU'] > self.cfg.training.best_val_iou:
-                            best_prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.experiment.country}_{self.cfg.evaluation.split}", "best_val_iou.json")
+                            best_prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.experiment.dataset.country}_{self.cfg.evaluation.split}", "best_val_iou.json")
                             shutil.copyfile(prediction_outfile, best_prediction_outfile)
                             self.logger.info(f"Copied predictions to {best_prediction_outfile}")
 

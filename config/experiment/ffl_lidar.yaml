@@ -1,4 +1,5 @@
 defaults:
+  - /dataset: p3
   - /encoder: pointpillars_vit_cnn
   - /model: ffl
   - /polygonization: asm_acm
@@ -11,6 +12,6 @@ project_name: HiSup
 encoder:
   max_points_per_voxel: 64
 
-country: CH
-
-annotation_type: blocks
+dataset:
+  country: CH
+  annotation_type: blocks

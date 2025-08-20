@@ -16,19 +16,19 @@ class InriaCocoDatasetTrain(Dataset):
 
 
         self.cfg = cfg
-        self.image_dir = cfg.dataset.train.images
+        self.image_dir = cfg.experiment.dataset.train.images
 
         self.transform = transform
         self.tokenizer = tokenizer
         self.shuffle_tokens = cfg.experiment.model.tokenizer.shuffle_tokens
         self.max_num_vertices = cfg.experiment.model.tokenizer.max_num_vertices
         # self.images = os.listdir(self.image_dir)
-        self.coco = COCO(cfg.dataset.train.annotations)
+        self.coco = COCO(cfg.experiment.dataset.train.annotations)
         # self.image_ids = self.coco.getImgIds(catIds=self.coco.getCatIds())
         self.images = [file for file in os.listdir(self.image_dir) if osp.isfile(osp.join(self.image_dir, file))]
         self.image_ids = [int(im.split('-')[-1].split('.')[0]) for im in self.images if im.split('-')[0] not in ['kitsap4', 'kitsap5']]
 
-        print(f"Loaded {len(self.coco.anns.items())} annotations from {cfg.dataset.train.annotations}")
+        print(f"Loaded {len(self.coco.anns.items())} annotations from {cfg.experiment.dataset.train.annotations}")
         
     
 
@@ -193,14 +193,14 @@ class InriaCocoDatasetVal(Dataset):
     def __init__(self, cfg, transform=None, tokenizer=None):
         super().__init__()
         
-        self.image_dir = cfg.dataset.val.images
+        self.image_dir = cfg.experiment.dataset.val.images
 
         self.transform = transform
         self.tokenizer = tokenizer
         self.shuffle_tokens = cfg.experiment.model.tokenizer.shuffle_tokens
         self.n_vertices = cfg.experiment.model.tokenizer.max_num_vertices
         # self.images = os.listdir(self.image_dir)
-        self.coco = COCO(cfg.dataset.val.annotations)
+        self.coco = COCO(cfg.experiment.dataset.val.annotations)
         # self.image_ids = self.coco.getImgIds(catIds=self.coco.getCatIds())
         self.images = [file for file in os.listdir(self.image_dir) if osp.isfile(osp.join(self.image_dir, file))]
         self.image_ids = [int(im.split('-')[-1].split('.')[0]) for im in self.images]

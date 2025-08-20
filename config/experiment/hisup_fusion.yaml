@@ -1,4 +1,5 @@
 defaults:
+  - /dataset: p3
   - /encoder: early_fusion_vit_cnn
   - /model: hisup
   - _self_
@@ -7,6 +8,6 @@ name: early_fusion_vit_cnn_bs2x16_mnv64
 group_name: v2_${.model.name}
 project_name: HiSup
 
-country: all
-
-annotation_type: blocks
+dataset:
+  country: all
+  annotation_type: blocks

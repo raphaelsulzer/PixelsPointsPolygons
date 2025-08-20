@@ -36,20 +36,20 @@ class PPPDataset(Dataset):
         self.cfg = cfg
         self.split = split
 
-        self.dataset_dir = self.cfg.dataset.in_path
+        self.dataset_dir = self.cfg.experiment.dataset.in_path
         if not os.path.isdir(self.dataset_dir):
             raise NotADirectoryError(f"Dataset directory {self.dataset_dir} does not exist")
         
         ## FFL currently still has a specific annotations file which includes the path to the .pt file with the frame field stored
         if self.cfg.experiment.model.name == "ffl":
             # self.ann_file = os.path.join(self.dataset_dir,f"annotations_ffl_{split}.json")
-            self.ann_file = self.cfg.dataset.annotations[split].replace("annotations_", "annotations_ffl_")
-            self.stats_filepath = self.cfg.dataset.ffl_stats[split]
+            self.ann_file = self.cfg.experiment.dataset.annotations[split].replace("annotations_", "annotations_ffl_")
+            self.stats_filepath = self.cfg.experiment.dataset.ffl_stats[split]
             if not os.path.isfile(self.stats_filepath):
                 raise FileExistsError(self.stats_filepath)
             self.stats = torch.load(self.stats_filepath)
         else:
-            self.ann_file = self.cfg.dataset.annotations[split]
+            self.ann_file = self.cfg.experiment.dataset.annotations[split]
         if not os.path.isfile(self.ann_file):
             raise FileNotFoundError(self.ann_file)
 
