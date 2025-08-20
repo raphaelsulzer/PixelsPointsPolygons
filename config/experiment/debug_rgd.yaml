@@ -20,6 +20,7 @@ encoder:
 model:
   tokenizer:
     max_num_vertices: 60
+  num_epochs: 400
 
 dataset:
   country: rgd # This is the country code for the dataset, used in the output file names. You can choose from [CH, NY, NZ, all]
