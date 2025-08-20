@@ -10,12 +10,13 @@ import wandb
 import json
 import shutil
 import torch
+import math
 
 import torch.distributed as dist
 
 from torch import nn
 from torch import optim
-from transformers import get_linear_schedule_with_warmup
+from transformers import get_linear_schedule_with_warmup, get_constant_schedule_with_warmup
 
 from ..models.pix2poly import Tokenizer, Pix2PolyModel
 from ..misc import AverageMeter, get_lr, get_tile_names_from_dataloader, denormalize_image_for_visualization
@@ -27,23 +28,6 @@ from ..misc.coco_conversions import coco_anns_to_shapely_polys, tensor_to_shapel
 from .trainer import Trainer
 
 class Pix2PolyTrainer(Trainer):
-
-    def setup_optimizer(self):
-        # Get optimizer
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.experiment.model.learning_rate, weight_decay=self.cfg.experiment.model.weight_decay, betas=(0.9, 0.95))
-
-        # Get scheduler
-        # num_training_steps = self.cfg.experiment.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.experiment.model.batch_size // self.world_size)                
-        num_training_steps = self.cfg.experiment.model.num_epochs * len(self.train_loader)
-        self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
-        self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
-        
-        num_warmup_steps = int(0.05 * num_training_steps)
-        self.lr_scheduler = get_linear_schedule_with_warmup(
-            self.optimizer,
-            num_training_steps=num_training_steps,
-            num_warmup_steps=num_warmup_steps
-        )
         
     def setup_tokenizer(self):
         self.tokenizer = Tokenizer(num_classes=1,
@@ -60,19 +44,99 @@ class Pix2PolyTrainer(Trainer):
         self.setup_tokenizer()
         self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
         
-    def setup_optimizer(self):
-        # Get optimizer
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.experiment.model.learning_rate, weight_decay=self.cfg.experiment.model.weight_decay, betas=(0.9, 0.95))
+    # def setup_optimizer(self):
+    #     # Get optimizer
+    #     self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.experiment.model.learning_rate, weight_decay=self.cfg.experiment.model.weight_decay, betas=(0.9, 0.95))
 
-        # Get scheduler
-        num_training_steps = self.cfg.experiment.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.experiment.model.batch_size // self.world_size)
+    #     # Get scheduler
+    #     num_training_steps = self.cfg.experiment.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.experiment.model.batch_size // self.world_size)
+        
+    #     self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
+    #     self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
+        
+    #     num_warmup_steps = int(0.05 * num_training_steps)
+    #     self.lr_scheduler = get_linear_schedule_with_warmup(
+    #         self.optimizer,
+    #         num_training_steps=num_training_steps,
+    #         num_warmup_steps=num_warmup_steps
+    #     )
+        
+    #     self.lr_scheduler = get_constant_schedule_with_warmup(
+    #         self.optimizer,
+    #         num_warmup_steps=num_warmup_steps
+    #     )
+        
+    
+    # def setup_optimizer(self):
+    #     # Optimizer
+    #     self.optimizer = optim.AdamW(
+    #         self.model.parameters(),
+    #         lr=self.cfg.experiment.model.learning_rate,  # this is the PEAK LR
+    #         weight_decay=self.cfg.experiment.model.weight_decay,
+    #         betas=(0.9, 0.95)
+    #     )
+
+    #     # Number of training steps
+    #     steps_per_epoch = math.ceil(
+    #         len(self.train_loader.dataset) / (self.cfg.experiment.model.batch_size * self.world_size)
+    #     )
+    #     num_training_steps = self.cfg.experiment.model.num_epochs * steps_per_epoch
+
+    #     self.logger.debug(f"Steps per epoch per GPU: {steps_per_epoch}")
+    #     self.logger.info(f"Total training steps across all GPUs: {num_training_steps*self.world_size}")
+
+    #     # Warmup = 5% of total steps
+    #     num_warmup_steps = int(0.05 * num_training_steps)
+
+    #     # Scheduler: warmup → linear decay
+    #     self.lr_scheduler = get_linear_schedule_with_warmup(
+    #         self.optimizer,
+    #         num_warmup_steps=num_warmup_steps,
+    #         num_training_steps=num_training_steps
+    #     )
+    
+    
+    def setup_optimizer(self):
+        cfg = self.cfg.experiment.model
+        grad_accum = getattr(cfg, "gradient_accumulation_steps", 1)
+
+        # --- Optimizer (peak LR is cfg.learning_rate) ---
+        self.optimizer = optim.AdamW(
+            self.model.parameters(),
+            lr=cfg.learning_rate,
+            weight_decay=cfg.weight_decay,
+            betas=(0.9, 0.95),
+        )
+
+        # --- Steps per epoch (prefer loader length to respect sampler/drop_last) ---
+        if hasattr(self, "train_loader") and hasattr(self.train_loader, "__len__"):
+            # len(train_loader) == number of BATCHES after sampler & drop_last
+            steps_per_epoch = len(self.train_loader)
+        else:
+            # Fallback: compute from dataset size
+            effective_batch = cfg.batch_size
+            steps_per_epoch = math.ceil(len(self.train_loader.dataset) / effective_batch)
+
+        # Account for gradient accumulation (optimizer steps per epoch)
+        steps_per_epoch = max(1, math.ceil(steps_per_epoch / grad_accum))
+
+        num_training_steps = cfg.num_epochs * steps_per_epoch
         num_warmup_steps = int(0.05 * num_training_steps)
+
+        self.logger.info(
+            f"Dataset={len(self.train_loader.dataset)}, "
+            f"batch_size={cfg.batch_size}, grad_accum={grad_accum}, "
+            f"steps/epoch={steps_per_epoch}, epochs={cfg.num_epochs}, "
+            f"total_optimizer_steps={num_training_steps}, warmup_steps={num_warmup_steps}"
+        )
+
+        # --- Scheduler: warmup → linear decay to 0 ---
         self.lr_scheduler = get_linear_schedule_with_warmup(
             self.optimizer,
+            num_warmup_steps=num_warmup_steps,
             num_training_steps=num_training_steps,
-            num_warmup_steps=num_warmup_steps
         )
-    
+        
     def setup_loss_fn_dict(self):
         
         # Get loss functions
@@ -306,12 +370,7 @@ class Pix2PolyTrainer(Trainer):
             loader.set_postfix(train_loss=loss_meter.global_avg, lr=f"{lr:.5f}")
 
             iter_idx += 1
-
-            # if self.cfg.run_type.name=="debug" and iter_idx % 10 == 0:
-            #     break
-            
-            break
-            
+                        
         
         self.logger.debug(f"Train loss: {loss_meter.global_avg:.3f}")
         loss_dict = {

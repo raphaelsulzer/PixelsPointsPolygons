@@ -6,7 +6,7 @@ defaults:
   - _self_
 
 
-name: rgd
+name: rgd_linear_lr
 group_name: v0
 project_name: RoofGraphDataset
 
@@ -25,5 +25,5 @@ encoder:
 model:
   tokenizer:
     max_num_vertices: 60
-
+  num_epochs: 200
   
