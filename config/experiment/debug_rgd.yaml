@@ -11,7 +11,7 @@ project_name: RoofGraphDataset
 
 encoder:
   augmentations:
-    - D4
+    # - D4
     # - Resize
     # - ColorJitter
     # - GaussNoise

@@ -90,7 +90,7 @@ def get_train_loader_p3(cfg,tokenizer=None,logger=None):
     if logger is not None:
         logger.debug(f"Train dataset created with {len(train_ds)} image/lidar samples.")
         
-    sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.host.multi_gpu else None
+    sampler = DistributedSampler(dataset=train_ds, shuffle=cfg.run_type.name!='debug') if cfg.host.multi_gpu else None
 
     train_loader = DataLoader(
         train_ds,
@@ -100,7 +100,7 @@ def get_train_loader_p3(cfg,tokenizer=None,logger=None):
         pin_memory=cfg.run_type.name!='debug',
         drop_last=False,
         sampler=sampler,
-        shuffle=(sampler is None)
+        shuffle=(sampler is None) and (cfg.run_type.name != 'debug')
     )
     if logger is not None:
         logger.debug(f"Train loader created with {len(train_loader)} batches of size {cfg.experiment.model.batch_size}.")

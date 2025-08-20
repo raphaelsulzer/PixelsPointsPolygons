@@ -119,7 +119,7 @@ class Pix2PolyPredictor(Predictor):
             self.plot_prediction(batch_polygons[0], image=image, image_np=image_pillow, lidar=lidar, outfile=outfile)
 
     
-    def prediction_to_polygons(self, coord_preds, perm_preds):
+    def coord_and_perm_to_polygons(self, coord_preds, perm_preds):
         
         vertex_coords = self.postprocess(coord_preds)
 
@@ -159,7 +159,7 @@ class Pix2PolyPredictor(Predictor):
         
         coord_preds, coord_confs, perm_preds = self.test_generate(x_images,x_lidar)
         
-        return self.prediction_to_polygons(coord_preds, perm_preds)
+        return self.coord_and_perm_to_polygons(coord_preds, perm_preds)
 
         
     def test_generate(self, x_images, x_lidar, top_k=0, top_p=1):

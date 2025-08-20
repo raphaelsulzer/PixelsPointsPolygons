@@ -11,4 +11,9 @@ project_name: HiSup
 
 dataset:
   country: CH # This is the country code for the dataset, used in the output file names. You can choose from [CH, NY, NZ, all]
-  annotation_type: blocks # This is the annotation type for the dataset, used in the output file names. You can choose from [blocks, buildings]
+  annotation_type: buildings # This is the annotation type for the dataset, used in the output file names. You can choose from [blocks, buildings]
+
+encoder:
+  augmentations:
+    - D4
+    - Normalize
