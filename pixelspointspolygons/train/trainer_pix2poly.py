@@ -161,7 +161,9 @@ class Pix2PolyTrainer(Trainer):
             x_lidar = list(x_lidar)[:num_images]
             x_lidar = torch.nested.nested_tensor(x_lidar, layout=torch.jagged)
         
-        outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
+        # outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
+        width = len(str(self.cfg.experiment.model.num_epochs))
+        outpath = os.path.join(self.cfg.output_dir,"visualizations",f"{epoch:0{width}d}")
         os.makedirs(outpath, exist_ok=True)
         self.logger.info(f"Save visualizations to {outpath}")
         
