@@ -14,6 +14,7 @@ import math
 
 import torch.distributed as dist
 
+from collections import defaultdict
 from torch import nn
 from torch import optim
 from transformers import get_linear_schedule_with_warmup, get_constant_schedule_with_warmup
@@ -90,7 +91,7 @@ class Pix2PolyTrainer(Trainer):
         self.loss_fn_dict["perm"] = nn.BCELoss()
     
     
-    def visualization(self,  loader, epoch, predictor=None, coco_anns=None, num_images=2):
+    def visualization(self,  loader, epoch, predictor, coco_anns=None, num_images=2):
         
         self.model.eval()
         
@@ -106,9 +107,17 @@ class Pix2PolyTrainer(Trainer):
             x_lidar = torch.nested.nested_tensor(x_lidar, layout=torch.jagged)
         
         # outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
-        outpath = os.path.join(self.cfg.output_dir,"visualizations")
+        split = loader.dataset.dataset.split
+        outpath = os.path.join(self.cfg.output_dir,"visualizations", split)
         os.makedirs(outpath, exist_ok=True)
         self.logger.info(f"Save visualizations to {outpath}")
+        
+        if coco_anns is not None:
+            coco_anns_dict = defaultdict(list)
+            for ann in coco_anns:
+                if ann["image_id"] >= num_images: 
+                    break
+                coco_anns_dict[ann["image_id"]].append(ann)
         
         if predictor is not None:
             predicted_polygons = predictor.batch_to_polygons(x_image, x_lidar, self.model, self.tokenizer)
@@ -138,7 +147,7 @@ class Pix2PolyTrainer(Trainer):
             # plot_point_activations(y_corner_mask[i], ax=ax[0], color=[1,1,0,1.0])
             
             if coco_anns is not None:
-                coco_polys = coco_anns_to_shapely_polys(coco_anns.imgToAnns[tile_ids[i].item()])
+                coco_polys = coco_anns_to_shapely_polys(coco_anns_dict[tile_ids[i].item()])
             else:
                 coco_polys = []
             
@@ -150,13 +159,18 @@ class Pix2PolyTrainer(Trainer):
                 gt_polys = []
                 
             if len(gt_polys):
-                plot_shapely_polygons(gt_polys, ax=ax[0],pointcolor=[1,1,0],edgecolor=[0.251, 0.878, 0.816])
+                plot_shapely_polygons(gt_polys, ax=ax[0])
                 
-            if len(pred_polys):
-                plot_shapely_polygons(pred_polys, ax=ax[1],pointcolor=[1,1,0],edgecolor=[0.251, 0.878, 0.816])
+            if len(pred_polys) and not len(coco_polys):
+                self.logger.debug("Plot predictions from loader")
+                plot_shapely_polygons(pred_polys, ax=ax[1])
                 
-            ax[0].set_title("GT_"+names[i])
-            ax[1].set_title("PRED_"+names[i])
+            if len(coco_polys):
+                self.logger.debug("Plot coco predictions")
+                plot_shapely_polygons(coco_polys, ax=ax[1])
+                
+            ax[0].set_title(f"GT_{split}_"+names[i])
+            ax[1].set_title(f"PRED_{split}_"+names[i])
             
             plt.tight_layout()
             width = len(str(self.cfg.experiment.model.num_epochs))
@@ -164,7 +178,7 @@ class Pix2PolyTrainer(Trainer):
             self.logger.debug(f"Save visualization to {outfile}")
             plt.savefig(outfile)
             if self.cfg.run_type.log_to_wandb and self.local_rank == 0:
-                wandb.log({f"{epoch}: {names[i]}": wandb.Image(fig)})            
+                wandb.log({f"{epoch:0{width}d}: {split}_{names[i]}": wandb.Image(fig)})            
             plt.close(fig)
         
     def val_one_epoch(self):
@@ -406,9 +420,7 @@ class Pix2PolyTrainer(Trainer):
                     if not len(coco_predictions):
                         self.logger.info("No polygons predicted. Skipping coco evaluation...")
                     else:
-                        self.logger.warning("Visualizing validation set predictions needs debugging")
-                        # TODO: fix visualization for coco predictions
-                        # self.visualization(self.val_loader,epoch,coco_anns=coco_predictions)
+                        self.visualization(self.val_loader,epoch,predictor=predictor,coco_anns=coco_predictions)
                     
                     if self.local_rank == 0 and len(coco_predictions):
                         self.logger.info(f"Predicted {len(coco_predictions)}/{len(self.val_loader.dataset.coco.getAnnIds())} polygons...") 

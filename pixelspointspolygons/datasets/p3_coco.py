@@ -209,7 +209,7 @@ class PPPDataset(Dataset):
 
         return crossfield_angle_mask
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
 
         if self.model_type == 'hisup':
             return self.__getitem__hisup(idx)
@@ -316,7 +316,7 @@ class PPPDataset(Dataset):
 
         return new_perm
     
-    def __getitem__pix2poly(self, index):
+    def __getitem__pix2poly(self, index: int):
         
         """Get one image and/or LiDAR cloud with all its annotations from a numerical index."""
         
