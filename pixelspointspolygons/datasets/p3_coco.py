@@ -413,12 +413,6 @@ class PPPDataset(Dataset):
             perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
 
         
-        # TODO: shuffle tokens does not seem to work at all. maybe the vertices of a polygon need to be together?
-        # that would not be a good sign for wireframe prediction without vertex repetition.
-        # anyway, I could at least try to shuffle the vertices of a polygon together, e.g. simply shuffle annotations
-    
-        
-        # return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
         return image, lidar, coords_seqs, perm_matrix, torch.tensor([img_info['id']])
 
 
