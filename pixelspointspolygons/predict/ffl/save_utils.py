@@ -133,21 +133,6 @@ def save_poly_viz(image, polygons, polygon_probs, base_filepath, name):
         raise TypeError("polygons has unrecognized type {}".format(type(polygons)))
 
 
-# def save_shapefile(polygons, base_filepath, name, image_filepath):
-#     if type(polygons) == dict:
-#         # Means several methods/settings were used
-#         for key, item in polygons.items():
-#             save_shapefile(item, base_filepath, name + "." + key, image_filepath)
-#     elif type(polygons) == list:
-#         filepath = get_save_filepath(base_filepath, name, ".shp")
-#         if type(polygons[0]) == np.array:
-#             geo_utils.save_shapefile_from_polygons(polygons, image_filepath, filepath)
-#         elif type(polygons[0]) == shapely.geometry.polygon.Polygon:
-#             geo_utils.save_shapefile_from_shapely_polygons(polygons, image_filepath, filepath)
-#     else:
-#         raise TypeError("polygons has unrecognized type {}".format(type(polygons)))
-
-
 def save_geojson(polygons, base_filepath, name=None, image_filepath=None):
     # TODO: add georef and features
     filepath = get_save_filepath(base_filepath, name, ".geojson")
