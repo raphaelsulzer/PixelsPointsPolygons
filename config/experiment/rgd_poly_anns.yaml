@@ -6,7 +6,7 @@ defaults:
   - _self_
 
 
-name: rgd_linear_lr
+name: rgd_300ep_shuffle_polygons
 group_name: v0
 project_name: RoofGraphDataset
 
@@ -25,5 +25,7 @@ encoder:
 model:
   tokenizer:
     max_num_vertices: 60
-  num_epochs: 200
+    shuffle_tokens: false
+  shuffle_polygons: true # enable shuffling of polygons
+  num_epochs: 300
   

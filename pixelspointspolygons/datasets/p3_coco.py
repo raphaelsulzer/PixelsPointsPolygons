@@ -302,6 +302,20 @@ class PPPDataset(Dataset):
         return ffl_data
         
     
+    def shuffle_perm_matrix_by_indices(self, old_perm: torch.Tensor, shuffle_idxs: np.ndarray):
+        Nv = old_perm.shape[0]
+        padd_idxs = np.arange(len(shuffle_idxs), Nv)
+        shuffle_idxs = np.concatenate([shuffle_idxs, padd_idxs], axis=0)
+
+        transform_arr = torch.zeros_like(old_perm)
+        for i in range(len(shuffle_idxs)):
+            transform_arr[i, shuffle_idxs[i]] = 1.
+
+        # https://math.stackexchange.com/questions/2481213/adjacency-matrix-and-changing-order-of-vertices
+        new_perm = torch.mm(torch.mm(transform_arr, old_perm), transform_arr.T)
+
+        return new_perm
+    
     def __getitem__pix2poly(self, index):
         
         """Get one image and/or LiDAR cloud with all its annotations from a numerical index."""
@@ -333,11 +347,14 @@ class PPPDataset(Dataset):
         else:
             lidar = None
 
-        mask = np.zeros((img_info['width'], img_info['height']))
         corner_coords = []
-        corner_mask = np.zeros((img_info['width'], img_info['height']), dtype=np.float32)
         perm_matrix = np.zeros((self.cfg.experiment.model.tokenizer.max_num_vertices, self.cfg.experiment.model.tokenizer.max_num_vertices), dtype=np.float32)
         annotations = self.coco.imgToAnns[img_id]  # annotations of this tile
+        
+        if self.cfg.experiment.model.shuffle_polygons:
+            # shuffle the annotations to get a random order of polygons
+            np.random.shuffle(annotations)
+        
         for ann in annotations:
             polygons = ann['segmentation']
             for poly in polygons:
@@ -347,18 +364,11 @@ class PPPDataset(Dataset):
                 assert (poly[0] == poly[-1]).all(), "COCO annotations should repeat first polygon point at the end."
                 points = poly[:-1]
                 corner_coords.extend(points.tolist())
-                mask += self.coco.annToMask(ann)
-        mask = mask / 255. if mask.max() == 255 else mask
-        mask = np.clip(mask, 0, 1)
 
         corner_coords = np.flip(np.round(corner_coords, 0), axis=-1).astype(np.int32)
 
-        if len(corner_coords) > 0.:
-            corner_mask[corner_coords[:, 0], corner_coords[:, 1]] = 1.
-
         ############# START: Generate gt permutation matrix. #############
         v_count = 0
-        kl=0
         for ann in annotations:
             polygons = ann['segmentation']
             for poly in polygons:
@@ -384,21 +394,17 @@ class PPPDataset(Dataset):
         perm_matrix = torch.from_numpy(perm_matrix)
         ############# END: Generate gt permutation matrix. #############
 
-        masks = [mask, corner_mask]
-
         if len(corner_coords) > self.cfg.experiment.model.tokenizer.max_num_vertices:
             corner_coords = corner_coords[:self.cfg.experiment.model.tokenizer.max_num_vertices]
 
         if self.transform is not None: 
             
-            augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
+            augmentations = self.transform(image=image, keypoints=corner_coords.tolist())
             
             if self.use_lidar:
                 lidar = self.apply_d4_augmentations_to_lidar(augmentations["replay"], lidar)
             
             image = augmentations['image']
-            mask = augmentations['masks'][0]
-            corner_mask = augmentations['masks'][1]
             corner_coords = np.array(augmentations['keypoints'])
 
         coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.experiment.model.tokenizer.shuffle_tokens)
@@ -406,17 +412,14 @@ class PPPDataset(Dataset):
         if self.cfg.experiment.model.tokenizer.shuffle_tokens:
             perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
 
-        # from ..misc.debug_visualisations import plot_shapely_polygons
-        # from ..misc.coco_conversions import coco_anns_to_shapely_polys, tensor_to_shapely_polys
-        # import matplotlib.pyplot as plt
         
-        # polys = coco_anns_to_shapely_polys(annotations)
+        # TODO: shuffle tokens does not seem to work at all. maybe the vertices of a polygon need to be together?
+        # that would not be a good sign for wireframe prediction without vertex repetition.
+        # anyway, I could at least try to shuffle the vertices of a polygon together, e.g. simply shuffle annotations
+    
         
-        # fig, ax = plt.subplots(figsize=(5, 5), dpi=100)
-        # plot_shapely_polygons(polys, ax=ax)
-        # plt.savefig(f"debug_{index}.png", bbox_inches='tight', pad_inches=0.1, dpi=100)
-        
-        return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
+        # return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
+        return image, lidar, coords_seqs, perm_matrix, torch.tensor([img_info['id']])
 
 
     def __getitem__hisup(self, index):

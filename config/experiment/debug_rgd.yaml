@@ -20,7 +20,9 @@ encoder:
 model:
   tokenizer:
     max_num_vertices: 60
+    shuffle_tokens: false
   num_epochs: 400
+  shuffle_polygons: true # enable shuffling of polygons
 
 dataset:
   country: rgd # This is the country code for the dataset, used in the output file names. You can choose from [CH, NY, NZ, all]

@@ -24,14 +24,9 @@ from .predictor import Predictor
 class Pix2PolyPredictor(Predictor):
     
     def setup_tokenizer(self):
-        self.tokenizer = Tokenizer(num_classes=1,
-            num_bins=self.cfg.experiment.model.tokenizer.num_bins,
-            width=self.cfg.experiment.encoder.in_width,
-            height=self.cfg.experiment.encoder.in_height,
-            max_len=self.cfg.experiment.model.tokenizer.max_len
-        )
+        self.tokenizer = Tokenizer(self.cfg)
         self.cfg.experiment.model.tokenizer.pad_idx = self.tokenizer.PAD_code
-        self.cfg.experiment.model.tokenizer.max_len = self.cfg.experiment.model.tokenizer.max_num_vertices*2+2
+        self.cfg.experiment.model.tokenizer.max_len = self.tokenizer.max_len
         self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.max_num_vertices*2+1
         
     def setup_model_and_load_checkpoint(self):
@@ -87,7 +82,7 @@ class Pix2PolyPredictor(Predictor):
         model.eval()
         
         coco_predictions = []
-        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in self.progress_bar(loader):
+        for x_image, x_lidar, y_sequence, y_perm, image_ids in self.progress_bar(loader):
             
             if self.cfg.experiment.encoder.use_images:
                 x_image = x_image.to(self.device, non_blocking=True)
