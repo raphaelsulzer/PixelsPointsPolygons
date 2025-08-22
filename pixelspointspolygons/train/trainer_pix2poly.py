@@ -30,12 +30,7 @@ from .trainer import Trainer
 class Pix2PolyTrainer(Trainer):
         
     def setup_tokenizer(self):
-        self.tokenizer = Tokenizer(num_classes=1,
-            num_bins=self.cfg.experiment.model.tokenizer.num_bins,
-            width=self.cfg.experiment.encoder.in_width,
-            height=self.cfg.experiment.encoder.in_height,
-            max_len=self.cfg.experiment.model.tokenizer.max_num_vertices*2+2
-        )
+        self.tokenizer = Tokenizer(self.cfg)
         self.cfg.experiment.model.tokenizer.pad_idx = self.tokenizer.PAD_code
         self.cfg.experiment.model.tokenizer.max_len = self.tokenizer.max_len
         self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.max_num_vertices*2+1
@@ -44,57 +39,6 @@ class Pix2PolyTrainer(Trainer):
         self.setup_tokenizer()
         self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
         
-    # def setup_optimizer(self):
-    #     # Get optimizer
-    #     self.optimizer = optim.AdamW(self.model.parameters(), lr=self.cfg.experiment.model.learning_rate, weight_decay=self.cfg.experiment.model.weight_decay, betas=(0.9, 0.95))
-
-    #     # Get scheduler
-    #     num_training_steps = self.cfg.experiment.model.num_epochs * (len(self.train_loader.dataset) // self.cfg.experiment.model.batch_size // self.world_size)
-        
-    #     self.logger.debug(f"Number of training steps on this GPU: {num_training_steps}")
-    #     self.logger.info(f"Total number of training steps: {num_training_steps*self.world_size}")
-        
-    #     num_warmup_steps = int(0.05 * num_training_steps)
-    #     self.lr_scheduler = get_linear_schedule_with_warmup(
-    #         self.optimizer,
-    #         num_training_steps=num_training_steps,
-    #         num_warmup_steps=num_warmup_steps
-    #     )
-        
-    #     self.lr_scheduler = get_constant_schedule_with_warmup(
-    #         self.optimizer,
-    #         num_warmup_steps=num_warmup_steps
-    #     )
-        
-    
-    # def setup_optimizer(self):
-    #     # Optimizer
-    #     self.optimizer = optim.AdamW(
-    #         self.model.parameters(),
-    #         lr=self.cfg.experiment.model.learning_rate,  # this is the PEAK LR
-    #         weight_decay=self.cfg.experiment.model.weight_decay,
-    #         betas=(0.9, 0.95)
-    #     )
-
-    #     # Number of training steps
-    #     steps_per_epoch = math.ceil(
-    #         len(self.train_loader.dataset) / (self.cfg.experiment.model.batch_size * self.world_size)
-    #     )
-    #     num_training_steps = self.cfg.experiment.model.num_epochs * steps_per_epoch
-
-    #     self.logger.debug(f"Steps per epoch per GPU: {steps_per_epoch}")
-    #     self.logger.info(f"Total training steps across all GPUs: {num_training_steps*self.world_size}")
-
-    #     # Warmup = 5% of total steps
-    #     num_warmup_steps = int(0.05 * num_training_steps)
-
-    #     # Scheduler: warmup → linear decay
-    #     self.lr_scheduler = get_linear_schedule_with_warmup(
-    #         self.optimizer,
-    #         num_warmup_steps=num_warmup_steps,
-    #         num_training_steps=num_training_steps
-    #     )
-    
     
     def setup_optimizer(self):
         cfg = self.cfg.experiment.model
@@ -150,7 +94,7 @@ class Pix2PolyTrainer(Trainer):
         
         self.model.eval()
         
-        x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids = next(iter(loader))
+        x_image, x_lidar, y_sequence, y_perm, tile_ids = next(iter(loader))
                 
         if self.cfg.experiment.encoder.use_images:
             x_image = x_image.to(self.cfg.host.device, non_blocking=True)
@@ -162,8 +106,7 @@ class Pix2PolyTrainer(Trainer):
             x_lidar = torch.nested.nested_tensor(x_lidar, layout=torch.jagged)
         
         # outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
-        width = len(str(self.cfg.experiment.model.num_epochs))
-        outpath = os.path.join(self.cfg.output_dir,"visualizations",f"{epoch:0{width}d}")
+        outpath = os.path.join(self.cfg.output_dir,"visualizations")
         os.makedirs(outpath, exist_ok=True)
         self.logger.info(f"Save visualizations to {outpath}")
         
@@ -192,7 +135,7 @@ class Pix2PolyTrainer(Trainer):
                 
             # mask_color = [1,0,1,0.6]
             # plot_mask(y_mask[i], ax=ax[0], color=mask_color)
-            plot_point_activations(y_corner_mask[i], ax=ax[0], color=[1,1,0,1.0])
+            # plot_point_activations(y_corner_mask[i], ax=ax[0], color=[1,1,0,1.0])
             
             if coco_anns is not None:
                 coco_polys = coco_anns_to_shapely_polys(coco_anns.imgToAnns[tile_ids[i].item()])
@@ -216,14 +159,15 @@ class Pix2PolyTrainer(Trainer):
             ax[1].set_title("PRED_"+names[i])
             
             plt.tight_layout()
-            outfile = os.path.join(outpath, f"{names[i]}.png")
+            width = len(str(self.cfg.experiment.model.num_epochs))
+            outfile = os.path.join(outpath, f"{epoch:0{width}d}_{names[i]}.png")
             self.logger.debug(f"Save visualization to {outfile}")
             plt.savefig(outfile)
             if self.cfg.run_type.log_to_wandb and self.local_rank == 0:
                 wandb.log({f"{epoch}: {names[i]}": wandb.Image(fig)})            
             plt.close(fig)
         
-    def valid_one_epoch(self):
+    def val_one_epoch(self):
 
         self.logger.info("Validate...")
         self.model.eval()
@@ -241,7 +185,7 @@ class Pix2PolyTrainer(Trainer):
             self.logger.info("Set LiDAR dropout to 1.0 for validation")
             self.cfg.experiment.lidar_dropout = 1.0
         
-        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in loader:
+        for x_image, x_lidar, y_sequence, y_perm, image_ids in loader:
             
             batch_size = x_image.size(0) if self.cfg.experiment.encoder.use_images else x_lidar.size(0)
             
@@ -320,11 +264,10 @@ class Pix2PolyTrainer(Trainer):
         loss_meter = AverageMeter()
         vertex_loss_meter = AverageMeter()
         perm_loss_meter = AverageMeter()
-
         
         loader = self.progress_bar(self.train_loader)
 
-        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, tile_ids in loader:
+        for x_image, x_lidar, y_sequence, y_perm, tile_ids in loader:
             
             # self.check_y_perm(y_perm)
             
@@ -434,7 +377,7 @@ class Pix2PolyTrainer(Trainer):
                 ############################################
                 ################ Validation ################
                 ############################################
-                val_loss_dict = self.valid_one_epoch()
+                val_loss_dict = self.val_one_epoch()
                 if self.local_rank == 0:
                     for k, v in val_loss_dict.items():
                         wandb_dict[f"val_{k}"] = v
