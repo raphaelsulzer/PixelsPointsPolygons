@@ -25,7 +25,7 @@ def affine_transform(pt, t):
     new_pt = np.dot(t, new_pt)
     return new_pt[:2]
 
-class PPPDataset(Dataset):
+class P3Dataset(Dataset):
     def __init__(self, cfg, split,
                  transform=None,
                  **kwargs):
@@ -320,9 +320,7 @@ class PPPDataset(Dataset):
         
         """Get one image and/or LiDAR cloud with all its annotations from a numerical index."""
         
-        if not hasattr(self,"tokenizer"):
-            raise ValueError("Tokenizer not set. Please pass a tokenizer to the dataset class when using Pix2Poly.")
-        if self.tokenizer is None:
+        if not hasattr(self,"tokenizer") or self.tokenizer is None:
             raise ValueError("Tokenizer not set. Please pass a tokenizer to the dataset class when using Pix2Poly.")
 
         img_id = self.tile_ids[index]
@@ -331,12 +329,11 @@ class PPPDataset(Dataset):
         # load image
         if self.use_images:
             img_file = self.get_image_file(img_info)
-            # image = np.array(Image.open(img_file).convert("RGB"))
             with rasterio.open(img_file) as src:
                 image = src.read([1, 2, 3])  # shape (3, H, W)
             image = np.transpose(image, (1, 2, 0))  # (H, W, 3)
         else:
-            # make dummy image for albumentations to work
+            # make dummy image when using LiDAR only for albumentations to work
             image = np.zeros((img_info['width'], 
                             img_info['height'], 1), dtype=np.uint8)
 
@@ -569,14 +566,14 @@ class PPPDataset(Dataset):
     
     
 
-class TestDataset(PPPDataset):
+class TestDataset(P3Dataset):
     def __init__(self,cfg,**kwargs):
         super().__init__(cfg,'test',**kwargs)
 
-class ValDataset(PPPDataset):
+class ValDataset(P3Dataset):
     def __init__(self,cfg,**kwargs):
         super().__init__(cfg,'val',**kwargs)
 
-class TrainDataset(PPPDataset):
+class TrainDataset(P3Dataset):
     def __init__(self,cfg,**kwargs):
         super().__init__(cfg,'train',**kwargs)
