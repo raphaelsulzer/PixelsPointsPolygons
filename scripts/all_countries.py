@@ -27,7 +27,6 @@ def predict_and_evaluate():
         ("p2p_fusion", "v0_all_bs4x16")
         ]
     
-    
     setup_hydraconf()
 
     cli_overrides = parse_cli_overrides()

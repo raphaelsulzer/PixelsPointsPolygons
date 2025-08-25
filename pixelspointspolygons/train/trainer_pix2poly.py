@@ -237,6 +237,7 @@ class Pix2PolyTrainer(Trainer):
 
 
     def check_y_perm(self, y_perm):
+        
         """
         Check if y_perm is a valid permutation matrix.
         y_perm should be a binary matrix of shape [batch_size, num_vertices, num_vertices]
@@ -244,7 +245,6 @@ class Pix2PolyTrainer(Trainer):
 
         # Convert to int for exact checks
         xi = y_perm.to(torch.int32)
-
 
         # Row & col sum checks
         row_sums = xi.sum(dim=-1)  # shape: (16, 192)
@@ -277,7 +277,6 @@ class Pix2PolyTrainer(Trainer):
         for x_image, x_lidar, y_sequence, y_perm, tile_ids in loader:
             
             # self.check_y_perm(y_perm)
-            
             # continue
             
             batch_size = x_image.size(0) if self.cfg.experiment.encoder.use_images else x_lidar.size(0)     
