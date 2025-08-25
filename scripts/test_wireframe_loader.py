@@ -10,8 +10,6 @@ import matplotlib.pyplot as plt
 @hydra.main(config_path="../config", config_name="config", version_base="1.3")
 def main(cfg):
     
-    
-    
     setup_hydraconf(cfg)
     local_rank, world_size = setup_ddp(cfg)
 
@@ -27,19 +25,16 @@ def main(cfg):
     
     for x_image, x_lidar, y_sequence, y_perm, tile_ids in dataloader:
 
-    
         gt_polygons = predictor.coord_and_perm_to_polygons(y_sequence, y_perm)
 
         gt_polys = tensor_to_shapely_polys(gt_polygons[0])
     
         fig, ax = plt.subplots(figsize=(4, 4), dpi=150)
         
-        
         image = denormalize_image_for_visualization(x_image[0], cfg)
         
         plot_image(image, ax=ax)
         plot_shapely_polygons(gt_polys, ax=ax)
-        
         
         plt.savefig(f"wireframe_debug/{tile_ids[0].item()}_gt.png")
         plt.close(fig)
