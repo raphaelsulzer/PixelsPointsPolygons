@@ -17,7 +17,7 @@ import torch.distributed as dist
 from collections import defaultdict
 from torch import nn
 from torch import optim
-from transformers import get_linear_schedule_with_warmup, get_constant_schedule_with_warmup
+from transformers import get_linear_schedule_with_warmup
 
 from ..models.pix2poly import Tokenizer, Pix2PolyModel
 from ..misc import AverageMeter, get_lr, get_tile_names_from_dataloader, denormalize_image_for_visualization
@@ -30,14 +30,8 @@ from .trainer import Trainer
 
 class Pix2PolyTrainer(Trainer):
         
-    def setup_tokenizer(self):
-        self.tokenizer = Tokenizer(self.cfg)
-        self.cfg.experiment.model.tokenizer.pad_idx = self.tokenizer.PAD_code
-        self.cfg.experiment.model.tokenizer.max_len = self.tokenizer.max_len
-        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.max_num_vertices*2+1
-    
     def setup_model(self):
-        self.setup_tokenizer()
+        self.tokenizer = Tokenizer(self.cfg)
         self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
         
     
@@ -106,7 +100,6 @@ class Pix2PolyTrainer(Trainer):
             x_lidar = list(x_lidar)[:num_images]
             x_lidar = torch.nested.nested_tensor(x_lidar, layout=torch.jagged)
         
-        # outpath = os.path.join(self.cfg.output_dir, "visualizations", f"{epoch}")
         split = loader.dataset.dataset.split
         outpath = os.path.join(self.cfg.output_dir,"visualizations", split)
         os.makedirs(outpath, exist_ok=True)

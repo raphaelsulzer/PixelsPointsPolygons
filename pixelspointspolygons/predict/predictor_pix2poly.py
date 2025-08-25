@@ -22,25 +22,19 @@ from ..datasets import get_train_loader, get_val_loader, get_test_loader
 from .predictor import Predictor
 
 class Pix2PolyPredictor(Predictor):
-    
-    def setup_tokenizer(self):
+        
+    def setup_model(self):
+        
         self.tokenizer = Tokenizer(self.cfg)
-        self.cfg.experiment.model.tokenizer.pad_idx = self.tokenizer.PAD_code
-        self.cfg.experiment.model.tokenizer.max_len = self.tokenizer.max_len
-        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.max_num_vertices*2+1
-        
-    def setup_model_and_load_checkpoint(self):
-        
-        self.setup_tokenizer()
         self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
         self.model.eval()
         self.model.to(self.cfg.host.device)
-        self.load_checkpoint()
     
     def predict_dataset(self, split="val"):
         
-        self.setup_model_and_load_checkpoint()
-        
+        self.setup_model()
+        self.load_checkpoint()
+
         if split == "train":
             self.loader = get_train_loader(self.cfg,tokenizer=self.tokenizer,logger=self.logger)
         elif split == "val":
@@ -101,8 +95,9 @@ class Pix2PolyPredictor(Predictor):
         image, image_pillow = self.load_image_from_file(img_infile)
         lidar = self.load_lidar_from_file(lidar_infile)
 
-        self.setup_model_and_load_checkpoint()
-        
+        self.setup_model()
+        self.load_checkpoint()
+
         with torch.no_grad():
             
             if self.cfg.experiment.encoder.use_images:

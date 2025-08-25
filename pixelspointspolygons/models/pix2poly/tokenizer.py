@@ -19,6 +19,10 @@ class Tokenizer:
         self.PAD_code = self.EOS_code + 1
 
         self.vocab_size = self.num_bins + 3 #+ num_classes
+        
+        self.cfg.experiment.model.tokenizer.pad_idx = self.PAD_code # used in collate_fn, so needs to be available from cfg
+        self.cfg.experiment.model.tokenizer.max_len = self.max_len # used in collate_fn, so needs to be available from cfg
+        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.max_num_vertices*2+1
 
     def quantize(self, x: np.array):
         """
