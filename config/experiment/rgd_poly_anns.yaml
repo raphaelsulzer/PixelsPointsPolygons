@@ -6,7 +6,7 @@ defaults:
   - _self_
 
 
-name: rgd_300ep_shuffle_polygons
+name: pred_valence_true
 group_name: v0
 project_name: RoofGraphDataset
 
@@ -28,4 +28,4 @@ model:
     shuffle_tokens: false
   shuffle_polygons: true # enable shuffling of polygons
   num_epochs: 300
-  
+  predict_valence: true

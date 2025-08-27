@@ -287,7 +287,7 @@ class Pix2PolyPredictor(Predictor):
     def postprocess(self, batch_preds):
         EOS_idxs = (batch_preds == self.tokenizer.EOS_code).float().argmax(dim=-1)
         ## sanity check
-        invalid_idxs = ((EOS_idxs - 1) % 2 != 0).nonzero().view(-1)
+        invalid_idxs = ((EOS_idxs - 1) % self.tokenizer.token_mode != 0).nonzero().view(-1)
         EOS_idxs[invalid_idxs] = 0
 
         all_coords = []

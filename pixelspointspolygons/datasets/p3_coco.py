@@ -40,7 +40,7 @@ class P3Dataset(Dataset):
         if not os.path.isdir(self.dataset_dir):
             raise NotADirectoryError(f"Dataset directory {self.dataset_dir} does not exist")
         
-        ## FFL currently still has a specific annotations file which includes the path to the .pt file with the frame field stored
+        ## FFL currently still has a specific annotations file which includes the path to the .pt file which has the frame field stored
         if self.cfg.experiment.model.name == "ffl":
             # self.ann_file = os.path.join(self.dataset_dir,f"annotations_ffl_{split}.json")
             self.ann_file = self.cfg.experiment.dataset.annotations[split].replace("annotations_", "annotations_ffl_")
@@ -94,9 +94,6 @@ class P3Dataset(Dataset):
 
             points[:,0] = np.clip(points[:,0],0,img_info['width'])
             points[:,1] = np.clip(points[:,1],0,img_info['height'])
-            
-            # if not len(points) > 3:
-            #     self.logger.warning(f"Lidar file {lidar_file_name} only has {len(points)} points.")
 
         else:
             raise FileExistsError(f"Lidar file {lidar_file_name} missing.")
@@ -316,7 +313,136 @@ class P3Dataset(Dataset):
 
         return new_perm
     
+    
+    def add_vertex_valence_to_seq(self, coords_seq: list):
+        
+        arr = np.array(coords_seq)[1:-1].reshape(-1,2)
+
+        # Find unique rows and their counts
+        uniq, counts = np.unique(arr, axis=0, return_counts=True)
+
+        # Map each row in arr back to its count
+        # idx gives the index of the matching unique row
+        _, idx = np.unique(arr, axis=0, return_inverse=True)
+        counts_col = counts[idx].reshape(-1, 1)
+
+        # Append to original array
+        result = np.hstack([arr, counts_col])
+        
+        result = result.flatten().tolist()
+        
+        # add start and end token
+        result = [coords_seq[0]] + result + [coords_seq[-1]]
+        
+        return result
+    
+    
     def __getitem__pix2poly(self, index: int):
+        
+        """Get one image and/or LiDAR cloud with all its annotations from a numerical index."""
+        
+        if not hasattr(self,"tokenizer") or self.tokenizer is None:
+            raise ValueError("Tokenizer not set. Please pass a tokenizer to the dataset class when using Pix2Poly.")
+
+        img_id = self.tile_ids[index]
+        img_info = self.coco.imgs[img_id]
+
+        # load image
+        if self.use_images:
+            img_file = self.get_image_file(img_info)
+            with rasterio.open(img_file) as src:
+                image = src.read([1, 2, 3])  # shape (3, H, W)
+            image = np.transpose(image, (1, 2, 0))  # (H, W, 3)
+        else:
+            # make dummy image when using LiDAR only for albumentations to work
+            image = np.zeros((img_info['width'], 
+                            img_info['height'], 1), dtype=np.uint8)
+
+        # load lidar
+        if self.use_lidar:
+            img_file = self.get_lidar_file(img_info)
+            lidar = self.load_lidar_points(img_file, img_info)
+        else:
+            lidar = None
+
+        corner_coords = []
+        perm_matrix = np.zeros((self.cfg.experiment.model.tokenizer.max_num_vertices, self.cfg.experiment.model.tokenizer.max_num_vertices), dtype=np.float32)
+        annotations = self.coco.imgToAnns[img_id]  # annotations of this tile
+        
+        if self.cfg.experiment.model.shuffle_polygons:
+            # shuffle the annotations to get a random order of polygons
+            np.random.shuffle(annotations)
+        
+        for ann in annotations:
+            polygons = ann['segmentation']
+            for poly in polygons:
+                
+                poly = np.array(poly).reshape(-1, 2)
+                poly[:, 0] = np.clip(poly[:, 0], 0, img_info['width'] - 1)
+                poly[:, 1] = np.clip(poly[:, 1], 0, img_info['height'] - 1)
+                assert (poly[0] == poly[-1]).all(), "COCO annotations should repeat first polygon point at the end."
+                points = poly[:-1]
+                corner_coords.extend(points.tolist())
+
+        corner_coords = np.flip(np.round(corner_coords, 0), axis=-1).astype(np.int32)
+
+        ############# START: Generate gt permutation matrix. #############
+        v_count = 0
+        for ann in annotations:
+            polygons = ann['segmentation']
+            for poly in polygons:
+                poly = np.array(poly).reshape(-1, 2)
+                assert (poly[0] == poly[-1]).all(), "COCO annotations should repeat first polygon point at the end."
+                points = poly[:-1]
+                for i in range(len(points)):
+                    j = (i + 1) % len(points)
+                    if v_count + i > self.cfg.experiment.model.tokenizer.max_num_vertices - 1 or v_count + j > self.cfg.experiment.model.tokenizer.max_num_vertices - 1:
+                        break
+                    perm_matrix[v_count + i, v_count + j] = 1.
+                v_count += len(points)
+
+        for i in range(v_count, self.cfg.experiment.model.tokenizer.max_num_vertices):
+            perm_matrix[i, i] = 1.
+
+        # Workaround for open contours:
+        for i in range(self.cfg.experiment.model.tokenizer.max_num_vertices):
+            row = perm_matrix[i, :]
+            col = perm_matrix[:, i]
+            if np.sum(row) == 0 or np.sum(col) == 0:
+                perm_matrix[i, i] = 1.
+        perm_matrix = torch.from_numpy(perm_matrix)
+        ############# END: Generate gt permutation matrix. #############
+
+        if len(corner_coords) > self.cfg.experiment.model.tokenizer.max_num_vertices:
+            corner_coords = corner_coords[:self.cfg.experiment.model.tokenizer.max_num_vertices]
+
+        if self.transform is not None: 
+            
+            augmentations = self.transform(image=image, keypoints=corner_coords.tolist())
+            
+            if self.use_lidar:
+                lidar = self.apply_d4_augmentations_to_lidar(augmentations["replay"], lidar)
+            
+            image = augmentations['image']
+            corner_coords = np.array(augmentations['keypoints'])
+
+        coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.experiment.model.tokenizer.shuffle_tokens)
+
+        if self.cfg.experiment.model.predict_valence:
+            coords_seqs = self.add_vertex_valence_to_seq(coords_seqs)
+
+        coords_seqs = torch.LongTensor(coords_seqs)
+        if self.cfg.experiment.model.tokenizer.shuffle_tokens:
+            perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
+
+        
+        return image, lidar, coords_seqs, perm_matrix, torch.tensor([img_info['id']])
+
+
+
+
+
+    def __getitem__pix2poly_polygons(self, index: int):
         
         """Get one image and/or LiDAR cloud with all its annotations from a numerical index."""
         

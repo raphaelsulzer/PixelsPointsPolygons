@@ -23,6 +23,7 @@ model:
     shuffle_tokens: false
   num_epochs: 400
   shuffle_polygons: true # enable shuffling of polygons
+  predict_valence: true
 
 dataset:
   country: rgd # This is the country code for the dataset, used in the output file names. You can choose from [CH, NY, NZ, all]

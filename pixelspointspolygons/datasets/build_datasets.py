@@ -83,9 +83,11 @@ def get_train_loader_p3(cfg,tokenizer=None,logger=None):
         indices = list(range(cfg.experiment.dataset.train_subset))
         ann_file = train_ds.ann_file
         coco = train_ds.coco
+        split = train_ds.split
         train_ds = Subset(train_ds, indices)
         train_ds.ann_file = ann_file
         train_ds.coco = coco    
+        train_ds.split = split
     
     if logger is not None:
         logger.debug(f"Train dataset created with {len(train_ds)} image/lidar samples.")
@@ -134,9 +136,11 @@ def get_val_loader_lidarpoly(cfg,tokenizer=None,logger=None):
         indices = list(range(cfg.experiment.dataset.val_subset))
         ann_file = val_ds.ann_file
         coco = val_ds.coco
+        split = val_ds.split
         val_ds = Subset(val_ds, indices)
         val_ds.ann_file = ann_file
         val_ds.coco = coco
+        val_ds.split = split
 
     sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.host.multi_gpu else None
     
@@ -182,9 +186,11 @@ def get_test_loader_lidarpoly(cfg,tokenizer=None,logger=None):
         indices = list(range(cfg.experiment.dataset.test_subset))
         ann_file = ds.ann_file
         coco = ds.coco
+        split = ds.split
         ds = Subset(ds, indices)
         ds.ann_file = ann_file
         ds.coco = coco
+        ds.split = split
 
     sampler = DistributedSampler(dataset=ds, shuffle=False) if cfg.host.multi_gpu else None
     
