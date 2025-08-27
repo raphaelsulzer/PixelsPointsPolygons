@@ -15,7 +15,7 @@ tokenizer:
     pad_idx: null
     generation_steps: null
 
-shuffle_polygons: false # not really part of tokenizer, but for consistency put it here
+shuffle_polygons: false
 
 fusion: patch_concat # or feature_concat
 

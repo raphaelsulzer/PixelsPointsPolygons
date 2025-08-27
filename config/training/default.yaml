@@ -1,6 +1,6 @@
 save_best: true
 save_latest: true
 save_every: 10
-val_every: 1
+val_every: 5
 best_val_loss: 10000000.0
 best_val_iou: 0.0
