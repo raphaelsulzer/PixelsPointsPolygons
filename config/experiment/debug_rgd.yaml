@@ -24,7 +24,10 @@ model:
   num_epochs: 400
   shuffle_polygons: true # enable shuffling of polygons
   predict_valence: true
+  perm_loss_weight: 3.0
+  vertex_loss_weight: 1.0
 
+  
 dataset:
   country: rgd # This is the country code for the dataset, used in the output file names. You can choose from [CH, NY, NZ, all]
   annotation_type: polygons # This is the annotation type for the dataset, used in the output file names. You can choose from [blocks, buildings]
