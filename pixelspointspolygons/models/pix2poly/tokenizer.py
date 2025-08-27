@@ -7,11 +7,13 @@ class Tokenizer:
         self.num_classes = num_classes
 
         self.cfg = cfg
+        
+        self.token_mode = 3 if self.cfg.experiment.model.predict_valence else 2
 
         self.num_bins=self.cfg.experiment.model.tokenizer.num_bins
         self.width=self.cfg.experiment.encoder.in_width
         self.height=self.cfg.experiment.encoder.in_height
-        self.max_len=self.cfg.experiment.model.tokenizer.max_num_vertices*2+2
+        self.max_len=self.cfg.experiment.model.tokenizer.max_num_vertices*self.token_mode+2
         
         # define start, end, and pad tokens
         self.BOS_code = self.num_bins
@@ -22,7 +24,10 @@ class Tokenizer:
         
         self.cfg.experiment.model.tokenizer.pad_idx = self.PAD_code # used in collate_fn, so needs to be available from cfg
         self.cfg.experiment.model.tokenizer.max_len = self.max_len # used in collate_fn, so needs to be available from cfg
-        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.max_num_vertices*2+1
+        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.max_num_vertices*self.token_mode+1
+        
+        
+
 
     def quantize(self, x: np.array):
         """
@@ -73,7 +78,7 @@ class Tokenizer:
         mask = tokens != self.PAD_code
         tokens = tokens[mask]
         tokens = tokens[1:-1]
-        assert len(tokens) % 2 == 0, "Invalid tokens!"
+        assert len(tokens) % self.token_mode == 0, "Invalid tokens!"
 
         ## why so lengthy?
         # coords = []
@@ -82,7 +87,7 @@ class Tokenizer:
         #     coords.append([int(item) for item in coord])
         # coords = np.array(coords)
         
-        coords = np.array(tokens).reshape(-1, 2)
+        coords = np.array(tokens).reshape(-1, self.token_mode)[:, :2]
         coords = self.dequantize(coords)
 
         if len(coords) > 0:

@@ -76,12 +76,22 @@ class Pix2PolyTrainer(Trainer):
             num_training_steps=num_training_steps,
         )
         
+    # def setup_loss_fn_dict(self):
+        
+    #     # Init loss functions
+    #     weight = torch.ones(self.cfg.experiment.model.tokenizer.pad_idx + 1, device=self.cfg.host.device)
+    #     weight[self.tokenizer.num_bins:self.tokenizer.BOS_code] = 0.0
+    #     self.loss_fn_dict["coords"] = nn.CrossEntropyLoss(ignore_index=self.cfg.experiment.model.tokenizer.pad_idx, label_smoothing=self.cfg.experiment.model.label_smoothing, weight=weight)
+    #     self.loss_fn_dict["perm"] = nn.BCELoss()
+    
     def setup_loss_fn_dict(self):
         
-        # Get loss functions
-        weight = torch.ones(self.cfg.experiment.model.tokenizer.pad_idx + 1, device=self.cfg.host.device)
-        weight[self.tokenizer.num_bins:self.tokenizer.BOS_code] = 0.0
-        self.loss_fn_dict["vertex"] = nn.CrossEntropyLoss(ignore_index=self.cfg.experiment.model.tokenizer.pad_idx, label_smoothing=self.cfg.experiment.model.label_smoothing, weight=weight)
+        # Init loss functions
+        
+        self.loss_fn_dict["coords"] = nn.CrossEntropyLoss(ignore_index=self.cfg.experiment.model.tokenizer.pad_idx)
+        
+        self.loss_fn_dict["valency"] = nn.CrossEntropyLoss(ignore_index=self.cfg.experiment.model.tokenizer.pad_idx)
+        
         self.loss_fn_dict["perm"] = nn.BCELoss()
     
     
@@ -100,7 +110,7 @@ class Pix2PolyTrainer(Trainer):
             x_lidar = list(x_lidar)[:num_images]
             x_lidar = torch.nested.nested_tensor(x_lidar, layout=torch.jagged)
         
-        split = loader.dataset.dataset.split
+        split = loader.dataset.split
         outpath = os.path.join(self.cfg.output_dir,"visualizations", split)
         os.makedirs(outpath, exist_ok=True)
         self.logger.info(f"Save visualizations to {outpath}")
@@ -116,7 +126,7 @@ class Pix2PolyTrainer(Trainer):
             predicted_polygons = predictor.batch_to_polygons(x_image, x_lidar, self.model, self.tokenizer)
             gt_polygons = predictor.coord_and_perm_to_polygons(y_sequence, y_perm)
             
-                
+            
         if self.cfg.experiment.encoder.use_lidar:
             lidar_batches = torch.unbind(x_lidar, dim=0)
             
@@ -134,10 +144,6 @@ class Pix2PolyTrainer(Trainer):
             if self.cfg.experiment.encoder.use_lidar:
                 plot_point_cloud(lidar_batches[i], ax=ax[0])
                 plot_point_cloud(lidar_batches[i], ax=ax[1])
-                
-            # mask_color = [1,0,1,0.6]
-            # plot_mask(y_mask[i], ax=ax[0], color=mask_color)
-            # plot_point_activations(y_corner_mask[i], ax=ax[0], color=[1,1,0,1.0])
             
             if coco_anns is not None:
                 coco_polys = coco_anns_to_shapely_polys(coco_anns_dict[tile_ids[i].item()])
@@ -174,15 +180,60 @@ class Pix2PolyTrainer(Trainer):
                 wandb.log({f"{epoch:0{width}d}: {split}_{names[i]}": wandb.Image(fig)})            
             plt.close(fig)
         
+    def split_coord_and_valence(self, y_sequence):
+        """
+        y_sequence: 
+            [B, L] LongTensor   or
+            [B, L, D] LongTensor
+        returns:
+            coords: [B, L, 2] LongTensor  (if input was 2D)
+                    [B, L, 2, D] LongTensor (if input was 3D)
+            valences: [B, L] LongTensor   (if input was 2D)
+                    [B, L, D] LongTensor (if input was 3D)
+        """
+        if y_sequence.dim() == 2:  # [B, L]
+            last_token = y_sequence[:, -1]
+            y_sequence = y_sequence[:, :-1]
+            
+            B, L = y_sequence.shape
+            grouped = y_sequence.view(B, L // 3, 3)
+            
+            coords = grouped[:, :, :2].reshape(B, -1)
+            valences = grouped[:, :, 2]
+            
+            coords = torch.cat([coords, last_token.unsqueeze(1)], dim=1)
+            valences = torch.cat([valences, last_token.unsqueeze(1)], dim=1)
+
+        elif y_sequence.dim() == 3:  # [B, L, D]
+            last_token = y_sequence[:, -1, :]  # [B, D]
+            y_sequence = y_sequence[:, :-1, :]  # [B, L-1, D]
+            
+            B, L, D = y_sequence.shape
+            grouped = y_sequence.view(B, L // 3, 3, D)
+            
+            coords = grouped[:, :, :2, :].reshape(B, -1, D)   # [B, 2*(L//3), D]
+            valences = grouped[:, :, 2, :]                    # [B, L//3, D]
+            
+            coords = torch.cat([coords, last_token.unsqueeze(1)], dim=1)
+            valences = torch.cat([valences, last_token.unsqueeze(1)], dim=1)
+
+        else:
+            raise ValueError("y_sequence must be 2D or 3D")
+
+        return coords, valences
+
+        
     def val_one_epoch(self):
 
         self.logger.info("Validate...")
         self.model.eval()
-        self.loss_fn_dict["vertex"].eval()
-        self.loss_fn_dict["perm"].eval()
+        
+        for loss in self.loss_fn_dict.values():
+            loss.eval()
 
         loss_meter = AverageMeter()
-        vertex_loss_meter = AverageMeter()
+        coord_loss_meter = AverageMeter()
+        valency_loss_meter = AverageMeter()
         perm_loss_meter = AverageMeter()
 
         loader = self.progress_bar(self.val_loader)
@@ -208,18 +259,30 @@ class Pix2PolyTrainer(Trainer):
             y_expected = y_sequence[:, 1:]
 
             preds, perm_mat = self.model(x_image, x_lidar, y_input)
-
-            vertex_loss_weight = self.cfg.experiment.model.vertex_loss_weight
-            perm_loss_weight = self.cfg.experiment.model.perm_loss_weight
             
-            vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
-            perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
+            if self.cfg.experiment.model.predict_valence:
+                y_expected_coords, y_expected_valences = self.split_coord_and_valence(y_expected)
+                preds_coords, preds_valences = self.split_coord_and_valence(preds)
+                
+                coords_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["coords"](preds_coords.reshape(-1, preds_coords.shape[-1]), y_expected_coords.reshape(-1))
+                valency_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["valency"](preds_valences.reshape(-1, preds_valences.shape[-1]), y_expected_valences.reshape(-1))
+                
+                
+                
+            else:
+                coords_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["coords"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
+                
+                valency_loss = torch.tensor(0.0)
 
-            loss = vertex_loss + perm_loss
+                
+            
+            perm_loss = self.cfg.experiment.model.perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
 
-            loss_meter.update(loss.item(), batch_size)
-            vertex_loss_meter.update(vertex_loss.item(), batch_size)
+            loss = coords_loss + valency_loss + perm_loss
+            coord_loss_meter.update(coords_loss.item(), batch_size)
+            valency_loss_meter.update(valency_loss.item(), batch_size)
             perm_loss_meter.update(perm_loss.item(), batch_size)
+            loss_meter.update(loss.item(), batch_size)
             
         if lidar_dropout is not None:
             self.logger.info(f"Reset LiDAR dropout to {lidar_dropout} after validation")
@@ -228,48 +291,26 @@ class Pix2PolyTrainer(Trainer):
         self.logger.debug(f"Validation loss: {loss_meter.global_avg:.3f}")
         loss_dict = {
             'total_loss': self.average_across_gpus(loss_meter),
-            'vertex_loss': self.average_across_gpus(vertex_loss_meter),
+            'coords_loss': self.average_across_gpus(coord_loss_meter),
+            'valency_loss': self.average_across_gpus(valency_loss_meter),
             'perm_loss': self.average_across_gpus(perm_loss_meter),
         }
         self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
 
         return loss_dict
 
-
-    def check_y_perm(self, y_perm):
-        
-        """
-        Check if y_perm is a valid permutation matrix.
-        y_perm should be a binary matrix of shape [batch_size, num_vertices, num_vertices]
-        """
-
-        # Convert to int for exact checks
-        xi = y_perm.to(torch.int32)
-
-        # Row & col sum checks
-        row_sums = xi.sum(dim=-1)  # shape: (16, 192)
-        col_sums = xi.sum(dim=-2)  # shape: (16, 192)
-
-        rows_per_matrix = (row_sums == 1).all(dim=1)
-        cols_per_matrix = (col_sums == 1).all(dim=1)
-
-        # Final validity
-        valid_per_matrix = rows_per_matrix & cols_per_matrix
-        
-        assert valid_per_matrix.all(), f"Invalid permutation matrix detected! Rows per matrix: {rows_per_matrix}, Cols per matrix: {cols_per_matrix}"
-
-    
     
     def train_one_epoch(self, epoch, iter_idx):
         
         self.logger.info(f"Train epoch {epoch}...")
         
         self.model.train()
-        self.loss_fn_dict["vertex"].train()
+        self.loss_fn_dict["coords"].train()
         self.loss_fn_dict["perm"].train()
 
         loss_meter = AverageMeter()
-        vertex_loss_meter = AverageMeter()
+        coords_loss_meter = AverageMeter()
+        valency_loss_meter = AverageMeter()
         perm_loss_meter = AverageMeter()
         
         loader = self.progress_bar(self.train_loader)
@@ -289,22 +330,28 @@ class Pix2PolyTrainer(Trainer):
             y_sequence = y_sequence.to(self.cfg.host.device, non_blocking=True)
             y_perm = y_perm.to(self.cfg.host.device, non_blocking=True)
 
-            y_input = y_sequence[:, :-1]
-            y_expected = y_sequence[:, 1:]
+            y_input = y_sequence[:, :-1] # we do not need the last token as input, because there is no next token to predict
+            y_expected = y_sequence[:, 1:] # we do not need the first token as expected, because it is always the BOS token and not predicted
 
-            preds, perm_mat = self.model(x_image, x_lidar, y_input)
-
-            if epoch < self.cfg.experiment.model.milestone:
-                vertex_loss_weight = self.cfg.experiment.model.vertex_loss_weight
-                perm_loss_weight = 0.0
+            sequence_pred, perm_pred = self.model(x_image, x_lidar, y_input)
+            
+            
+            if self.cfg.experiment.model.predict_valence:
+                y_expected, y_expected_valences = self.split_coord_and_valence(y_expected)
+                sequence_pred, sequence_pred_valences = self.split_coord_and_valence(sequence_pred)
+                
+                coords_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["coords"](sequence_pred.reshape(-1, sequence_pred.shape[-1]), y_expected.reshape(-1))
+                valency_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["valency"](sequence_pred_valences.reshape(-1, sequence_pred_valences.shape[-1]), y_expected_valences.reshape(-1))
+                
             else:
-                vertex_loss_weight = self.cfg.experiment.model.vertex_loss_weight
-                perm_loss_weight = self.cfg.experiment.model.perm_loss_weight
+                valency_loss = torch.tensor(0.0)
 
-            vertex_loss = vertex_loss_weight*self.loss_fn_dict["vertex"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
-            perm_loss = perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
+                coords_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["coords"](sequence_pred.reshape(-1, sequence_pred.shape[-1]), y_expected.reshape(-1))
+                
+                
+            perm_loss = self.cfg.experiment.model.perm_loss_weight*self.loss_fn_dict["perm"](perm_pred, y_perm)
 
-            loss = vertex_loss + perm_loss
+            loss = coords_loss + valency_loss + perm_loss
 
             self.optimizer.zero_grad(set_to_none=True)
             loss.backward()
@@ -313,7 +360,8 @@ class Pix2PolyTrainer(Trainer):
             self.lr_scheduler.step()
 
             loss_meter.update(loss.item(), batch_size)
-            vertex_loss_meter.update(vertex_loss.item(), batch_size)
+            coords_loss_meter.update(coords_loss.item(), batch_size)
+            valency_loss_meter.update(valency_loss.item(), batch_size)
             perm_loss_meter.update(perm_loss.item(), batch_size)
 
             lr = get_lr(self.optimizer)
@@ -326,7 +374,8 @@ class Pix2PolyTrainer(Trainer):
         self.logger.debug(f"Train loss: {loss_meter.global_avg:.3f}")
         loss_dict = {
             'total_loss': self.average_across_gpus(loss_meter),
-            'vertex_loss': self.average_across_gpus(vertex_loss_meter),
+            'coords_loss': self.average_across_gpus(coords_loss_meter),
+            'valency_loss': self.average_across_gpus(valency_loss_meter),
             'perm_loss': self.average_across_gpus(perm_loss_meter),
         }
         
@@ -450,5 +499,31 @@ class Pix2PolyTrainer(Trainer):
                 if self.is_ddp:
                     dist.barrier()
 
+
+
+
+    def check_y_perm(self, y_perm):
+        
+        """
+        Check if y_perm is a valid permutation matrix.
+        y_perm should be a binary matrix of shape [batch_size, num_vertices, num_vertices]
+        """
+
+        # Convert to int for exact checks
+        xi = y_perm.to(torch.int32)
+
+        # Row & col sum checks
+        row_sums = xi.sum(dim=-1)  # shape: (16, 192)
+        col_sums = xi.sum(dim=-2)  # shape: (16, 192)
+
+        rows_per_matrix = (row_sums == 1).all(dim=1)
+        cols_per_matrix = (col_sums == 1).all(dim=1)
+
+        # Final validity
+        valid_per_matrix = rows_per_matrix & cols_per_matrix
+        
+        assert valid_per_matrix.all(), f"Invalid permutation matrix detected! Rows per matrix: {rows_per_matrix}, Cols per matrix: {cols_per_matrix}"
+
+    
         
 

@@ -21,7 +21,6 @@ fusion: patch_concat # or feature_concat
 
 # optimization
 sinkhorn_iterations: 100
-label_smoothing: 0.0
 vertex_loss_weight: 1.0
 perm_loss_weight: 10.0
 
@@ -29,6 +28,5 @@ perm_loss_weight: 10.0
 batch_size: ${...run_type.batch_size}
 start_epoch: 0
 num_epochs: 200
-milestone: 0
 learning_rate: 3e-4
 weight_decay: 1e-4
