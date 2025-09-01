@@ -428,9 +428,6 @@ class P3Dataset(Dataset):
 
         coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.experiment.model.tokenizer.shuffle_tokens)
 
-        if self.cfg.experiment.model.predict_valence:
-            coords_seqs = self.add_vertex_valence_to_seq(coords_seqs)
-
         coords_seqs = torch.LongTensor(coords_seqs)
         if self.cfg.experiment.model.tokenizer.shuffle_tokens:
             perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)

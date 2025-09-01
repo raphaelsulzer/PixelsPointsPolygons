@@ -89,9 +89,7 @@ class Pix2PolyTrainer(Trainer):
         # Init loss functions
         
         self.loss_fn_dict["coords"] = nn.CrossEntropyLoss(ignore_index=self.cfg.experiment.model.tokenizer.pad_idx)
-        
-        self.loss_fn_dict["valency"] = nn.CrossEntropyLoss(ignore_index=self.cfg.experiment.model.tokenizer.pad_idx)
-        
+                
         self.loss_fn_dict["perm"] = nn.BCELoss()
     
     
@@ -233,7 +231,6 @@ class Pix2PolyTrainer(Trainer):
 
         loss_meter = AverageMeter()
         coord_loss_meter = AverageMeter()
-        valency_loss_meter = AverageMeter()
         perm_loss_meter = AverageMeter()
 
         loader = self.progress_bar(self.val_loader)
@@ -260,27 +257,12 @@ class Pix2PolyTrainer(Trainer):
 
             preds, perm_mat = self.model(x_image, x_lidar, y_input)
             
-            if self.cfg.experiment.model.predict_valence:
-                y_expected_coords, y_expected_valences = self.split_coord_and_valence(y_expected)
-                preds_coords, preds_valences = self.split_coord_and_valence(preds)
-                
-                coords_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["coords"](preds_coords.reshape(-1, preds_coords.shape[-1]), y_expected_coords.reshape(-1))
-                valency_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["valency"](preds_valences.reshape(-1, preds_valences.shape[-1]), y_expected_valences.reshape(-1))
-                
-                
-                
-            else:
-                coords_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["coords"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
-                
-                valency_loss = torch.tensor(0.0)
-
-                
+            coords_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["coords"](preds.reshape(-1, preds.shape[-1]), y_expected.reshape(-1))
             
             perm_loss = self.cfg.experiment.model.perm_loss_weight*self.loss_fn_dict["perm"](perm_mat, y_perm)
 
-            loss = coords_loss + valency_loss + perm_loss
+            loss = coords_loss + perm_loss
             coord_loss_meter.update(coords_loss.item(), batch_size)
-            valency_loss_meter.update(valency_loss.item(), batch_size)
             perm_loss_meter.update(perm_loss.item(), batch_size)
             loss_meter.update(loss.item(), batch_size)
             
@@ -292,7 +274,6 @@ class Pix2PolyTrainer(Trainer):
         loss_dict = {
             'total_loss': self.average_across_gpus(loss_meter),
             'coords_loss': self.average_across_gpus(coord_loss_meter),
-            'valency_loss': self.average_across_gpus(valency_loss_meter),
             'perm_loss': self.average_across_gpus(perm_loss_meter),
         }
         self.logger.info(f"Validation loss: {loss_dict['total_loss']:.3f}")
@@ -310,7 +291,6 @@ class Pix2PolyTrainer(Trainer):
 
         loss_meter = AverageMeter()
         coords_loss_meter = AverageMeter()
-        valency_loss_meter = AverageMeter()
         perm_loss_meter = AverageMeter()
         
         loader = self.progress_bar(self.train_loader)
@@ -334,24 +314,13 @@ class Pix2PolyTrainer(Trainer):
             y_expected = y_sequence[:, 1:] # we do not need the first token as expected, because it is always the BOS token and not predicted
 
             sequence_pred, perm_pred = self.model(x_image, x_lidar, y_input)
-            
-            
-            if self.cfg.experiment.model.predict_valence:
-                y_expected, y_expected_valences = self.split_coord_and_valence(y_expected)
-                sequence_pred, sequence_pred_valences = self.split_coord_and_valence(sequence_pred)
-                
-                coords_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["coords"](sequence_pred.reshape(-1, sequence_pred.shape[-1]), y_expected.reshape(-1))
-                valency_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["valency"](sequence_pred_valences.reshape(-1, sequence_pred_valences.shape[-1]), y_expected_valences.reshape(-1))
-                
-            else:
-                valency_loss = torch.tensor(0.0)
 
-                coords_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["coords"](sequence_pred.reshape(-1, sequence_pred.shape[-1]), y_expected.reshape(-1))
+            coords_loss = self.cfg.experiment.model.vertex_loss_weight*self.loss_fn_dict["coords"](sequence_pred.reshape(-1, sequence_pred.shape[-1]), y_expected.reshape(-1))
                 
                 
             perm_loss = self.cfg.experiment.model.perm_loss_weight*self.loss_fn_dict["perm"](perm_pred, y_perm)
 
-            loss = coords_loss + valency_loss + perm_loss
+            loss = coords_loss + perm_loss
 
             self.optimizer.zero_grad(set_to_none=True)
             loss.backward()
@@ -361,7 +330,6 @@ class Pix2PolyTrainer(Trainer):
 
             loss_meter.update(loss.item(), batch_size)
             coords_loss_meter.update(coords_loss.item(), batch_size)
-            valency_loss_meter.update(valency_loss.item(), batch_size)
             perm_loss_meter.update(perm_loss.item(), batch_size)
 
             lr = get_lr(self.optimizer)
@@ -375,7 +343,6 @@ class Pix2PolyTrainer(Trainer):
         loss_dict = {
             'total_loss': self.average_across_gpus(loss_meter),
             'coords_loss': self.average_across_gpus(coords_loss_meter),
-            'valency_loss': self.average_across_gpus(valency_loss_meter),
             'perm_loss': self.average_across_gpus(perm_loss_meter),
         }
         

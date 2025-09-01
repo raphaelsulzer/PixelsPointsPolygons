@@ -230,7 +230,7 @@ class EncoderDecoder(nn.Module):
         super().__init__()
         self.cfg = cfg
         
-        self.token_mode = 3 if self.cfg.experiment.model.predict_valence else 2
+        self.token_mode = 2
 
         self.encoder = encoder
         self.decoder = decoder
