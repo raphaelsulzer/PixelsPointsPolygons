@@ -82,6 +82,8 @@ export TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5;8.0;8.6"
 conda install -c nvidia/label/cuda-12.1.1 cuda-toolkit=12.1.1 -y
 pip install -r requirements-torch-cuda.txt
 
+# TODO: using CUDA 12.1 now, but now the AFM module does not compile anymore, need to fix that
+
 # conda install -c nvidia/label/cuda-11.7.1 cuda-toolkit=11.7.1 -y
 # pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2
 
