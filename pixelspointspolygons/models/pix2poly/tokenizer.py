@@ -8,7 +8,7 @@ class Tokenizer:
 
         self.cfg = cfg
         
-        self.token_mode = 3 if self.cfg.experiment.model.predict_valence else 2
+        self.token_mode = 2
 
         self.num_bins=self.cfg.experiment.model.tokenizer.num_bins
         self.width=self.cfg.experiment.encoder.in_width
