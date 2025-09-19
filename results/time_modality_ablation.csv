@@ -1,7 +1,0 @@
-,IoU,C-IoU,NR,prediction_time,num_params
-pix2poly/v3_image_vit_bs4x8,0.705,0.61,0.789,0.666,31.9
-pix2poly/lidar_pp_vit_bs2x16_mnv64,0.811,0.718,0.844,0.669,31.9
-pix2poly/early_fusion_bs2x16_mnv64,0.857,0.772,0.875,0.672,34.6
-hisup/v3_image_vit_cnn_bs4x12,0.779,0.653,0.789,0.043,30.8
-hisup/lidar_pp_vit_cnn_bs2x16_mnv64,0.825,0.689,0.789,0.0462,30.8
-hisup/early_fusion_vit_cnn_bs2x16_mnv64,0.835,0.712,0.814,0.0465,33.5

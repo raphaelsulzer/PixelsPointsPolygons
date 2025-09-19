@@ -2,7 +2,7 @@ name: PixelsPointsPolygons
 size: ${..encoder.in_size}
 in_path: ${host.dataset_root}/${..dataset.name}_dataset/data/${.size}
 out_path: ${host.model_root}/${..dataset.name}_output
-annotation_type: buildings
+annotation_type: blocks
 country: all
 annotations:
   train: ${..in_path}/annotations/${..annotation_type}/annotations_${..country}_train.json
