@@ -1,13 +1,15 @@
 defaults:
+  - /dataset: p3
   - /encoder: early_fusion_vit
   - /model: pix2poly
   - _self_
 
 name: early_fusion_bs2x16_mnv64
 group_name: v2_${.model.name}
+project_name: HiSup
 
 lidar_dropout: null
 
-country: all
-
-annotation_type: blocks
+dataset:
+  country: all
+  annotation_type: blocks

@@ -22,30 +22,19 @@ from ..datasets import get_train_loader, get_val_loader, get_test_loader
 from .predictor import Predictor
 
 class Pix2PolyPredictor(Predictor):
-    
-    def setup_tokenizer(self):
-        self.tokenizer = Tokenizer(num_classes=1,
-            num_bins=self.cfg.experiment.model.tokenizer.num_bins,
-            width=self.cfg.experiment.encoder.in_width,
-            height=self.cfg.experiment.encoder.in_height,
-            max_len=self.cfg.experiment.model.tokenizer.max_len
-        )
-        self.cfg.experiment.model.tokenizer.pad_idx = self.tokenizer.PAD_code
-        self.cfg.experiment.model.tokenizer.max_len = self.cfg.experiment.model.tokenizer.n_vertices*2+2
-        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.n_vertices*2+1
         
-    def setup_model_and_load_checkpoint(self):
+    def setup_model(self):
         
-        self.setup_tokenizer()
+        self.tokenizer = Tokenizer(self.cfg)
         self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
         self.model.eval()
         self.model.to(self.cfg.host.device)
-        self.load_checkpoint()
     
     def predict_dataset(self, split="val"):
         
-        self.setup_model_and_load_checkpoint()
-        
+        self.setup_model()
+        self.load_checkpoint()
+
         if split == "train":
             self.loader = get_train_loader(self.cfg,tokenizer=self.tokenizer,logger=self.logger)
         elif split == "val":
@@ -66,6 +55,10 @@ class Pix2PolyPredictor(Predictor):
         time_dict["prediction_time"] = (time.time() - t0) / len(self.loader.dataset)
         
         if self.local_rank == 0:
+            if not len(coco_predictions):
+                self.logger.warning("No polygons predicted. Check your model and data loader.")
+            else:
+                self.logger.info(f"Predicted {len(coco_predictions)} polygons.")
             prediction_outfile = self.cfg.evaluation.pred_file
             self.logger.info(f"Saving predictions to {prediction_outfile}")
             os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
@@ -83,7 +76,7 @@ class Pix2PolyPredictor(Predictor):
         model.eval()
         
         coco_predictions = []
-        for x_image, x_lidar, y_mask, y_corner_mask, y_sequence, y_perm, image_ids in self.progress_bar(loader):
+        for x_image, x_lidar, y_sequence, y_perm, image_ids in self.progress_bar(loader):
             
             if self.cfg.experiment.encoder.use_images:
                 x_image = x_image.to(self.device, non_blocking=True)
@@ -102,8 +95,9 @@ class Pix2PolyPredictor(Predictor):
         image, image_pillow = self.load_image_from_file(img_infile)
         lidar = self.load_lidar_from_file(lidar_infile)
 
-        self.setup_model_and_load_checkpoint()
-        
+        self.setup_model()
+        self.load_checkpoint()
+
         with torch.no_grad():
             
             if self.cfg.experiment.encoder.use_images:
@@ -114,16 +108,10 @@ class Pix2PolyPredictor(Predictor):
             batch_polygons = self.batch_to_polygons(image, lidar, self.model, self.tokenizer)
             self.plot_prediction(batch_polygons[0], image=image, image_np=image_pillow, lidar=lidar, outfile=outfile)
 
-    def batch_to_polygons(self, x_images, x_lidar, model, tokenizer):
-        """Takes one batch with samples of images and/or lidar data and returns the polygons for each sample of the batch."""
+    
+    def coord_and_perm_to_polygons(self, coord_preds, perm_preds):
         
-        ### need this so I do not have to pass the model and tokenizer to the several polygonization functions
-        self.tokenizer = tokenizer
-        self.model = model
-        
-        batch_preds, batch_confs, perm_preds = self.test_generate(x_images,x_lidar)
-        
-        vertex_coords, _ = self.postprocess(batch_preds, batch_confs)
+        vertex_coords = self.postprocess(coord_preds)
 
         coords = []
         for i in range(len(vertex_coords)):
@@ -131,7 +119,7 @@ class Pix2PolyPredictor(Predictor):
                 coord = torch.from_numpy(vertex_coords[i])
             else:
                 coord = torch.tensor([])
-            padd = torch.ones((self.cfg.experiment.model.tokenizer.n_vertices - len(coord), 2)).fill_(self.cfg.experiment.model.tokenizer.pad_idx)
+            padd = torch.ones((self.cfg.experiment.model.tokenizer.max_num_vertices - len(coord), 2)).fill_(self.cfg.experiment.model.tokenizer.pad_idx)
             coord = torch.cat([coord, padd], dim=0)
             coords.append(coord)
             
@@ -150,6 +138,20 @@ class Pix2PolyPredictor(Predictor):
             
         return batch_polygons_processed
         
+        
+    
+    def batch_to_polygons(self, x_images, x_lidar, model, tokenizer):
+        """Takes one batch with samples of images and/or lidar data and returns the polygons for each sample of the batch."""
+        
+        ### need this so I do not have to pass the model and tokenizer to the several polygonization functions
+        self.tokenizer = tokenizer
+        self.model = model
+        
+        coord_preds, coord_confs, perm_preds = self.test_generate(x_images,x_lidar)
+        
+        return self.coord_and_perm_to_polygons(coord_preds, perm_preds)
+
+        
     def test_generate(self, x_images, x_lidar, top_k=0, top_p=1):
         
         batch_size = x_images.size(0) if x_images is not None else x_lidar.size(0)
@@ -164,8 +166,7 @@ class Pix2PolyPredictor(Predictor):
             sample = lambda preds: torch.softmax(preds, dim=-1).argmax(dim=-1).view(-1, 1)
 
         with torch.no_grad():
-            ## a bit ugly :/
-            if self.cfg.host.multi_gpu:
+            if self.is_ddp:
                 
                 if self.cfg.experiment.encoder.use_images and not self.cfg.experiment.encoder.use_lidar:
                     features = self.model.module.encoder(x_images)
@@ -189,7 +190,7 @@ class Pix2PolyPredictor(Predictor):
                 
                 
             for i in range(self.cfg.experiment.model.tokenizer.generation_steps):
-                if self.cfg.host.multi_gpu:
+                if self.is_ddp:
                     preds, feats = self.model.module.predict(features, batch_preds)
                 else:
                     preds, feats = self.model.predict(features, batch_preds)
@@ -201,7 +202,7 @@ class Pix2PolyPredictor(Predictor):
                 preds = sample(preds)
                 batch_preds = torch.cat([batch_preds, preds], dim=1)
 
-            if self.cfg.host.multi_gpu:
+            if self.is_ddp:
                 perm_preds = self.model.module.scorenet1(feats) + torch.transpose(self.model.module.scorenet2(feats), 1, 2)
             else:
                 perm_preds = self.model.scorenet1(feats) + torch.transpose(self.model.scorenet2(feats), 1, 2)
@@ -283,26 +284,26 @@ class Pix2PolyPredictor(Predictor):
 
         return batch
 
-    def postprocess(self, batch_preds, batch_confs):
+    def postprocess(self, batch_preds):
         EOS_idxs = (batch_preds == self.tokenizer.EOS_code).float().argmax(dim=-1)
         ## sanity check
-        invalid_idxs = ((EOS_idxs - 1) % 2 != 0).nonzero().view(-1)
+        invalid_idxs = ((EOS_idxs - 1) % self.tokenizer.token_mode != 0).nonzero().view(-1)
         EOS_idxs[invalid_idxs] = 0
 
         all_coords = []
-        all_confs = []
+        # all_confs = []
         for i, EOS_idx in enumerate(EOS_idxs.tolist()):
             if EOS_idx == 0:
                 all_coords.append(None)
-                all_confs.append(None)
+                # all_confs.append(None)
                 continue
             coords = self.tokenizer.decode(batch_preds[i, :EOS_idx+1])
-            confs = [round(batch_confs[j][i].item(), 3) for j in range(len(coords))]
+            # confs = [round(batch_confs[j][i].item(), 3) for j in range(len(coords))]
 
             all_coords.append(coords)
-            all_confs.append(confs)
+            # all_confs.append(confs)
 
-        return all_coords, all_confs
+        return all_coords
 
     def scores_to_permutations(self, scores):
         """

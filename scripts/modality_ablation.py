@@ -51,7 +51,7 @@ def predict_all():
                           overrides=overrides)
             OmegaConf.resolve(cfg)
             
-            logger.info(f"Predict {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
+            logger.info(f"Predict {experiment}/{name} on {cfg.experiment.dataset.country}/{cfg.evaluation.split}")
             # pbar.set_description(f"Predict and evaluate {experiment} on {cfg.evaluation.split}")
             pbar.refresh()  
           
@@ -74,12 +74,12 @@ def predict_all():
             # time_dict = predictor.predict_dataset(split=cfg.evaluation.split)
             # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
             # res_dict.update(time_dict)
-            # time_dict_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv".replace("metrics", "time")
+            # time_dict_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.dataset.country}_{cfg.evaluation.split}.csv".replace("metrics", "time")
             # df = pd.read_csv(time_dict_file)
             # time_dict = df.to_dict(orient="records")[0]
             
 
-            logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
+            logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.dataset.country}/{cfg.evaluation.split}")
             
             #############################################
             ################## EVALUATE #################
@@ -88,7 +88,7 @@ def predict_all():
             ### Evaluate
             ee = Evaluator(cfg)
             ee.pbar_disable = False
-            ee.load_gt(cfg.dataset.annotations[cfg.evaluation.split])
+            ee.load_gt(cfg.experiment.dataset.annotations[cfg.evaluation.split])
             ee.load_predictions(cfg.evaluation.pred_file)
             res_dict=ee.evaluate(print_info=False)
 
@@ -99,16 +99,12 @@ def predict_all():
 
         pbar.close()
         df = pd.DataFrame.from_dict(exp_dict, orient='index')
-
-        # pd.concat(df_list, axis=0, ignore_index=False)
-        # Save the DataFrame to a CSV file
-        # output_dir = os.path.join(self.cfg.host.data_root, "eval_results")
         
         print("\n")
         print(df)
         print("\n")
         
-        cfg.evaluation.eval_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.country}_{cfg.evaluation.split}.csv"
+        cfg.evaluation.eval_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.dataset.country}_{cfg.evaluation.split}.csv"
         
         logger.info(f"Save eval file to {cfg.evaluation.eval_file}")
         df.to_csv(cfg.evaluation.eval_file, index=True, float_format="%.3g")

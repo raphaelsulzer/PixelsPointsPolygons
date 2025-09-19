@@ -6,7 +6,7 @@ use_lidar: false
 convnext:
     type: ConvNeXt
     pretrained: True
-    checkpoint_file: ${...host.data_root}/checkpoints/backbones/convnextv2-tiny-1k-224
+    checkpoint_file: ${...dataset.out_path}/backbones/convnextv2-tiny-1k-224
 
 in_size: 224
 in_height: ${.in_size}

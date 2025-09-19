@@ -56,8 +56,6 @@ class FFLTrainer(Trainer):
     
     def setup_loss_fn_dict(self):
         loss_func = build_combined_loss(self.cfg).to(self.local_rank)
-        # if self.cfg.host.multi_gpu:
-        #     loss_func = DDP(loss_func, device_ids=[self.local_rank])
         self.loss_func = loss_func
 
     def visualization(self, loader, epoch, coco=None, show=False, num_images=2):
@@ -199,7 +197,7 @@ class FFLTrainer(Trainer):
         if self.local_rank == 0:
             # predictor = Predictor(self.cfg)
             evaluator = Evaluator(self.cfg)
-            evaluator.load_gt(self.cfg.dataset.annotations["val"])
+            evaluator.load_gt(self.cfg.experiment.dataset.annotations["val"])
         else:
             # predictor = None
             evaluator = None
@@ -275,7 +273,7 @@ class FFLTrainer(Trainer):
 
                     wandb_dict[f"val_num_polygons"] = len(coco_predictions)
 
-                    prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.experiment.country}_{self.cfg.evaluation.split}", f"epoch_{epoch}.json")
+                    prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.experiment.dataset.country}_{self.cfg.evaluation.split}", f"epoch_{epoch}.json")
                     os.makedirs(os.path.dirname(prediction_outfile), exist_ok=True)
                     with open(prediction_outfile, "w") as fp:
                         fp.write(json.dumps(coco_predictions))
@@ -286,7 +284,7 @@ class FFLTrainer(Trainer):
                     evaluator.print_dict_results(val_metrics_dict)
                     
                     if val_metrics_dict['IoU'] > self.cfg.training.best_val_iou:
-                        best_prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.experiment.country}_{self.cfg.evaluation.split}", "best_val_iou.json")
+                        best_prediction_outfile = os.path.join(self.cfg.output_dir, f"predictions_{self.cfg.experiment.dataset.country}_{self.cfg.evaluation.split}", "best_val_iou.json")
                         shutil.copyfile(prediction_outfile, best_prediction_outfile)
                         self.logger.info(f"Copied predictions to {best_prediction_outfile}")
                         
@@ -302,7 +300,7 @@ class FFLTrainer(Trainer):
                             wandb.log(wandb_dict)
                             
                 # Sync all processes before next epoch
-                if self.cfg.host.multi_gpu:
+                if self.is_ddp:
                     dist.barrier()
 
 

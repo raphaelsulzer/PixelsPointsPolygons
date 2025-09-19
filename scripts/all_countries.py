@@ -27,7 +27,6 @@ def predict_and_evaluate():
         ("p2p_fusion", "v0_all_bs4x16")
         ]
     
-    
     setup_hydraconf()
 
     cli_overrides = parse_cli_overrides()
@@ -47,7 +46,7 @@ def predict_and_evaluate():
                           overrides=overrides)
             OmegaConf.resolve(cfg)
             
-            logger.info(f"Predict {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
+            logger.info(f"Predict {experiment}/{name} on {cfg.experiment.dataset.country}/{cfg.evaluation.split}")
             pbar.refresh()  
           
             #############################################
@@ -68,7 +67,7 @@ def predict_and_evaluate():
             # time_dict = predictor.predict_dataset(split=cfg.evaluation.split)
             # res_dict["num_params"] = count_trainable_parameters(predictor.model)/1e6
 
-            logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.country}/{cfg.evaluation.split}")
+            logger.info(f"Evaluate {experiment}/{name} on {cfg.experiment.dataset.country}/{cfg.evaluation.split}")
                       
             #############################################
             ################## EVALUATE #################
@@ -77,7 +76,7 @@ def predict_and_evaluate():
             ### Evaluate
             ee = Evaluator(cfg)
             ee.pbar_disable = False
-            ee.load_gt(cfg.dataset.annotations[cfg.evaluation.split])
+            ee.load_gt(cfg.experiment.dataset.annotations[cfg.evaluation.split])
             ee.load_predictions(cfg.evaluation.pred_file)
             res_dict=ee.evaluate(print_info=False)
             # res_dict.update(time_dict)
@@ -88,16 +87,12 @@ def predict_and_evaluate():
 
         pbar.close()
         df = pd.DataFrame.from_dict(exp_dict, orient='index')
-
-        # pd.concat(df_list, axis=0, ignore_index=False)
-        # Save the DataFrame to a CSV file
-        # output_dir = os.path.join(self.cfg.host.data_root, "eval_results")
         
         print("\n")
         print(df)
         print("\n")
         
-        cfg.evaluation.eval_file = f"{cfg.evaluation.eval_file}_all_countries_{cfg.experiment.country}_{cfg.evaluation.split}.csv"
+        cfg.evaluation.eval_file = f"{cfg.evaluation.eval_file}_all_countries_{cfg.experiment.dataset.country}_{cfg.evaluation.split}.csv"
         
         logger.info(f"Save eval file to {cfg.evaluation.eval_file}")
         df.to_csv(cfg.evaluation.eval_file, index=True, float_format="%.3g")

@@ -1,13 +1,15 @@
 defaults:
+  - /dataset: p3
   - /encoder: vit_dinov2
   - /model: pix2poly
   - _self_
 
 name: dinov2
 group_name: v3_${.model.name}
+project_name: HiSup
 
 lidar_dropout: null
 
-country: CH
-
-annotation_type: blocks
+dataset:
+  country: CH
+  annotation_type: blocks

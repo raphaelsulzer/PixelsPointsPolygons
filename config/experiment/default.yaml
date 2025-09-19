@@ -1,4 +1,5 @@
 defaults:
+  - /dataset: p3 # This is the dataset used for the experiment. You can choose from [p3, rgd]
   - /encoder: vit_cnn # This is the encoder used for the model. You can choose from [vit_cnn, vit, pointpillars_vit, pointpillars_vit_cnn, early_fusion_vit_cnn, early_fusion_vit]
   - /model: ffl # This is the model. You can choose from [ffl, hisup, p2p].
   - /polygonization: asm_acm # This is the polygonization method used for Frame Field Learning (ffl)
@@ -6,7 +7,9 @@ defaults:
 
 name: my_experiment # This is the name of the experiment, used as folder name and Weights and Biases run name
 group_name: my_group # This is the Weights and Biases group name
+project_name: my_project # This is the Weights and Biases project name
 
-country: CH # This is the country code. You can choose from [NY, CH, NZ, all]
 
-annotation_type: blocks
+dataset:
+  country: CH # This is the country code for the dataset, used in the output file names. You can choose from [CH, NY, NZ, all]
+  annotation_type: blocks # This is the annotation type for the dataset, used in the output file names. You can choose from [blocks, buildings]

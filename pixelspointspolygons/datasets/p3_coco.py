@@ -4,6 +4,12 @@ import cv2
 import torch
 import rasterio
 
+import warnings
+from rasterio.errors import NotGeoreferencedWarning
+import rasterio
+
+warnings.filterwarnings("ignore", category=NotGeoreferencedWarning)
+
 import numpy as np
 
 from sklearn.preprocessing import MinMaxScaler
@@ -19,7 +25,7 @@ def affine_transform(pt, t):
     new_pt = np.dot(t, new_pt)
     return new_pt[:2]
 
-class PPPDataset(Dataset):
+class P3Dataset(Dataset):
     def __init__(self, cfg, split,
                  transform=None,
                  **kwargs):
@@ -30,20 +36,20 @@ class PPPDataset(Dataset):
         self.cfg = cfg
         self.split = split
 
-        self.dataset_dir = self.cfg.dataset.path
+        self.dataset_dir = self.cfg.experiment.dataset.in_path
         if not os.path.isdir(self.dataset_dir):
             raise NotADirectoryError(f"Dataset directory {self.dataset_dir} does not exist")
         
-        ## FFL currently still has a specific annotations file which includes the path to the .pt file with the frame field stored
+        ## FFL currently still has a specific annotations file which includes the path to the .pt file which has the frame field stored
         if self.cfg.experiment.model.name == "ffl":
             # self.ann_file = os.path.join(self.dataset_dir,f"annotations_ffl_{split}.json")
-            self.ann_file = self.cfg.dataset.annotations[split].replace("annotations_", "annotations_ffl_")
-            self.stats_filepath = self.cfg.dataset.ffl_stats[split]
+            self.ann_file = self.cfg.experiment.dataset.annotations[split].replace("annotations_", "annotations_ffl_")
+            self.stats_filepath = self.cfg.experiment.dataset.ffl_stats[split]
             if not os.path.isfile(self.stats_filepath):
                 raise FileExistsError(self.stats_filepath)
             self.stats = torch.load(self.stats_filepath)
         else:
-            self.ann_file = self.cfg.dataset.annotations[split]
+            self.ann_file = self.cfg.experiment.dataset.annotations[split]
         if not os.path.isfile(self.ann_file):
             raise FileNotFoundError(self.ann_file)
 
@@ -88,9 +94,6 @@ class PPPDataset(Dataset):
 
             points[:,0] = np.clip(points[:,0],0,img_info['width'])
             points[:,1] = np.clip(points[:,1],0,img_info['height'])
-            
-            # if not len(points) > 3:
-            #     self.logger.warning(f"Lidar file {lidar_file_name} only has {len(points)} points.")
 
         else:
             raise FileExistsError(f"Lidar file {lidar_file_name} missing.")
@@ -109,16 +112,18 @@ class PPPDataset(Dataset):
             raise FileNotFoundError(f"{filename}")
         return filename
     
-    def apply_augmentations_to_lidar(self, augmentation_replay, lidar):
+    def apply_d4_augmentations_to_lidar(self, augmentation_replay, lidar):
         
         if self.split != 'train':
+            return torch.from_numpy(lidar)
+        
+        if self.cfg.experiment.encoder.augmentations is None or not 'D4' in self.cfg.experiment.encoder.augmentations:
             return torch.from_numpy(lidar)
     
         d4_transform = augmentation_replay["transforms"][0]
         
         assert d4_transform["__class_fullname__"] == "D4"
         
-
         if not d4_transform['applied']:
             return torch.from_numpy(lidar)
         
@@ -201,7 +206,7 @@ class PPPDataset(Dataset):
 
         return crossfield_angle_mask
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
 
         if self.model_type == 'hisup':
             return self.__getitem__hisup(idx)
@@ -259,7 +264,7 @@ class PPPDataset(Dataset):
             augmentations = self.transform(image=image,masks=masks)
             
             if self.use_lidar:
-                ffl_data["lidar"] = self.apply_augmentations_to_lidar(augmentations["replay"], lidar)
+                ffl_data["lidar"] = self.apply_d4_augmentations_to_lidar(augmentations["replay"], lidar)
             
             ffl_data["image"] = augmentations['image']
             
@@ -294,27 +299,62 @@ class PPPDataset(Dataset):
         return ffl_data
         
     
-    def __getitem__pix2poly(self, index):
+    def shuffle_perm_matrix_by_indices(self, old_perm: torch.Tensor, shuffle_idxs: np.ndarray):
+        Nv = old_perm.shape[0]
+        padd_idxs = np.arange(len(shuffle_idxs), Nv)
+        shuffle_idxs = np.concatenate([shuffle_idxs, padd_idxs], axis=0)
+
+        transform_arr = torch.zeros_like(old_perm)
+        for i in range(len(shuffle_idxs)):
+            transform_arr[i, shuffle_idxs[i]] = 1.
+
+        # https://math.stackexchange.com/questions/2481213/adjacency-matrix-and-changing-order-of-vertices
+        new_perm = torch.mm(torch.mm(transform_arr, old_perm), transform_arr.T)
+
+        return new_perm
+    
+    
+    def add_vertex_valence_to_seq(self, coords_seq: list):
         
-        if not hasattr(self,"tokenizer"):
-            raise ValueError("Tokenizer not set. Please pass a tokenizer to the dataset class when using Pix2Poly.")
-        if self.tokenizer is None:
+        arr = np.array(coords_seq)[1:-1].reshape(-1,2)
+
+        # Find unique rows and their counts
+        uniq, counts = np.unique(arr, axis=0, return_counts=True)
+
+        # Map each row in arr back to its count
+        # idx gives the index of the matching unique row
+        _, idx = np.unique(arr, axis=0, return_inverse=True)
+        counts_col = counts[idx].reshape(-1, 1)
+
+        # Append to original array
+        result = np.hstack([arr, counts_col])
+        
+        result = result.flatten().tolist()
+        
+        # add start and end token
+        result = [coords_seq[0]] + result + [coords_seq[-1]]
+        
+        return result
+    
+    
+    def __getitem__pix2poly(self, index: int):
+        
+        """Get one image and/or LiDAR cloud with all its annotations from a numerical index."""
+        
+        if not hasattr(self,"tokenizer") or self.tokenizer is None:
             raise ValueError("Tokenizer not set. Please pass a tokenizer to the dataset class when using Pix2Poly.")
 
         img_id = self.tile_ids[index]
-        img_info = self.coco.loadImgs(img_id)[0]
-        ann_ids = self.coco.getAnnIds(imgIds=img_info['id'])
-        annotations = self.coco.loadAnns(ann_ids)  # annotations of all instances in an image.
+        img_info = self.coco.imgs[img_id]
 
         # load image
         if self.use_images:
             img_file = self.get_image_file(img_info)
-            # image = np.array(Image.open(img_file).convert("RGB"))
             with rasterio.open(img_file) as src:
                 image = src.read([1, 2, 3])  # shape (3, H, W)
             image = np.transpose(image, (1, 2, 0))  # (H, W, 3)
         else:
-            # make dummy image for albumentations to work
+            # make dummy image when using LiDAR only for albumentations to work
             image = np.zeros((img_info['width'], 
                             img_info['height'], 1), dtype=np.uint8)
 
@@ -325,46 +365,47 @@ class PPPDataset(Dataset):
         else:
             lidar = None
 
-        mask = np.zeros((img_info['width'], img_info['height']))
         corner_coords = []
-        corner_mask = np.zeros((img_info['width'], img_info['height']), dtype=np.float32)
-        perm_matrix = np.zeros((self.cfg.experiment.model.tokenizer.n_vertices, self.cfg.experiment.model.tokenizer.n_vertices), dtype=np.float32)
-        for ins in annotations:
-            segmentations = ins['segmentation']
-            for i, segm in enumerate(segmentations):
-                segm = np.array(segm).reshape(-1, 2)
-                segm[:, 0] = np.clip(segm[:, 0], 0, img_info['width'] - 1)
-                segm[:, 1] = np.clip(segm[:, 1], 0, img_info['height'] - 1)
-                points = segm[:-1]
+        perm_matrix = np.zeros((self.cfg.experiment.model.tokenizer.max_num_vertices, self.cfg.experiment.model.tokenizer.max_num_vertices), dtype=np.float32)
+        annotations = self.coco.imgToAnns[img_id]  # annotations of this tile
+        
+        if self.cfg.experiment.model.shuffle_polygons:
+            # shuffle the annotations to get a random order of polygons
+            np.random.shuffle(annotations)
+        
+        for ann in annotations:
+            polygons = ann['segmentation']
+            for poly in polygons:
+                
+                poly = np.array(poly).reshape(-1, 2)
+                poly[:, 0] = np.clip(poly[:, 0], 0, img_info['width'] - 1)
+                poly[:, 1] = np.clip(poly[:, 1], 0, img_info['height'] - 1)
+                assert (poly[0] == poly[-1]).all(), "COCO annotations should repeat first polygon point at the end."
+                points = poly[:-1]
                 corner_coords.extend(points.tolist())
-                mask += self.coco.annToMask(ins)
-        mask = mask / 255. if mask.max() == 255 else mask
-        mask = np.clip(mask, 0, 1)
 
         corner_coords = np.flip(np.round(corner_coords, 0), axis=-1).astype(np.int32)
 
-        if len(corner_coords) > 0.:
-            corner_mask[corner_coords[:, 0], corner_coords[:, 1]] = 1.
-
         ############# START: Generate gt permutation matrix. #############
         v_count = 0
-        for ins in annotations:
-            segmentations = ins['segmentation']
-            for idx, segm in enumerate(segmentations):
-                segm = np.array(segm).reshape(-1, 2)
-                points = segm[:-1]
+        for ann in annotations:
+            polygons = ann['segmentation']
+            for poly in polygons:
+                poly = np.array(poly).reshape(-1, 2)
+                assert (poly[0] == poly[-1]).all(), "COCO annotations should repeat first polygon point at the end."
+                points = poly[:-1]
                 for i in range(len(points)):
                     j = (i + 1) % len(points)
-                    if v_count + i > self.cfg.experiment.model.tokenizer.n_vertices - 1 or v_count + j > self.cfg.experiment.model.tokenizer.n_vertices - 1:
+                    if v_count + i > self.cfg.experiment.model.tokenizer.max_num_vertices - 1 or v_count + j > self.cfg.experiment.model.tokenizer.max_num_vertices - 1:
                         break
                     perm_matrix[v_count + i, v_count + j] = 1.
                 v_count += len(points)
 
-        for i in range(v_count, self.cfg.experiment.model.tokenizer.n_vertices):
+        for i in range(v_count, self.cfg.experiment.model.tokenizer.max_num_vertices):
             perm_matrix[i, i] = 1.
 
         # Workaround for open contours:
-        for i in range(self.cfg.experiment.model.tokenizer.n_vertices):
+        for i in range(self.cfg.experiment.model.tokenizer.max_num_vertices):
             row = perm_matrix[i, :]
             col = perm_matrix[:, i]
             if np.sum(row) == 0 or np.sum(col) == 0:
@@ -372,21 +413,118 @@ class PPPDataset(Dataset):
         perm_matrix = torch.from_numpy(perm_matrix)
         ############# END: Generate gt permutation matrix. #############
 
-        masks = [mask, corner_mask]
-
-        if len(corner_coords) > self.cfg.experiment.model.tokenizer.n_vertices:
-            corner_coords = corner_coords[:self.cfg.experiment.model.tokenizer.n_vertices]
+        if len(corner_coords) > self.cfg.experiment.model.tokenizer.max_num_vertices:
+            corner_coords = corner_coords[:self.cfg.experiment.model.tokenizer.max_num_vertices]
 
         if self.transform is not None: 
             
-            augmentations = self.transform(image=image, masks=masks, keypoints=corner_coords.tolist())
+            augmentations = self.transform(image=image, keypoints=corner_coords.tolist())
             
             if self.use_lidar:
-                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar)
+                lidar = self.apply_d4_augmentations_to_lidar(augmentations["replay"], lidar)
             
             image = augmentations['image']
-            mask = augmentations['masks'][0]
-            corner_mask = augmentations['masks'][1]
+            corner_coords = np.array(augmentations['keypoints'])
+
+        coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.experiment.model.tokenizer.shuffle_tokens)
+
+        coords_seqs = torch.LongTensor(coords_seqs)
+        if self.cfg.experiment.model.tokenizer.shuffle_tokens:
+            perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
+
+        
+        return image, lidar, coords_seqs, perm_matrix, torch.tensor([img_info['id']])
+
+
+
+
+
+    def __getitem__pix2poly_polygons(self, index: int):
+        
+        """Get one image and/or LiDAR cloud with all its annotations from a numerical index."""
+        
+        if not hasattr(self,"tokenizer") or self.tokenizer is None:
+            raise ValueError("Tokenizer not set. Please pass a tokenizer to the dataset class when using Pix2Poly.")
+
+        img_id = self.tile_ids[index]
+        img_info = self.coco.imgs[img_id]
+
+        # load image
+        if self.use_images:
+            img_file = self.get_image_file(img_info)
+            with rasterio.open(img_file) as src:
+                image = src.read([1, 2, 3])  # shape (3, H, W)
+            image = np.transpose(image, (1, 2, 0))  # (H, W, 3)
+        else:
+            # make dummy image when using LiDAR only for albumentations to work
+            image = np.zeros((img_info['width'], 
+                            img_info['height'], 1), dtype=np.uint8)
+
+        # load lidar
+        if self.use_lidar:
+            img_file = self.get_lidar_file(img_info)
+            lidar = self.load_lidar_points(img_file, img_info)
+        else:
+            lidar = None
+
+        corner_coords = []
+        perm_matrix = np.zeros((self.cfg.experiment.model.tokenizer.max_num_vertices, self.cfg.experiment.model.tokenizer.max_num_vertices), dtype=np.float32)
+        annotations = self.coco.imgToAnns[img_id]  # annotations of this tile
+        
+        if self.cfg.experiment.model.shuffle_polygons:
+            # shuffle the annotations to get a random order of polygons
+            np.random.shuffle(annotations)
+        
+        for ann in annotations:
+            polygons = ann['segmentation']
+            for poly in polygons:
+                poly = np.array(poly).reshape(-1, 2)
+                poly[:, 0] = np.clip(poly[:, 0], 0, img_info['width'] - 1)
+                poly[:, 1] = np.clip(poly[:, 1], 0, img_info['height'] - 1)
+                assert (poly[0] == poly[-1]).all(), "COCO annotations should repeat first polygon point at the end."
+                points = poly[:-1]
+                corner_coords.extend(points.tolist())
+
+        corner_coords = np.flip(np.round(corner_coords, 0), axis=-1).astype(np.int32)
+
+        ############# START: Generate gt permutation matrix. #############
+        v_count = 0
+        for ann in annotations:
+            polygons = ann['segmentation']
+            for poly in polygons:
+                poly = np.array(poly).reshape(-1, 2)
+                assert (poly[0] == poly[-1]).all(), "COCO annotations should repeat first polygon point at the end."
+                points = poly[:-1]
+                for i in range(len(points)):
+                    j = (i + 1) % len(points)
+                    if v_count + i > self.cfg.experiment.model.tokenizer.max_num_vertices - 1 or v_count + j > self.cfg.experiment.model.tokenizer.max_num_vertices - 1:
+                        break
+                    perm_matrix[v_count + i, v_count + j] = 1.
+                v_count += len(points)
+
+        for i in range(v_count, self.cfg.experiment.model.tokenizer.max_num_vertices):
+            perm_matrix[i, i] = 1.
+
+        # Workaround for open contours:
+        for i in range(self.cfg.experiment.model.tokenizer.max_num_vertices):
+            row = perm_matrix[i, :]
+            col = perm_matrix[:, i]
+            if np.sum(row) == 0 or np.sum(col) == 0:
+                perm_matrix[i, i] = 1.
+        perm_matrix = torch.from_numpy(perm_matrix)
+        ############# END: Generate gt permutation matrix. #############
+
+        if len(corner_coords) > self.cfg.experiment.model.tokenizer.max_num_vertices:
+            corner_coords = corner_coords[:self.cfg.experiment.model.tokenizer.max_num_vertices]
+
+        if self.transform is not None: 
+            
+            augmentations = self.transform(image=image, keypoints=corner_coords.tolist())
+            
+            if self.use_lidar:
+                lidar = self.apply_d4_augmentations_to_lidar(augmentations["replay"], lidar)
+            
+            image = augmentations['image']
             corner_coords = np.array(augmentations['keypoints'])
 
         coords_seqs, rand_idxs = self.tokenizer(corner_coords, shuffle=self.cfg.experiment.model.tokenizer.shuffle_tokens)
@@ -394,7 +532,8 @@ class PPPDataset(Dataset):
         if self.cfg.experiment.model.tokenizer.shuffle_tokens:
             perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
 
-        return image, lidar, mask[None, ...], corner_mask[None, ...], coords_seqs, perm_matrix, torch.tensor([img_info['id']])
+        
+        return image, lidar, coords_seqs, perm_matrix, torch.tensor([img_info['id']])
 
 
     def __getitem__hisup(self, index):
@@ -449,7 +588,7 @@ class PPPDataset(Dataset):
             augmentations = self.transform(image=image, masks=[mask], keypoints=corner_coords)
                         
             if self.use_lidar:
-                lidar = self.apply_augmentations_to_lidar(augmentations["replay"], lidar)
+                lidar = self.apply_d4_augmentations_to_lidar(augmentations["replay"], lidar)
             
             image = augmentations['image']
             corner_coords = np.flip(augmentations['keypoints'],axis=-1)
@@ -550,14 +689,14 @@ class PPPDataset(Dataset):
     
     
 
-class TestDataset(PPPDataset):
+class TestDataset(P3Dataset):
     def __init__(self,cfg,**kwargs):
         super().__init__(cfg,'test',**kwargs)
 
-class ValDataset(PPPDataset):
+class ValDataset(P3Dataset):
     def __init__(self,cfg,**kwargs):
         super().__init__(cfg,'val',**kwargs)
 
-class TrainDataset(PPPDataset):
+class TrainDataset(P3Dataset):
     def __init__(self,cfg,**kwargs):
         super().__init__(cfg,'train',**kwargs)

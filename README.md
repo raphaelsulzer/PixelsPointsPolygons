@@ -488,21 +488,6 @@ pip install .
 ⚠️ **Warning**: The implementation of the LiDAR point cloud encoder uses Open3D-ML. Currently, Open3D-ML officially only supports the PyTorch version specified in `requirements-torch-cuda.txt`.
 
 
-<!-- ## Model Zoo
-
-
-| Model                     | \<model>  | Encoder                   | \<encoder>            |Image  |LiDAR  | IoU       | C-IoU     |
-|---------------            |----       |---------------            |---------------        |---    |---    |-----      |-----       |
-| Frame Field Learning      |\<ffl>     | Vision Transformer (ViT)  | \<vit_cnn>            | ✅    |       | 0.85      | 0.90      |
-| Frame Field Learning      |\<ffl>     | PointPillars (PP) + ViT   | \<pp_vit_cnn>         |       | ✅    | 0.80      | 0.88      |
-| Frame Field Learning      |\<ffl>     | PP+ViT \& ViT             | \<fusion_vit_cnn>     | ✅    |✅     | 0.78      | 0.85      |
-| HiSup                     |\<hisup>   | Vision Transformer (ViT)  | \<vit_cnn>            | ✅    |       | 0.85      | 0.90      |
-| HiSup                     |\<hisup>   | PointPillars (PP) + ViT   | \<pp_vit_cnn>         |       | ✅    | 0.80      | 0.88      |
-| HiSup                     |\<hisup>   | PP+ViT \& ViT             | \<fusion_vit>         | ✅    |✅     | 0.78      | 0.85      |
-| Pix2Poly                  |\<pix2poly>| Vision Transformer (ViT)  | \<vit>                | ✅    |       | 0.85      | 0.90      |
-| Pix2Poly                  |\<pix2poly>| PointPillars (PP) + ViT   | \<pp_vit>             |       | ✅    | 0.80      | 0.88      |
-| Pix2Poly                  |\<pix2poly>| PP+ViT \& ViT             | \<fusion_vit>         | ✅    |✅     | 0.78      | 0.85      | -->
-
 ### Setup
 
 The project supports hydra configuration which allows to modify any parameter either from a `.yaml` file or directly from the command line.
@@ -514,20 +499,6 @@ To view all available configuration options run
 python scripts/train.py --help
 ```
 
-
-
-<!-- The most important parameters are described below:
-<details>
-<summary>CLI Parameters</summary>
-
-```text
-        ├── processed-flag-all
-        ├── processed-flag-CH
-        └── processed-flag-NY
-            ... (8 files total)
-```
-
-</details> -->
 
 ### Predict demo tile
 
@@ -586,8 +557,8 @@ python scripts/train.py experiment=p2p_fusion checkpoint=latest
 
 If you use our work please cite
 ```bibtex
-@misc{sulzer2025p3dataset,
-      title={The P$^3$ dataset: Pixels, Points and Polygons for Multimodal Building Vectorization}, 
+@misc{sulzer2025p3datasetpixelspoints,
+      title={The P$^3$ Dataset: Pixels, Points and Polygons for Multimodal Building Vectorization}, 
       author={Raphael Sulzer and Liuyun Duan and Nicolas Girard and Florent Lafarge},
       year={2025},
       eprint={2505.15379},

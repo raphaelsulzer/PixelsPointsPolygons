@@ -24,46 +24,48 @@ def get_collate_fn(model):
 
 
 def get_test_loader(cfg,tokenizer=None,logger=None):
-    if cfg.dataset.name == 'inria':
+    if cfg.experiment.dataset.name == 'inria':
         raise NotImplementedError
-    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons"]:
+    elif cfg.experiment.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons","RoofGraphDataset"]:
         return get_test_loader_lidarpoly(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
     
     
 def get_val_loader(cfg,tokenizer=None,logger=None):
-    if cfg.dataset.name == 'inria':
+    if cfg.experiment.dataset.name == 'inria':
         return get_val_loader_inria(cfg,tokenizer,logger)
-    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons"]:
+    elif cfg.experiment.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons","RoofGraphDataset"]:
         return get_val_loader_lidarpoly(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
 
 def get_train_loader(cfg,tokenizer=None,logger=None):
-    if cfg.dataset.name == 'inria':
+    if cfg.experiment.dataset.name == 'inria':
         return get_train_loader_inria(cfg,tokenizer,logger)
-    elif cfg.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons"]:
-        return get_train_loader_lidarpoly(cfg,tokenizer,logger)
+    elif cfg.experiment.dataset.name in ['lidarpoly','p3',"PixelsPointsPolygons","RoofGraphDataset"]:
+        return get_train_loader_p3(cfg,tokenizer,logger)
     else:
         raise NotImplementedError
 
-def get_train_loader_lidarpoly(cfg,tokenizer=None,logger=None):
+def get_train_loader_p3(cfg,tokenizer=None,logger=None):
     
     transforms = []
-    if "D4" in cfg.experiment.encoder.augmentations:
-        transforms.append(A.D4(p=1.0))
-    if "Resize" in cfg.experiment.encoder.augmentations:
-        transforms.append(A.Resize(height=cfg.experiment.encoder.in_height, width=cfg.experiment.encoder.in_width))
-    if "ColorJitter" in cfg.experiment.encoder.augmentations:
-        transforms.append(A.ColorJitter())
-    if "GaussNoise" in cfg.experiment.encoder.augmentations:
-        transforms.append(A.GaussNoise())
-    if "Normalize" in cfg.experiment.encoder.augmentations:
-        # TODO:
-        # check what to do for ImageNet normalization for UNetResNet: https://pytorch.org/vision/stable/models.html
-        # and also this has to probably be removed for ViT. or check what is the correct way for that.
-        transforms.append(A.Normalize(mean=cfg.experiment.encoder.image_mean, std=cfg.experiment.encoder.image_std, max_pixel_value=cfg.experiment.encoder.image_max_pixel_value)) 
+    if cfg.experiment.encoder.augmentations is not None:
+        if "D4" in cfg.experiment.encoder.augmentations:
+            transforms.append(A.D4(p=1.0))
+        if "Resize" in cfg.experiment.encoder.augmentations:
+            transforms.append(A.Resize(height=cfg.experiment.encoder.in_height, width=cfg.experiment.encoder.in_width))
+        if "ColorJitter" in cfg.experiment.encoder.augmentations:
+            transforms.append(A.ColorJitter())
+        if "GaussNoise" in cfg.experiment.encoder.augmentations:
+            transforms.append(A.GaussNoise())
+        if "Normalize" in cfg.experiment.encoder.augmentations:
+            # TODO:
+            # check what to do for ImageNet normalization for UNetResNet: https://pytorch.org/vision/stable/models.html
+            # and also this has to probably be removed for ViT. or check what is the correct way for that.
+            transforms.append(A.Normalize(mean=cfg.experiment.encoder.image_mean, std=cfg.experiment.encoder.image_std, max_pixel_value=cfg.experiment.encoder.image_max_pixel_value)) 
+    
     transforms.append(ToTensorV2())
     train_transforms = A.ReplayCompose(transforms=transforms,
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
@@ -77,18 +79,20 @@ def get_train_loader_lidarpoly(cfg,tokenizer=None,logger=None):
         transform=train_transforms,
         tokenizer=tokenizer
     )
-    if cfg.dataset.train_subset is not None:
-        indices = list(range(cfg.dataset.train_subset))
+    if cfg.experiment.dataset.train_subset is not None:
+        indices = list(range(cfg.experiment.dataset.train_subset))
         ann_file = train_ds.ann_file
         coco = train_ds.coco
+        split = train_ds.split
         train_ds = Subset(train_ds, indices)
         train_ds.ann_file = ann_file
         train_ds.coco = coco    
+        train_ds.split = split
     
     if logger is not None:
         logger.debug(f"Train dataset created with {len(train_ds)} image/lidar samples.")
         
-    sampler = DistributedSampler(dataset=train_ds, shuffle=True) if cfg.host.multi_gpu else None
+    sampler = DistributedSampler(dataset=train_ds, shuffle=cfg.run_type.name!='debug') if cfg.host.multi_gpu else None
 
     train_loader = DataLoader(
         train_ds,
@@ -98,7 +102,7 @@ def get_train_loader_lidarpoly(cfg,tokenizer=None,logger=None):
         pin_memory=cfg.run_type.name!='debug',
         drop_last=False,
         sampler=sampler,
-        shuffle=(sampler is None)
+        shuffle=(sampler is None) and (cfg.run_type.name != 'debug')
     )
     if logger is not None:
         logger.debug(f"Train loader created with {len(train_loader)} batches of size {cfg.experiment.model.batch_size}.")
@@ -108,10 +112,12 @@ def get_train_loader_lidarpoly(cfg,tokenizer=None,logger=None):
 def get_val_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     
     transforms = []
-    if "Resize" in cfg.experiment.encoder.augmentations:
-        transforms.append(A.Resize(height=cfg.experiment.encoder.in_height, width=cfg.experiment.encoder.in_width))
-    if "Normalize" in cfg.experiment.encoder.augmentations:
-        transforms.append(A.Normalize(mean=cfg.experiment.encoder.image_mean, std=cfg.experiment.encoder.image_std, max_pixel_value=cfg.experiment.encoder.image_max_pixel_value)) 
+    if cfg.experiment.encoder.augmentations is not None:
+        if "Resize" in cfg.experiment.encoder.augmentations:
+            transforms.append(A.Resize(height=cfg.experiment.encoder.in_height, width=cfg.experiment.encoder.in_width))
+        if "Normalize" in cfg.experiment.encoder.augmentations:
+            transforms.append(A.Normalize(mean=cfg.experiment.encoder.image_mean, std=cfg.experiment.encoder.image_std, max_pixel_value=cfg.experiment.encoder.image_max_pixel_value)) 
+            
     transforms.append(ToTensorV2())
     val_transforms = A.ReplayCompose(transforms=transforms,
         keypoint_params=A.KeypointParams(format='yx', remove_invisible=False)
@@ -126,13 +132,15 @@ def get_val_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     if logger is not None:
         logger.debug(f"Val dataset created with {len(val_ds)} samples.")
     
-    if cfg.dataset.val_subset is not None:
-        indices = list(range(cfg.dataset.val_subset))
+    if cfg.experiment.dataset.val_subset is not None:
+        indices = list(range(cfg.experiment.dataset.val_subset))
         ann_file = val_ds.ann_file
         coco = val_ds.coco
+        split = val_ds.split
         val_ds = Subset(val_ds, indices)
         val_ds.ann_file = ann_file
         val_ds.coco = coco
+        val_ds.split = split
 
     sampler = DistributedSampler(dataset=val_ds, shuffle=False) if cfg.host.multi_gpu else None
     
@@ -174,13 +182,15 @@ def get_test_loader_lidarpoly(cfg,tokenizer=None,logger=None):
     if logger is not None:
         logger.debug(f"Test dataset created with {len(ds)} samples.")
     
-    if cfg.dataset.test_subset is not None:
-        indices = list(range(cfg.dataset.test_subset))
+    if cfg.experiment.dataset.test_subset is not None:
+        indices = list(range(cfg.experiment.dataset.test_subset))
         ann_file = ds.ann_file
         coco = ds.coco
+        split = ds.split
         ds = Subset(ds, indices)
         ds.ann_file = ann_file
         ds.coco = coco
+        ds.split = split
 
     sampler = DistributedSampler(dataset=ds, shuffle=False) if cfg.host.multi_gpu else None
     
@@ -277,8 +287,8 @@ def get_val_loader_inria(cfg,tokenizer,logger=None):
         tokenizer=tokenizer,
     )
     
-    if cfg.dataset.subset is not None:
-        indices = list(range(cfg.dataset.subset))
+    if cfg.experiment.dataset.subset is not None:
+        indices = list(range(cfg.experiment.dataset.subset))
         val_ds = Subset(val_ds, indices)
     
     ## be aware that the DistributedSampler here will even out the batch sizes on the different devices

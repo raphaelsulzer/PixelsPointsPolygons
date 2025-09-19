@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pixelspointspolygons"
 version = "0.1.0"
-description = "The P3 dataset: Pixels, Points and Polygons for Multimodal Building Vectorization"
+description = "The P3 Dataset: Pixels, Points and Polygons for Multimodal Building Vectorization"
 authors = [
     { name = "Raphael Sulzer", email = "raphael.sulzer.1@gmail.com" }
 ]
@@ -20,7 +20,7 @@ dependencies = [
     "laspy[lazrs]",
     "matplotlib",
     "numpy==1.25.2", # this line is only necessary when installing with open3d, i.e. pytorch 2.2, not necessary with the newest pytorch
-    "open3d==0.18.0",
+    "open3d==0.19.0",
     "pandas",
     "pycocotools",
     "rasterio",

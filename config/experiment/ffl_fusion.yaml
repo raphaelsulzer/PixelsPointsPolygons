@@ -1,4 +1,5 @@
 defaults:
+  - /dataset: p3
   - /encoder: early_fusion_vit_cnn
   - /model: ffl
   - /polygonization: asm_acm
@@ -6,10 +7,11 @@ defaults:
 
 name: v0_all_bs4x16
 group_name: v2_${.model.name}
+project_name: HiSup
 
 encoder:
   max_points_per_voxel: 64
 
-country: all
-
-annotation_type: blocks
+dataset:
+  country: all
+  annotation_type: blocks
