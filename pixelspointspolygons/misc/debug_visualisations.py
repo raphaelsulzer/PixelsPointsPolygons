@@ -34,8 +34,10 @@ def plot_point_cloud(point_cloud, ax=None, show_axis=False, show=False, alpha=0.
         plt.show(block=False)
 
 
-def plot_shapely_polygons(polygons, ax=None, color=[1,0,1,0.7], pointcolor=None, edgecolor=None, fillcolor=None, pointsize=3, linewidth=2, show=False):
+def plot_shapely_polygons(polygons, ax=None, color=[1,0,1,0.7], pointcolor=[1,1,0],edgecolor=[0.251, 0.878, 0.816], fillcolor=None, pointsize=3, linewidth=2, show=False):
     
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(1, 1), dpi=100)
     
     if pointcolor is None:
         pointcolor = color
@@ -44,6 +46,7 @@ def plot_shapely_polygons(polygons, ax=None, color=[1,0,1,0.7], pointcolor=None,
     
     for poly in polygons:
 
+        # edgecolor = np.random.rand(3,)
         ax.add_patch(Patches.Polygon(poly.exterior.coords[:-1], fill=fillcolor, ec=edgecolor, linewidth=linewidth, zorder=3))
         juncs = np.array(poly.exterior.coords[:-1])
         ax.plot(juncs[:, 0], juncs[:, 1], color=pointcolor, marker='.', markersize=pointsize, linestyle='none', zorder=3)
@@ -53,6 +56,18 @@ def plot_shapely_polygons(polygons, ax=None, color=[1,0,1,0.7], pointcolor=None,
                 juncs = np.array(inter.coords[:-1])
                 ax.plot(juncs[:, 0], juncs[:, 1], color=pointcolor, marker='.', markersize=pointsize, linestyle='none')
                 
+        # # Annotate exterior coordinates
+        # for x, y in poly.exterior.coords[:-1]:  # skip duplicate last point
+        #     ax.text(
+        #         x, y,
+        #         f"({x:.2f}, {y:.2f})",   # format coordinates
+        #         fontsize=8,
+        #         ha="left", va="bottom",  # alignment relative to point
+        #         color="yellow",
+        #         zorder=4
+        # )
+
+
     if show:
         plt.show(block=False)
     

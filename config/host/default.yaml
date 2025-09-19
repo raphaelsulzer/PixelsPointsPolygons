@@ -1,5 +1,5 @@
 name: default
-data_root: data/${..dataset.name}
+dataset_root: data/${..dataset.name}
 model_root: data/${..dataset.name}_output
 
 multi_gpu: false

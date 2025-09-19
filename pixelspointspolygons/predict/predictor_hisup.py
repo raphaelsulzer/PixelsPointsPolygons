@@ -30,18 +30,18 @@ class HiSupPredictor(Predictor):
         # this code should be in the original HiSup repo in the INRIA predictions
         pass
     
-    def setup_model_and_load_checkpoint(self):
+    def setup_model(self):
         
         self.model = HiSupModel(self.cfg, self.local_rank)
         self.model.eval()
         self.model.to(self.cfg.host.device)
-        self.load_checkpoint()
     
     def predict_dataset(self, split="val"):
         """This is for predicting the test dataset. Currently just used for debug stuff on val dataset..."""
         
-        self.setup_model_and_load_checkpoint()
-        
+        self.setup_model()
+        self.load_checkpoint()
+
         if split == "train":
             self.loader = get_train_loader(self.cfg,logger=self.logger)
         elif split == "val":
@@ -92,6 +92,10 @@ class HiSupPredictor(Predictor):
             time_dict["prediction_time"] = (time.time() - t0) / len(self.loader.dataset)
         
             if self.local_rank == 0:
+                if not len(coco_predictions):
+                    self.logger.warning("No polygons predicted. Check your model and data loader.")
+                else:
+                    self.logger.info(f"Predicted {len(coco_predictions)} polygons.")
                 os.makedirs(os.path.dirname(self.cfg.evaluation.pred_file), exist_ok=True)
                 self.logger.info(f"Writing predictions to {self.cfg.evaluation.pred_file}")
                 with open(self.cfg.evaluation.pred_file, "w") as fp:
@@ -106,7 +110,8 @@ class HiSupPredictor(Predictor):
         image, image_pillow = self.load_image_from_file(img_infile)
         lidar = self.load_lidar_from_file(lidar_infile)
         
-        self.setup_model_and_load_checkpoint()
+        self.setup_model()
+        self.load_checkpoint()
         
         with torch.no_grad():
 

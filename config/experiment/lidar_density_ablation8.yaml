@@ -1,4 +1,5 @@
 defaults:
+  - /dataset: p3
   - /encoder: pointpillars_vit_cnn
   - /model: ffl
   - /polygonization: asm_acm
@@ -6,10 +7,11 @@ defaults:
 
 name: v5_lidar_bs2x16_mnv8
 group_name: v2_${.model.name}
+project_name: HiSup
 
 encoder:
   max_num_points_per_voxel: 8
 
-country: CH
-
-annotation_type: blocks
+dataset:
+  country: CH
+  annotation_type: blocks

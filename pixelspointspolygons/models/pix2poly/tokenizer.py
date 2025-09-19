@@ -2,18 +2,32 @@ import numpy as np
 import torch
 
 class Tokenizer:
-    def __init__(self, num_classes: int, num_bins: int, width: int, height: int, max_len=256):
+    def __init__(self, cfg, num_classes = 1):
+        
         self.num_classes = num_classes
-        self.num_bins = num_bins
-        self.width = width
-        self.height = height
-        self.max_len = max_len
 
-        self.BOS_code = num_bins
+        self.cfg = cfg
+        
+        self.token_mode = 2
+
+        self.num_bins=self.cfg.experiment.model.tokenizer.num_bins
+        self.width=self.cfg.experiment.encoder.in_width
+        self.height=self.cfg.experiment.encoder.in_height
+        self.max_len=self.cfg.experiment.model.tokenizer.max_num_vertices*self.token_mode+2
+        
+        # define start, end, and pad tokens
+        self.BOS_code = self.num_bins
         self.EOS_code = self.BOS_code + 1
         self.PAD_code = self.EOS_code + 1
 
-        self.vocab_size = num_bins + 3 #+ num_classes
+        self.vocab_size = self.num_bins + 3 #+ num_classes
+        
+        self.cfg.experiment.model.tokenizer.pad_idx = self.PAD_code # used in collate_fn, so needs to be available from cfg
+        self.cfg.experiment.model.tokenizer.max_len = self.max_len # used in collate_fn, so needs to be available from cfg
+        self.cfg.experiment.model.tokenizer.generation_steps = self.cfg.experiment.model.tokenizer.max_num_vertices*self.token_mode+1
+        
+        
+
 
     def quantize(self, x: np.array):
         """
@@ -37,6 +51,8 @@ class Tokenizer:
 
         coords = self.quantize(coords)[:self.max_len]
 
+        rand_idxs = np.arange(0, len(coords))
+
         if shuffle:
             rand_idxs = np.arange(0, len(coords))
             if self.cfg.run_type.name == 'debug':
@@ -44,8 +60,6 @@ class Tokenizer:
             else:
                 np.random.shuffle(rand_idxs)
             coords = coords[rand_idxs]
-        else:
-            rand_idxs = np.arange(0, len(coords))
 
         tokenized = [self.BOS_code]
         for coord in coords:
@@ -64,13 +78,16 @@ class Tokenizer:
         mask = tokens != self.PAD_code
         tokens = tokens[mask]
         tokens = tokens[1:-1]
-        assert len(tokens) % 2 == 0, "Invalid tokens!"
+        assert len(tokens) % self.token_mode == 0, "Invalid tokens!"
 
-        coords = []
-        for i in range(2, len(tokens)+1, 2):
-            coord = tokens[i-2: i]
-            coords.append([int(item) for item in coord])
-        coords = np.array(coords)
+        ## why so lengthy?
+        # coords = []
+        # for i in range(2, len(tokens)+1, 2):
+        #     coord = tokens[i-2: i]
+        #     coords.append([int(item) for item in coord])
+        # coords = np.array(coords)
+        
+        coords = np.array(tokens).reshape(-1, self.token_mode)[:, :2]
         coords = self.dequantize(coords)
 
         if len(coords) > 0:

@@ -126,8 +126,6 @@ if __name__ == "__main__":
     # upload_hf_large_folder(LOCAL_DIR)
     ################ UPLOAD LARGE FOLDER ################   
 
-    # TODO: NY and NZ train images need to be checked for completeness again, rest should be fine
-
     ################ UPLOAD FOLDER ################   
     splits = ["train", "val", "test"]
     countries = ["CH","NY","NZ"]

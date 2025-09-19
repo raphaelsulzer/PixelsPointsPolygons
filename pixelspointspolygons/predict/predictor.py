@@ -40,6 +40,9 @@ class Predictor:
         if self.local_rank == 0 and not os.path.exists(cfg.output_dir):
             self.logger.info(f"Create output directory {cfg.output_dir}")
             os.makedirs(cfg.output_dir, exist_ok=True)
+            
+        self.is_ddp = self.cfg.host.multi_gpu
+
                            
     def progress_bar(self,item):
         

@@ -1,13 +1,15 @@
 defaults:
+  - /dataset: p3
   - /encoder: vit
   - /model: pix2poly
   - _self_
 
 name: v4_image_vit_bs4x16
 group_name: v2_${.model.name}
+project_name: HiSup
 
 lidar_dropout: null
 
-country: CH
-
-annotation_type: blocks
+dataset:
+  country: CH
+  annotation_type: blocks

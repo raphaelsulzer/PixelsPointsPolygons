@@ -33,20 +33,20 @@ from .ffl import polygonize
 
 class FFLPredictor(Predictor):
     
-    def setup_model_and_load_checkpoint(self):
+    def setup_model(self):
         
         self.model = FFLModel(self.cfg, self.local_rank)
         self.model.eval()
         self.model.to(self.cfg.host.device)
-        self.load_checkpoint()
     
     def predict_dataset(self, split="val"):
         
         self.logger.info(f"Starting prediction and polygonization...")
 
         # Loading model
-        self.setup_model_and_load_checkpoint()
-        
+        self.setup_model()
+        self.load_checkpoint()
+
         if split == "train":
             self.loader = get_train_loader(self.cfg,logger=self.logger)
         elif split == "val":
@@ -132,7 +132,7 @@ class FFLPredictor(Predictor):
                     
         # else:
         #     self.logger.info(f"Rank {self.local_rank} waiting until polygonization is done...")
-        if self.cfg.host.multi_gpu:
+        if self.is_ddp:
             # dist.barrier()
                         
             # Gather the list of dictionaries from all ranks
@@ -156,7 +156,8 @@ class FFLPredictor(Predictor):
         image, image_np = self.load_image_from_file(img_infile)
         lidar = self.load_lidar_from_file(lidar_infile)
         
-        self.setup_model_and_load_checkpoint()
+        self.setup_model()
+        self.load_checkpoint()
         
         batch = {}
         if image is not None:

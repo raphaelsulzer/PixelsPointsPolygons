@@ -1,4 +1,5 @@
 defaults:
+  - /dataset: p3
   - /encoder: vit_cnn
   - /model: hisup
   - _self_
@@ -6,7 +7,8 @@ defaults:
 
 name: v3_image_vit_cnn_bs4x12
 group_name: v2_${.model.name}
+project_name: HiSup
 
-country: CH
-
-annotation_type: blocks
+dataset:
+  country: CH
+  annotation_type: blocks

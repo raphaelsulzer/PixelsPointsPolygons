@@ -42,7 +42,9 @@ def log_sinkhorn_iterations(Z: torch.Tensor, log_mu: torch.Tensor, log_nu: torch
 
 # Borrowed from https://github.com/magicleap/SuperGluePretrainedNetwork/blob/ddcf11f42e7e0732a0c4607648f9448ea8d73590/models/superglue.py#L152
 def log_optimal_transport(scores: torch.Tensor, alpha: torch.Tensor, iters: int) -> torch.Tensor:
+    
     """ Perform Differentiable Optimal Transport in Log-space for stability"""
+    
     b, m, n = scores.shape
     one = scores.new_tensor(1)
     ms, ns = (m*one).to(scores), (n*one).to(scores)
@@ -65,7 +67,7 @@ def log_optimal_transport(scores: torch.Tensor, alpha: torch.Tensor, iters: int)
 
 
 class ScoreNet(nn.Module):
-    def __init__(self, n_vertices, in_channels=512):
+    def __init__(self, n_vertices, in_channels=512, token_mode=2):
         super().__init__()
         self.n_vertices = n_vertices
         self.in_channels = in_channels
@@ -77,11 +79,14 @@ class ScoreNet(nn.Module):
         self.conv3 = nn.Conv2d(128, 64, kernel_size=1, stride=1, padding=0, bias=True)
         self.bn3 = nn.BatchNorm2d(64)
         self.conv4 = nn.Conv2d(64, 1, kernel_size=1, stride=1, padding=0, bias=True)
+        
+        self.token_mode = token_mode
+
 
     def forward(self, feats):
         feats = feats[:, 1:]
         feats = feats.unsqueeze(2)
-        feats = feats.view(feats.size(0), feats.size(1)//2, 2, feats.size(3))
+        feats = feats.view(feats.size(0), feats.size(1)//self.token_mode, self.token_mode, feats.size(3))
         feats = torch.mean(feats, dim=2)
 
         x = torch.transpose(feats, 1, 2)
@@ -224,12 +229,15 @@ class EncoderDecoder(nn.Module):
     ):
         super().__init__()
         self.cfg = cfg
+        
+        self.token_mode = 2
+
         self.encoder = encoder
         self.decoder = decoder
-        self.n_vertices = cfg.experiment.model.tokenizer.n_vertices
+        self.max_num_vertices = cfg.experiment.model.tokenizer.max_num_vertices
         self.sinkhorn_iterations = cfg.experiment.model.sinkhorn_iterations
-        self.scorenet1 = ScoreNet(self.n_vertices)
-        self.scorenet2 = ScoreNet(self.n_vertices)
+        self.scorenet1 = ScoreNet(self.max_num_vertices,token_mode=self.token_mode)
+        self.scorenet2 = ScoreNet(self.max_num_vertices,token_mode=self.token_mode)
         self.bin_score = torch.nn.Parameter(torch.tensor(1.0))
         
         self.bottleneck = nn.AdaptiveAvgPool1d(cfg.experiment.encoder.out_feature_dim)
@@ -245,7 +253,7 @@ class EncoderDecoder(nn.Module):
         else:
             raise ValueError("At least one of use_images or use_lidar must be True")
                 
-        preds, features = self.decoder(features, y)
+        seq_pred, features = self.decoder(features, y)
         perm_mat1 = self.scorenet1(features)
         perm_mat2 = self.scorenet2(features)
         perm_mat = perm_mat1 + torch.transpose(perm_mat2, 1, 2)
@@ -255,7 +263,7 @@ class EncoderDecoder(nn.Module):
         )[:, : perm_mat.shape[1], : perm_mat.shape[2]]
         perm_mat = F.softmax(perm_mat, dim=-1)
 
-        return preds, perm_mat
+        return seq_pred, perm_mat
 
     
     def predict(self, encoded_image, tgt):

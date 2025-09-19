@@ -74,8 +74,8 @@ def collate_fn_pix2poly(batch, cfg):
     pad_idx = cfg.experiment.model.tokenizer.pad_idx
     max_len = cfg.experiment.model.tokenizer.max_len
     
-    image_batch, lidar_batch, lidar_pcd_id_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, tile_id_batch = [], [], [], [], [], [], [], []
-    for i, (image, lidar, mask, c_mask, seq, perm_mat, idx) in enumerate(batch):
+    image_batch, lidar_batch, coords_seq_batch, perm_matrix_batch, tile_id_batch = [], [], [], [], []
+    for i, (image, lidar, seq, perm_mat, idx) in enumerate(batch):
         if cfg.experiment.encoder.use_images:
             image_batch.append(image)
         if cfg.experiment.encoder.use_lidar:
@@ -83,8 +83,8 @@ def collate_fn_pix2poly(batch, cfg):
             # lidar_pcd_id_batch.append(lidar_pcd_id)
             lidar_batch.append(lidar)
         
-        mask_batch.append(mask)
-        coords_mask_batch.append(c_mask)
+        # mask_batch.append(mask)
+        # coords_mask_batch.append(c_mask)
         coords_seq_batch.append(seq)
         perm_matrix_batch.append(perm_mat)
         tile_id_batch.append(idx)
@@ -105,16 +105,12 @@ def collate_fn_pix2poly(batch, cfg):
         image_batch = None
         
     if cfg.experiment.encoder.use_lidar:
-        # lidar_batch = torch.cat(lidar_batch)
-        # lidar_pcd_id_batch = torch.cat(lidar_pcd_id_batch)
-        ### try nested tensor instead of manuel indexing
         lidar_batch = torch.nested.nested_tensor(lidar_batch, layout=torch.jagged)
     else:
         lidar_batch = None
         
-    mask_batch = torch.stack(mask_batch)
-    coords_mask_batch = torch.stack(coords_mask_batch)
     perm_matrix_batch = torch.stack(perm_matrix_batch)
     tile_id_batch = torch.stack(tile_id_batch)
     
-    return image_batch, lidar_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, tile_id_batch
+    # return image_batch, lidar_batch, mask_batch, coords_mask_batch, coords_seq_batch, perm_matrix_batch, tile_id_batch
+    return image_batch, lidar_batch, coords_seq_batch, perm_matrix_batch, tile_id_batch

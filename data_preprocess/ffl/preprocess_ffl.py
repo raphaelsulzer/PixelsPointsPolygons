@@ -72,7 +72,7 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         
         assert fold in ["train", "val", "test"], "Input fold={} should be in [\"train\", \"val\", \"test\"]".format(fold)
 
-        self.root = cfg.dataset.path
+        self.root = cfg.experiment.dataset.in_path
         self.fold = fold
         os.makedirs(self.processed_dir, exist_ok=True)
 
@@ -80,11 +80,11 @@ class FFLPreprocessing(torch.utils.data.Dataset):
 
         self.coco = None
         self.image_id_list = self.load_image_ids()
-        self.stats_filepath = self.cfg.dataset.ffl_stats[fold]
+        self.stats_filepath = self.cfg.experiment.dataset.ffl_stats[fold]
         self.stats = None
         if os.path.exists(self.stats_filepath):
             self.stats = torch.load(self.stats_filepath)
-        self.processed_flag_filepath = os.path.join(self.processed_dir, f"processed-flag-{self.cfg.experiment.country}")
+        self.processed_flag_filepath = os.path.join(self.processed_dir, f"processed-flag-{self.cfg.experiment.dataset.country}")
 
         self.ann_ffl_file = self.ann_file.replace("annotations_","annotations_ffl_")        
 
@@ -106,7 +106,7 @@ class FFLPreprocessing(torch.utils.data.Dataset):
     def get_coco(self):
         if self.coco is None:
             
-            self.ann_file = self.cfg.dataset.annotations[self.fold]
+            self.ann_file = self.cfg.experiment.dataset.annotations[self.fold]
             self.logger.info(f"Loading annotations from {self.ann_file}")
             if not os.path.isfile(self.ann_file):
                 raise FileNotFoundError(f"Annotation file {self.ann_file} does not exist.")
