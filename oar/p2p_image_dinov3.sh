@@ -23,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py run_type=release host=g5k experiment=p2p_image_dinov3 experiment.name=image_bs2x16_dinov3 experiment.group_name=v3_pix2poly
+torchrun --nproc_per_node=2 --master-port=$((10000 + RANDOM % 50000)) scripts/train.py run_type=release host=g5k experiment=p2p_image_dinov3 experiment.name=image_bs2x16_dinov3 experiment.group_name=v3_pix2poly
