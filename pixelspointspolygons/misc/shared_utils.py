@@ -208,6 +208,10 @@ def setup_ddp(cfg):
     if not cfg.host.multi_gpu:
         return 0,1
     else:
+        
+        port = random.randint(10000, 60000)
+        os.environ["MASTER_PORT"] = str(port)
+        
         world_size = torch.cuda.device_count()
         local_rank = int(os.environ['LOCAL_RANK'])
     

@@ -80,7 +80,7 @@ echo
 
 # conda install nvidia/label/cuda-12.6.3::cuda-toolkit -y
 # conda install -c conda-forge cudatoolkit-dev=12.6 -y
-conda install -c nvidia cuda-nvcc cuda-toolkit=12.6 -y
+conda install -c nvidia cuda-nvcc cuda-toolkit -y
 
 pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 
