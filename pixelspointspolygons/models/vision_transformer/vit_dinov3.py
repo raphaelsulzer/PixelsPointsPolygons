@@ -50,12 +50,7 @@ class ViTDINOv3(nn.Module):
             self.bottleneck = nn.Identity()
 
     def forward(self, x):
-        # Extract full tokens (CLS + patches)
-        tokens = self.vit.forward_features(x)["x_prenorm"]  # Now a tensor: [B, 257, 384]
-
-        patch_tokens = tokens[:, 1:, :]  # Remove CLS token → [B, 256, 384]
-        patch_tokens = self.norm(patch_tokens)
-
+        # Extract only patch_token without CLS token
+        patch_tokens = self.vit.forward_features(x)["x_norm_patchtokens"]
         patch_tokens = self.bottleneck(patch_tokens)
-
         return patch_tokens
