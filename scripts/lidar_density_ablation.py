@@ -1,12 +1,10 @@
-import sys
-
 import pandas as pd
 from omegaconf import OmegaConf
 from hydra import initialize, compose
 from tqdm import tqdm
 from logging import getLogger
 
-from pixelspointspolygons.predict import FFLPredictor, HiSupPredictor, Pix2PolyPredictor
+from pixelspointspolygons.predict import FFLPredictor
 from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf, parse_cli_overrides
 from pixelspointspolygons.eval import Evaluator
 

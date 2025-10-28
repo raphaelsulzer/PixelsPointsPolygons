@@ -13,7 +13,6 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 import numpy as np
 
 from sklearn.preprocessing import MinMaxScaler
-from PIL import Image
 from torchvision.transforms import functional as F
 from shapely.geometry import Polygon
 
@@ -68,7 +67,7 @@ class Predictor:
         self.logger.info(f"Loading model from checkpoint: {checkpoint_file}")
         
         ## load the checkpoint
-        checkpoint = torch.load(checkpoint_file, map_location=self.cfg.host.device)
+        checkpoint = torch.load(checkpoint_file, map_location=self.cfg.host.device, weights_only=False)
         for k in checkpoint.keys():
             if "_state_dict" in k:
                 checkpoint[k.replace("_state_dict","")] = checkpoint.pop(k)

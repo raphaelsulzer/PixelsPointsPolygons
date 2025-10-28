@@ -2,8 +2,8 @@
 set -e
 
 # Local variables
-ENV_NAME=p3
-PYTHON=3.11.11
+ENV_NAME=p3pt2.9
+PYTHON=3.11
 
 # Installation script for Miniconda3 environments
 echo "____________ Pick Miniconda Install _____________"
@@ -76,18 +76,12 @@ conda activate ${ENV_NAME}
 echo "________________ Install Required Packages _______________"
 echo
 
-export TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5;8.0;8.6"
+conda install nvidia/label/cuda-12.6.3::cuda-toolkit -y
 
-# install a cudatoolkit 12.1 to match the version specified in requirements-torch-cuda.txt
-conda install -c nvidia/label/cuda-12.1.1 cuda-toolkit=12.1.1 -y
-pip install -r requirements-torch-cuda.txt
-
-# TODO: using CUDA 12.1 now, but now the AFM module does not compile anymore, need to fix that
-
-# conda install -c nvidia/label/cuda-11.7.1 cuda-toolkit=11.7.1 -y
-# pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2
+pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 
 pip install -e .
+
 
 echo "________________ Install Pytorch_Lydorn and Lydorn_Utils for FFL _______________"
 cd ./ffl_submodules/lydorn_utils

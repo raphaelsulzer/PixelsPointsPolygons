@@ -6,7 +6,7 @@ import os
 import torch.nn as nn
 
 # from .pointpillars_ori import PointPillarsEncoder
-from ..pointpillars.pointpillars_o3d import PointPillarsEncoder
+from ..pointpillars.pointpillars_ori import PointPillarsEncoder
 
 from ...misc.logger import make_logger
 
@@ -49,7 +49,7 @@ class EarlyFusionViT(torch.nn.Module):
             "in_channels" : cfg.experiment.encoder.patch_feature_dim, 
             "output_shape" : output_shape
         }
-        self.lidar_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
+        self.lidar_embed = PointPillarsEncoderOpen3D(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
         
         if not os.path.isfile(cfg.experiment.encoder.vit.checkpoint_file):
             raise FileNotFoundError(f"Checkpoint file {cfg.experiment.encoder.vit.checkpoint_file} not found.")

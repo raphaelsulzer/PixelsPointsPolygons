@@ -6,7 +6,7 @@ from timm.models.layers import trunc_normal_
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from ..pointpillars import PointPillarsViT
-from ..vision_transformer import ViT, ViTDINOv2
+from ..vision_transformer import ViTDINOv1, ViTDINOv2, ViTDINOv3
 from ..fusion_layers import EarlyFusionViT
 
 def generate_square_subsequent_mask(sz,device):
@@ -291,9 +291,11 @@ class Pix2PolyModel(torch.nn.Module):
         elif self.cfg.experiment.encoder.use_images:
             
             if self.cfg.experiment.encoder.name == "vit":
-                encoder = ViT(self.cfg,bottleneck=True,local_rank=local_rank)
+                encoder = ViTDINOv1(self.cfg,bottleneck=True,local_rank=local_rank)
             elif self.cfg.experiment.encoder.name == "vit_dinov2":
                 encoder = ViTDINOv2(self.cfg,bottleneck=True,local_rank=local_rank)
+            elif self.cfg.experiment.encoder.name == "vit_dinov3":
+                encoder = ViTDINOv3(self.cfg,bottleneck=True,local_rank=local_rank) 
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             

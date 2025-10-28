@@ -6,7 +6,8 @@ import os
 import torch.nn as nn
 
 # from .pointpillars_ori import PointPillarsEncoder
-from .pointpillars_o3d import PointPillarsEncoder
+# from .pointpillars_o3d import PointPillarsEncoderOpen3D
+from .pointpillars_ori import PointPillarsEncoder
 
 from ...misc.logger import make_logger
 
@@ -57,6 +58,7 @@ class PointPillarsViT(torch.nn.Module):
             "in_channels" : cfg.experiment.encoder.patch_feature_dim, 
             "output_shape" : output_shape
         }
+        # self.vit.patch_embed = PointPillarsEncoderOpen3D(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
         self.vit.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
         
         if bottleneck:

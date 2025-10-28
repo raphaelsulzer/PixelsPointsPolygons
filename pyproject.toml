@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "torch", "numpy"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,17 +10,16 @@ authors = [
     { name = "Raphael Sulzer", email = "raphael.sulzer.1@gmail.com" }
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 dependencies = [
     "albumentations",
     "colorlog",
-    "descartes==1.1.0",
+    "descartes",
     "huggingface_hub",
     "hydra-core",
     "laspy[lazrs]",
     "matplotlib",
-    "numpy==1.25.2", # this line is only necessary when installing with open3d, i.e. pytorch 2.2, not necessary with the newest pytorch
-    "open3d==0.19.0",
+    "numpy",
     "pandas",
     "pycocotools",
     "rasterio",
@@ -30,7 +29,7 @@ dependencies = [
     "tensorboard",
     "timm",
     "torchmetrics",
-    "transformers==4.32",
+    "transformers",
     "wandb",
     # only for hisup
     "Cython",
@@ -41,7 +40,6 @@ dependencies = [
     # ffl asm polygonization
     # "torch-scatter", has to be specified in requirements-torch-cuda for specific cuda version
 ]
-
 
 [tool.setuptools]
 packages = ["pixelspointspolygons"]

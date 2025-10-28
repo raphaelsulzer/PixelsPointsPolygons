@@ -1,6 +1,5 @@
 import torch
 import cv2
-import os
 
 import torch.nn.functional as F
 from math import log
@@ -9,7 +8,7 @@ from torch.utils.data.dataloader import default_collate
 from skimage.measure import label, regionprops
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from ..pointpillars import PointPillarsViTCNN, PointPillars
+from ..pointpillars import PointPillarsViTCNN, PointPillarsNet
 from ..vision_transformer import ViTCNN
 from ..multitask_head import MultitaskHead
 from ..fusion_layers import FusionHRNet, EarlyFusionViTCNN
