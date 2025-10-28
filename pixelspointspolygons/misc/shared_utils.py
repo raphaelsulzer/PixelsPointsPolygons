@@ -209,19 +209,15 @@ def setup_ddp(cfg):
         return 0,1
     else:
         
-        port = random.randint(10000, 60000)
-        os.environ["MASTER_PORT"] = str(port)
-        
         world_size = torch.cuda.device_count()
         local_rank = int(os.environ['LOCAL_RANK'])
     
         # Initializes the distributed backend which will take care of synchronizing nodes/GPUs.
-        # init_method = "env://"  # default
-        init_method = f"file:///tmp/tmp_distributed_init_{os.getpid()}"
+        dist_url = "env://"  # default
 
         dist.init_process_group(
             backend="nccl",
-            init_method=init_method,
+            init_method=dist_url,
             world_size=world_size,
             rank=int(os.environ["RANK"])
         )
