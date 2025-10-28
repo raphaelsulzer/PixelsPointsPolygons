@@ -44,17 +44,17 @@ The recommended and fastest way to download the dataset is to run
 
 ```
 pip install huggingface_hub
-python scripts/download_dataset.py --dataset-root $DATA_ROOT
+python scripts/download_dataset.py --dataset-root $DATA_ROOT/PixelsPointPolygons_dataset
 ```
 
 Optionally you can also download the dataset by running
 
 ```
 git lfs install
-git clone https://huggingface.co/datasets/rsi/PixelsPointsPolygons $DATA_ROOT
+git clone https://huggingface.co/datasets/rsi/PixelsPointsPolygons $DATA_ROOT/PixelsPointPolygons_dataset
 ```
 
-Both options will download the full dataset, including aerial images (as .tif), aerial lidar point clouds (as .copc.laz) and building polygon annotaions (as MS-COCO .json) into `$DATA_ROOT` . The size of the dataset is around 163GB.
+Both options will download the full dataset, including aerial images (as .tif), aerial lidar point clouds (as .copc.laz) and building polygon annotaions (as MS-COCO .json) into `$DATA_ROOT/PixelsPointPolygons_dataset` . The size of the dataset is around 163GB.
 
 ### Structure
 
@@ -454,16 +454,16 @@ PixelsPointsPolygons/data/224
 The recommended and fastest way to download the pretrained model weights is to run
 
 ```
-python scripts/download_pretrained.py --model-root $MODEL_ROOT
+python scripts/download_pretrained.py --model-root $MODEL_ROOT/PixelsPointPolygons_output
 ```
 
 Optionally you can also download the weights by running
 
 ```
-git clone https://huggingface.co/rsi/PixelsPointsPolygons $MODEL_ROOT
+git clone https://huggingface.co/rsi/PixelsPointsPolygons $MODEL_ROOT/PixelsPointPolygons_output
 ```
 
-Both options will download all checkpoints (as .pth) and results presented in the paper (as MS-COCO .json) into `$MODEL_ROOT` .
+Both options will download all checkpoints (as .pth) and results presented in the paper (as MS-COCO .json) into `$MODEL_ROOT/PixelsPointPolygons_output` .
 
 ## Code
 
@@ -482,7 +482,7 @@ bash install.sh
 
 or, if you want to manage the environment yourself run
 ```
-pip install -r requirements-torch-cuda.txt
+pip install torch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2
 pip install .
 ```
 ⚠️ **Warning**: The implementation of the LiDAR point cloud encoder uses Open3D-ML. Currently, Open3D-ML officially only supports the PyTorch version specified in `requirements-torch-cuda.txt`.
