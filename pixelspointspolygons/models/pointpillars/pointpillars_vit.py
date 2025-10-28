@@ -44,12 +44,12 @@ class PointPillarsViT(torch.nn.Module):
             model_name=cfg.experiment.encoder.vit.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.experiment.encoder.vit.pretrained,
-            checkpoint_path=cfg.experiment.encoder.vit.checkpoint_file
+            # pretrained=cfg.experiment.encoder.vit.pretrained,
+            # checkpoint_path=cfg.experiment.encoder.vit.checkpoint_file
         )
         
-        # if cfg.experiment.encoder.vit.pretrained:
-        #     self.vit.load_state_dict(torch.load(cfg.experiment.encoder.vit.checkpoint_file, map_location=self.cfg.host.device), strict=False)
+        if cfg.experiment.encoder.vit.pretrained:
+            self.vit.load_state_dict(torch.load(cfg.experiment.encoder.vit.checkpoint_file, map_location=self.cfg.host.device), strict=False)
         
         #### replace VisionTransformer patch embedding with LiDAR encoder        
         output_shape = [cfg.experiment.encoder.patch_feature_width, cfg.experiment.encoder.patch_feature_height]
