@@ -57,9 +57,12 @@ class EarlyFusionViTCNN(torch.nn.Module):
             model_name=cfg.experiment.encoder.vit.type,
             num_classes=0,
             global_pool='',
-            pretrained=cfg.experiment.encoder.vit.pretrained,
-            checkpoint_path=cfg.experiment.encoder.vit.checkpoint_file
+            # pretrained=cfg.experiment.encoder.vit.pretrained,
+            # checkpoint_path=cfg.experiment.encoder.vit.checkpoint_file
         )
+        
+        if cfg.experiment.encoder.vit.pretrained:
+            self.vit.load_state_dict(torch.load(cfg.experiment.encoder.vit.checkpoint_file, map_location=self.cfg.host.device), strict=False)
         
         self.image_embed = self.vit.patch_embed
         self.image_embed.flatten = False
