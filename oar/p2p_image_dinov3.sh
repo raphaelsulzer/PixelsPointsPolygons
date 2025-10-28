@@ -3,9 +3,9 @@
 #OAR -q production 
 #OAR -l host=1/gpu=2,walltime=24
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
-#OAR -O oar/runs/p2p_image.out
-#OAR -E oar/runs/p2p_image.out
-#OAR -n p2p_image
+#OAR -O oar/runs/p2p_image_dinov3.out
+#OAR -E oar/runs/p2p_image_dinov3.out
+#OAR -n p2p_image_dinov3
 
 # display some information about attributed resources
 hostname 
@@ -23,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py run_type=release host=g5k experiment=p2p_image_dinov1 experiment.name=image_bs2x16_dinov1 experiment.group_name=v3_pix2poly
+torchrun --nproc_per_node=2 scripts/train.py run_type=release host=g5k experiment=p2p_image_dinov3 experiment.name=image_bs2x16_dinov3 experiment.group_name=v3_pix2poly
