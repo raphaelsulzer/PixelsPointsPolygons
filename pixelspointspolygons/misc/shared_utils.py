@@ -216,11 +216,12 @@ def setup_ddp(cfg):
         local_rank = int(os.environ['LOCAL_RANK'])
     
         # Initializes the distributed backend which will take care of synchronizing nodes/GPUs.
-        dist_url = "env://"  # default
+        # init_method = "env://"  # default
+        init_method = f"file:///tmp/tmp_distributed_init_{os.getpid()}"
 
         dist.init_process_group(
             backend="nccl",
-            init_method=dist_url,
+            init_method=init_method,
             world_size=world_size,
             rank=int(os.environ["RANK"])
         )
