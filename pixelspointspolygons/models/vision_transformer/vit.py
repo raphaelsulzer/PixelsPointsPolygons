@@ -8,7 +8,7 @@ from ...misc import make_logger
 
 from timm.models import VisionTransformer
 
-class ViT(nn.Module):
+class ViTDINOv1(nn.Module):
     
     def __init__(self, cfg, bottleneck=False, local_rank=0) -> None:
         super().__init__()

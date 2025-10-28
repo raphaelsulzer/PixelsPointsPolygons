@@ -1,6 +1,6 @@
 defaults:
   - /dataset: p3
-  - /encoder: pointpillars_vit
+  - /encoder: vit_dinov3
   - /model: pix2poly
   - /polygonization: asm_acm
   - _self_
@@ -11,7 +11,7 @@ project_name: HiSup
 
 dataset:
   country: CH # This is the country code for the dataset, used in the output file names. You can choose from [CH, NY, NZ, all]
-  annotation_type: buildings # This is the annotation type for the dataset, used in the output file names. You can choose from [blocks, buildings]
+  annotation_type: blocks # This is the annotation type for the dataset, used in the output file names. You can choose from [blocks, buildings]
 
 encoder:
   augmentations:

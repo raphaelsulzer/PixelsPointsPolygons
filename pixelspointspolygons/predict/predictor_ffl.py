@@ -7,23 +7,14 @@ os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 import time
 import json
 import torch
-import laspy
 
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 import torch.distributed as dist
-import numpy as np
-import matplotlib.pyplot as plt
-
-from PIL import Image
-from torchvision.transforms import functional as F
-from shapely.geometry import Polygon
-from sklearn.preprocessing import MinMaxScaler
 
 from ..models.ffl.local_utils import batch_to_cpu, split_batch, list_of_dicts_to_dict_of_lists, flatten_dict
 from ..models.ffl.model_ffl import FFLModel
 from ..datasets import get_train_loader, get_val_loader, get_test_loader
-from ..misc.debug_visualisations import plot_image, plot_point_cloud, plot_mask, plot_shapely_polygons
 
 from .predictor import Predictor
 

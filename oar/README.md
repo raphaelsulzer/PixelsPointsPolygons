@@ -12,3 +12,7 @@ oardel $JOBID
 
 ## reserve interactive node on one host with 2 gpu
 oarsub -l host=1/gpu=2 -I -q production walltime=1
+
+
+## to make git-lfs work 
+source ~/.bashrc

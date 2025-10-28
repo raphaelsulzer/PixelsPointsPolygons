@@ -10,3 +10,4 @@ update_pbar_every: 60
 ldof_exe: null
 
 dino_v2_repo: /home/rsulzer/python/dinov2
+dino_v3_repo: /home/rsulzer/python/dinov3
