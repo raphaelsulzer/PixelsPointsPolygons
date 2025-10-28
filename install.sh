@@ -2,7 +2,7 @@
 set -e
 
 # Local variables
-ENV_NAME=p3
+ENV_NAME=p3_test
 PYTHON=3.11.11
 
 # Installation script for Miniconda3 environments
@@ -76,10 +76,14 @@ conda activate ${ENV_NAME}
 echo "________________ Install Required Packages _______________"
 echo
 
-export TORCH_CUDA_ARCH_LIST="6.1;7.0;7.5;8.0;8.6"
-
-conda install nvidia/label/cuda-12.6.3::cuda-toolkit -y
+# conda install -c nvidia cuda-nvcc cuda-toolkit=12.6 -y
+conda install -c nvidia cuda-nvcc cuda-toolkit -y
 pip install torch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2
+
+export TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6;8.6+PTX"
+export CUDA_HOME=$CONDA_PREFIX
+export PATH=$CUDA_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 
 pip install -e .
 

@@ -12,7 +12,6 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 import numpy as np
 
 from scipy.optimize import linear_sum_assignment
-from transformers.generation.utils import top_k_top_p_filtering
 
 from ..models.pix2poly import Tokenizer, Pix2PolyModel
 from ..misc.coco_conversions import generate_coco_ann
@@ -195,7 +194,7 @@ class Pix2PolyPredictor(Predictor):
                 else:
                     preds, feats = self.model.predict(features, batch_preds)
                     
-                preds = top_k_top_p_filtering(preds, top_k=top_k, top_p=top_p)  # if top_k and top_p are set to default, this line does nothing.
+                # preds = top_k_top_p_filtering(preds, top_k=top_k, top_p=top_p)  # if top_k and top_p are set to default, this line does nothing.
                 if i % 2 == 0:
                     confs_ = torch.softmax(preds, dim=-1).sort(axis=-1, descending=True)[0][:, 0].cpu()
                     confs.append(confs_)

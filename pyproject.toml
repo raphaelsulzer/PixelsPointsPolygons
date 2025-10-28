@@ -30,7 +30,7 @@ dependencies = [
     "tensorboard",
     "timm",
     "torchmetrics",
-    "transformers==4.32",
+    "transformers",
     "wandb",
     # only for hisup
     "Cython",
@@ -38,8 +38,8 @@ dependencies = [
     "kornia",
     "skan",
     "jsmin",
-    # ffl asm polygonization
-    # "torch-scatter", has to be specified in requirements-torch-cuda for specific cuda version
+    # only for FFL ASM polygonization (default is ACM)
+    # "torch-scatter==2.1.2" ## takes forever so making it optional
 ]
 
 

@@ -1,12 +1,13 @@
 name: default
-dataset_root: data/${..dataset.name}
-model_root: data/${..dataset.name}_output
+dataset_root: /path/to/your/dataset/root
+model_root: /path/to/your/model/root
 
 multi_gpu: false
 device: cuda
 
 update_pbar_every: 1
 
-ldof_exe: /path/to/calculate_DoF
+ldof_exe: /path/to/calculate/DoF/exe
 
-dino_v2_repo: /path/to/dinov2_repo
+dino_v2_repo: /path/to/dinov2/repo
+dino_v3_repo: /path/to/dinov3/repo
