@@ -91,7 +91,6 @@ export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 
 pip install -e .
 
-
 echo "________________ Install Pytorch_Lydorn and Lydorn_Utils for FFL _______________"
 cd ./ffl_submodules/lydorn_utils
 pip install -e .
