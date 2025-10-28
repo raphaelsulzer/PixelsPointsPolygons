@@ -2,7 +2,7 @@
 set -e
 
 # Local variables
-ENV_NAME=p3_test
+ENV_NAME=p3
 PYTHON=3.11.11
 
 # Installation script for Miniconda3 environments
