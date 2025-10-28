@@ -18,7 +18,7 @@ patch_feature_size: 16 # this is for the LiDAR encoder
 patch_feature_height: ${.patch_feature_size}
 patch_feature_width: ${.patch_feature_size}
 patch_feature_dim: 384
-num_patches: 256  # int((self.cfg.experiment.encoder.in_size // self.cfg.experiment.encoder.patch_size) ** 2)
+num_patches: 196  # int((self.cfg.experiment.encoder.in_size // self.cfg.experiment.encoder.patch_size) ** 2)
 
 out_feature_dim: ${..model.decoder.in_feature_dim}
 
