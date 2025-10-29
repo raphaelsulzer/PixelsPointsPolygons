@@ -14,11 +14,12 @@ in_width: ${.in_size}
 
 # patching
 patch_size: 16
-patch_feature_size: 16 # this is for the LiDAR encoder
-patch_feature_height: ${.patch_feature_size}
-patch_feature_width: ${.patch_feature_size}
 patch_feature_dim: 384
 num_patches: 196  # int((self.cfg.experiment.encoder.in_size // self.cfg.experiment.encoder.patch_size) ** 2)
+feature_map_size: 14 # this is for the LiDAR encoder and the transformer decoder = 224//8 = in_size//patch_size
+feature_map_height: ${.feature_map_size}
+feature_map_width: ${.feature_map_size}
+
 
 out_feature_dim: ${..model.decoder.in_feature_dim}
 
@@ -26,10 +27,6 @@ out_feature_dim: ${..model.decoder.in_feature_dim}
 image_mean: [0.485, 0.456, 0.406]
 image_std: [0.228, 0.224, 0.225]
 image_max_pixel_value: 255.0
-
-# image_mean: [0.0, 0.0, 0.0]
-# image_std: [1.0, 1.0, 1.0]
-# image_max_pixel_value: 255.0
 
 augmentations:
     - D4

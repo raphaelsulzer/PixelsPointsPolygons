@@ -40,7 +40,7 @@ class EarlyFusionViT(torch.nn.Module):
         ###### LiDAR encoder #######
         
         #### replace VisionTransformer patch embedding with LiDAR encoder        
-        output_shape = [cfg.experiment.encoder.patch_feature_width, cfg.experiment.encoder.patch_feature_height]
+        output_shape = [cfg.experiment.encoder.feature_map_width, cfg.experiment.encoder.feature_map_height]
         voxel_encoder={
             'in_channels': 3, # note that this is the number of input channels, o3d automatically adds the pillar features to this
             'feat_channels': [64,cfg.experiment.encoder.patch_feature_dim],

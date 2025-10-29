@@ -7,6 +7,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from ..pointpillars import PointPillarsViT
 from ..vision_transformer import ViTDINOv1, ViTDINOv2, ViTDINOv3
+from ..convnext import ConvNextDINOv3
 from ..fusion_layers import EarlyFusionViT
 
 def generate_square_subsequent_mask(sz,device):
@@ -67,7 +68,7 @@ def log_optimal_transport(scores: torch.Tensor, alpha: torch.Tensor, iters: int)
 
 
 class ScoreNet(nn.Module):
-    def __init__(self, n_vertices, in_channels=512, token_mode=2):
+    def __init__(self, n_vertices, in_channels=512, token_dim=2):
         super().__init__()
         self.n_vertices = n_vertices
         self.in_channels = in_channels
@@ -80,13 +81,13 @@ class ScoreNet(nn.Module):
         self.bn3 = nn.BatchNorm2d(64)
         self.conv4 = nn.Conv2d(64, 1, kernel_size=1, stride=1, padding=0, bias=True)
         
-        self.token_mode = token_mode
+        self.token_dim = token_dim
 
 
     def forward(self, feats):
         feats = feats[:, 1:]
         feats = feats.unsqueeze(2)
-        feats = feats.view(feats.size(0), feats.size(1)//self.token_mode, self.token_mode, feats.size(3))
+        feats = feats.view(feats.size(0), feats.size(1)//self.token_dim, self.token_dim, feats.size(3))
         feats = torch.mean(feats, dim=2)
 
         x = torch.transpose(feats, 1, 2)
@@ -230,18 +231,20 @@ class EncoderDecoder(nn.Module):
         super().__init__()
         self.cfg = cfg
         
-        self.token_mode = 2
+        self.token_dim = 2
 
         self.encoder = encoder
         self.decoder = decoder
         self.max_num_vertices = cfg.experiment.model.tokenizer.max_num_vertices
         self.sinkhorn_iterations = cfg.experiment.model.sinkhorn_iterations
-        self.scorenet1 = ScoreNet(self.max_num_vertices,token_mode=self.token_mode)
-        self.scorenet2 = ScoreNet(self.max_num_vertices,token_mode=self.token_mode)
+        self.scorenet1 = ScoreNet(self.max_num_vertices,
+                                  in_channels=self.cfg.experiment.model.decoder.in_feature_dim*2,
+                                  token_dim=self.token_dim)
+        self.scorenet2 = ScoreNet(self.max_num_vertices,
+                                  in_channels=self.cfg.experiment.model.decoder.in_feature_dim*2,
+                                  token_dim=self.token_dim)
         self.bin_score = torch.nn.Parameter(torch.tensor(1.0))
         
-        self.bottleneck = nn.AdaptiveAvgPool1d(cfg.experiment.encoder.out_feature_dim)
-
     def forward(self, x_images, x_lidar, y):
         
         if self.cfg.experiment.encoder.use_images and not self.cfg.experiment.encoder.use_lidar:
@@ -296,6 +299,8 @@ class Pix2PolyModel(torch.nn.Module):
                 encoder = ViTDINOv2(self.cfg,bottleneck=True,local_rank=local_rank)
             elif self.cfg.experiment.encoder.name == "vit_dinov3":
                 encoder = ViTDINOv3(self.cfg,bottleneck=True,local_rank=local_rank) 
+            elif self.cfg.experiment.encoder.name in ["convnext_dinov3", "convnext"]:
+                encoder = ConvNextDINOv3(self.cfg,bottleneck=False,local_rank=local_rank) 
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
@@ -312,7 +317,8 @@ class Pix2PolyModel(torch.nn.Module):
         decoder = Decoder(
             vocab_size=vocab_size,
             encoder_len=self.cfg.experiment.encoder.num_patches,
-            dim=self.cfg.experiment.encoder.out_feature_dim,
+            # dim=self.cfg.experiment.encoder.out_feature_dim,
+            dim=self.cfg.experiment.model.decoder.in_feature_dim,
             num_heads=8,
             num_layers=6,
             max_len=self.cfg.experiment.model.tokenizer.max_len,
