@@ -1,0 +1,20 @@
+defaults:
+  - /dataset: p3
+  - /encoder: convnext_dinov3
+  - /model: pix2poly
+  - _self_
+
+name: convnext_tiny
+group_name: v3_${.model.name}
+project_name: HiSup
+
+lidar_dropout: null
+
+dataset:
+  country: CH
+  annotation_type: blocks
+
+
+model:
+  decoder:
+    in_feature_dim: 768
