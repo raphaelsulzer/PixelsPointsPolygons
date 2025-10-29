@@ -23,7 +23,6 @@ class ViTDINOv3(nn.Module):
         
         # Step 1: Load model architecture
         self.vit = torch.hub.load(self.cfg.host.dino_v3_repo, self.cfg.experiment.encoder.type, pretrained=False, source='local')
-        self.norm = self.vit.norm
 
         # Step 2: Load checkpoint weights
         checkpoint = torch.load(checkpoint_path, map_location=self.cfg.host.device)

@@ -25,7 +25,6 @@ class ViTDINOv2(nn.Module):
         
         # Step 1: Load model architecture
         self.vit = torch.hub.load(self.cfg.host.dino_v2_repo, 'dinov2_vits14', pretrained=False, source='local')
-        self.norm = self.vit.norm
 
         # Step 2: Load checkpoint weights
         checkpoint = torch.load(checkpoint_path, map_location=self.cfg.host.device)
@@ -53,11 +52,7 @@ class ViTDINOv2(nn.Module):
 
     def forward(self, x):
         # Extract full tokens (CLS + patches)
-        tokens = self.vit.forward_features(x)["x_prenorm"]  # Now a tensor: [B, 257, 384]
-
-        patch_tokens = tokens[:, 1:, :]  # Remove CLS token → [B, 256, 384]
-        patch_tokens = self.norm(patch_tokens)
-
+        patch_tokens = self.vit.forward_features(x)["x_norm_patchtokens"]  # Now a tensor: [B, 257, 384]
         patch_tokens = self.bottleneck(patch_tokens)
 
         return patch_tokens
