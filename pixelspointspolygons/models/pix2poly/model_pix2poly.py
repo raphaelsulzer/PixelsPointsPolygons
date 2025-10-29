@@ -1,3 +1,4 @@
+from importlib import abc
 import torch
 
 from torch import nn
@@ -89,7 +90,7 @@ class ScoreNet(nn.Module):
         feats = feats.unsqueeze(2)
         feats = feats.view(feats.size(0), feats.size(1)//self.token_dim, self.token_dim, feats.size(3))
         feats = torch.mean(feats, dim=2)
-
+        
         x = torch.transpose(feats, 1, 2)
         x = x.unsqueeze(-1)
         x = x.repeat(1, 1, 1, self.n_vertices)

@@ -40,7 +40,9 @@ dependencies = [
     # ffl asm polygonization
     # "torch-scatter", has to be specified in requirements-torch-cuda for specific cuda version
     # for dinov3:
-    "termcolor"
+    "termcolor",
+    # for geoprediction
+    "geopandas"
 ]
 
 [tool.setuptools]

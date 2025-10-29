@@ -1,0 +1,57 @@
+name: pointpillars_vit
+
+use_images: false
+use_lidar: true
+
+#############################
+####### Point Pillars #######
+#############################
+
+in_size: 224
+in_height: ${.in_size}
+in_width: ${.in_size}
+
+# in theory, these are values in [m]. However, because I scale the LiDAR tile to match image coordinates, these are [m]*s, i.e. here s=224/56, or 512/128
+in_voxel_size: 
+    x: ${..patch_size}
+    y: ${..patch_size}
+    z: 100
+
+max_num_points_per_voxel: 256 # this should be something around points_per_tile (~200k) / num_voxels_per_tile (here: 784), however, I find that half of that val is enough
+
+max_num_voxels: # here: (224/8)**2
+    train: 196 # (${.encoder.in_size} // ${.encoder.patch_size})**2
+    test: 196 # (${.encoder.in_size} // ${.encoder.patch_size})**2
+
+out_feature_width: 14 # ${model.encoder.in_width} // ${model.encoder.patch_size}
+out_feature_height: 14 # ${model.encoder.in_height} // ${model.encoder.patch_size}
+
+##############################
+##### Vision Transformer #####
+##############################
+vit:
+    type: vit_small_patch${..patch_size}_${..in_size}.dino
+    checkpoint_file: ${...dataset.out_path}/backbones/dino_deitsmall8_pretrain.pth
+    pretrained: True
+
+# patching
+patch_size: 8
+feature_map_size: 28
+feature_map_height: ${.feature_map_size}
+feature_map_width: ${.feature_map_size}
+patch_feature_dim: 384
+num_patches: 784  # int((self.cfg.experiment.encoder.in_size // self.cfg.experiment.encoder.patch_size) ** 2)
+
+out_feature_dim: ${..model.decoder.in_feature_dim}
+
+# ViT doesn't seem to need any normalization
+image_mean: [0.0, 0.0, 0.0]
+image_std: [1.0, 1.0, 1.0]
+image_max_pixel_value: 255.0
+
+augmentations:
+    - D4
+    # - Resize
+    - ColorJitter
+    - GaussNoise
+    - Normalize

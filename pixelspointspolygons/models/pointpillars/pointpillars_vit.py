@@ -62,7 +62,7 @@ class PointPillarsViT(torch.nn.Module):
         self.vit.patch_embed = PointPillarsEncoder(cfg, voxel_encoder=voxel_encoder, scatter=scatter, local_rank=local_rank)
         
         if bottleneck:
-            self.bottleneck = nn.AdaptiveAvgPool1d(cfg.experiment.encoder.out_feature_dim)
+            self.bottleneck = nn.AdaptiveAvgPool1d(cfg.experiment.model.decoder.in_feature_dim)
         else:
             self.bottleneck = nn.Identity()
         

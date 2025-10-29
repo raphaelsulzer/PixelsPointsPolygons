@@ -1,7 +1,7 @@
 import hydra
 import os
 
-from pixelspointspolygons.predict import FFLPredictor, HiSupPredictor, Pix2PolyPredictor
+from pixelspointspolygons.predict import Pix2PolyGeoPredictor
 from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf
 
 
@@ -12,14 +12,7 @@ def main(cfg):
     local_rank, world_size = setup_ddp(cfg)
     
     
-    if cfg.experiment.model.name == "ffl":
-        predictor = FFLPredictor(cfg, local_rank, world_size)
-    elif cfg.experiment.model.name == "hisup":
-        predictor = HiSupPredictor(cfg, local_rank, world_size)
-    elif cfg.experiment.model.name == "pix2poly":
-        predictor = Pix2PolyPredictor(cfg, local_rank, world_size)
-    else:
-        raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
+    predictor = Pix2PolyGeoPredictor(cfg, local_rank=local_rank, world_size=world_size)
     
     
     if 'image_file' in cfg:
@@ -47,7 +40,8 @@ def main(cfg):
     if 'image_file' not in cfg and 'lidar_file' not in cfg:
         raise ValueError("Either an image_file or lidar_file must be provided using +image_file=$FILE_NAME or +lidar_file=$FILE_NAME.")
     
-    predictor.predict_file(img_infile=image_file, lidar_infile=lidar_file)
+    predictor.predict_geofile(img_infile=image_file, lidar_infile=lidar_file)
+    
     
     # TODO: implement batch prediction for tiles.
     # It needs a split function and a translate function and a merge function
