@@ -14,18 +14,16 @@ in_width: ${.in_size}
 
 # patching
 patch_size: 8
-patch_feature_size: 28
-patch_feature_height: ${.patch_feature_size}
-patch_feature_width: ${.patch_feature_size}
+feature_map_size: 28
+feature_map_height: ${.feature_map_size}
+feature_map_width: ${.feature_map_size}
 patch_feature_dim: 384
-
 
 out_feature_size: ${..model.decoder.in_feature_size}
 out_feature_height: ${.out_feature_size}
 out_feature_width: ${.out_feature_size}
 
 out_feature_dim: ${..model.decoder.in_feature_dim}
-
 
 # ViT doesn't seem to need any normalization
 image_mean: [0.0, 0.0, 0.0]

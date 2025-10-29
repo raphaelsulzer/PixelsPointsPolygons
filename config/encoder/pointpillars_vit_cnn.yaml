@@ -43,9 +43,9 @@ vit:
 
 patch_size: 8
 
-patch_feature_size: 28
-patch_feature_height: ${.patch_feature_size}
-patch_feature_width: ${.patch_feature_size}
+feature_map_size: 28
+feature_map_height: ${.feature_map_size}
+feature_map_width: ${.feature_map_size}
 
 patch_feature_dim: 384
 

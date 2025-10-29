@@ -1,0 +1,37 @@
+name: convnext
+
+use_images: true
+use_lidar: false
+
+type: dinov3_convnext_tiny
+checkpoint_file: ${..dataset.out_path}/backbones/dinov3_convnext_tiny_pretrain_lvd1689m-21b726bb.pth
+pretrained: True
+
+in_size: 224
+in_height: ${.in_size}
+in_width: ${.in_size}
+
+patch_size: 32 # not really used here
+patch_feature_dim: 768
+num_patches: 49
+
+feature_map_size: 28 # this is for the LiDAR encoder and the transformer decoder = 224//8 = in_size//patch_size
+feature_map_height: ${.feature_map_size}
+feature_map_width: ${.feature_map_size}
+
+# out_feature_size: ${.in_size}
+# out_feature_height: ${.out_feature_size}
+# out_feature_width: ${.out_feature_size}
+# out_feature_dim: ${..model.decoder.in_feature_dim}
+
+# DINO v2 normalization
+image_mean: [0.485, 0.456, 0.406]
+image_std: [0.228, 0.224, 0.225]
+image_max_pixel_value: 255.0
+
+augmentations:
+    - D4
+    # - Resize
+    - ColorJitter
+    - GaussNoise
+    - Normalize
