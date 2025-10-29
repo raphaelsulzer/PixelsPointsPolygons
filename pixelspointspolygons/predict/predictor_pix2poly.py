@@ -107,7 +107,6 @@ class Pix2PolyPredictor(Predictor):
             
             batch_polygons = self.batch_to_polygons(image, lidar, self.model, self.tokenizer)
             self.plot_prediction(batch_polygons[0], image=image, image_np=image_pillow, lidar=lidar, outfile=outfile)
-
     
     def coord_and_perm_to_polygons(self, coord_preds, perm_preds):
         
