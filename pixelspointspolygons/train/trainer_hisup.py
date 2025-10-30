@@ -17,7 +17,7 @@ from torch import optim
 from transformers import get_cosine_schedule_with_warmup
 from collections import defaultdict
 
-from ..misc import get_lr, get_tile_names_from_dataloader, MetricLogger, denormalize_image_for_visualization, to_single_device
+from ..misc import get_lr, get_tile_names_from_dataloader, MetricLogger, denormalize_image_for_visualization, to_single_device, count_trainable_parameters
 from ..models.hisup import HiSupModel
 from ..eval import Evaluator
 from ..misc.coco_conversions import generate_coco_ann
@@ -43,6 +43,8 @@ class HiSupTrainer(Trainer):
     
     def setup_model(self):
         self.model = HiSupModel(self.cfg, self.local_rank)
+
+        self.logger.info(f"Setup HiSup model with {count_trainable_parameters(self.model)/1e6:.2f}M trainable parameters.")
 
 
     def setup_optimizer(self):

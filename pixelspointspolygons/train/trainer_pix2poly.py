@@ -20,7 +20,7 @@ from torch import optim
 from transformers import get_linear_schedule_with_warmup
 
 from ..models.pix2poly import Tokenizer, Pix2PolyModel
-from ..misc import AverageMeter, get_lr, get_tile_names_from_dataloader, denormalize_image_for_visualization
+from ..misc import AverageMeter, get_lr, get_tile_names_from_dataloader, denormalize_image_for_visualization, count_trainable_parameters
 from ..predict.predictor_pix2poly import Pix2PolyPredictor as Predictor
 from ..eval import Evaluator
 from ..misc.debug_visualisations import *
@@ -33,6 +33,8 @@ class Pix2PolyTrainer(Trainer):
     def setup_model(self):
         self.tokenizer = Tokenizer(self.cfg)
         self.model = Pix2PolyModel(self.cfg,self.tokenizer.vocab_size,local_rank=self.local_rank)
+        
+        self.logger.info(f"Setup Pix2Poly model with {count_trainable_parameters(self.model)/1e6:.2f}M trainable parameters.")
         
     
     def setup_optimizer(self):

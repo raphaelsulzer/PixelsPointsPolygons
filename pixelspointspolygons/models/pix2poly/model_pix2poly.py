@@ -301,7 +301,7 @@ class Pix2PolyModel(torch.nn.Module):
             elif self.cfg.experiment.encoder.name == "vit_dinov3":
                 encoder = ViTDINOv3(self.cfg,bottleneck=True,local_rank=local_rank) 
             elif self.cfg.experiment.encoder.name in ["convnext_dinov3", "convnext"]:
-                encoder = ConvNextDINOv3(self.cfg,bottleneck=False,local_rank=local_rank) 
+                encoder = ConvNextDINOv3(self.cfg,bottleneck=True,local_rank=local_rank) 
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             

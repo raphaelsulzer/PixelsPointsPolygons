@@ -16,7 +16,7 @@ import torch.distributed as dist
 from collections import defaultdict
 from transformers import  get_cosine_schedule_with_warmup
 
-from ..misc import get_lr, MetricLogger, get_tile_names_from_dataloader, denormalize_image_for_visualization
+from ..misc import get_lr, MetricLogger, get_tile_names_from_dataloader, denormalize_image_for_visualization, count_trainable_parameters
 from ..models.ffl.losses import build_combined_loss
 from ..models.ffl.local_utils import batch_to_cuda
 from ..models.ffl.model_ffl import FFLModel
@@ -34,6 +34,9 @@ class FFLTrainer(Trainer):
     
     def setup_model(self):
         self.model = FFLModel(self.cfg, self.local_rank)
+        
+        self.logger.info(f"Setup FFL model with {count_trainable_parameters(self.model)/1e6:.2f}M trainable parameters.")
+
         
     def setup_optimizer(self):
         # Get optimizer
