@@ -36,7 +36,7 @@ class Trainer:
         if local_rank == 0:
             self.logger.info(f"Create output directory {self.cfg.output_dir}")
             os.makedirs(self.cfg.output_dir, exist_ok=True)
-        
+                    
         self.local_rank = local_rank
         self.world_size = world_size
         self.device = torch.device(f"cuda:{local_rank}")

@@ -42,9 +42,9 @@ class ConvNextDINOv3(nn.Module):
         self.logger.debug(f"Unexpected keys: {unexpected}")
         
 
-        # Optional bottleneck (e.g. to reduce token dimension)
+        # Optional bottleneck to reduce token feature dimension
         if bottleneck:
-            self.bottleneck = nn.AdaptiveAvgPool1d(cfg.experiment.encoder.out_feature_dim)
+            self.bottleneck = nn.AdaptiveAvgPool1d(cfg.experiment.model.decoder.in_feature_dim)
         else:
             self.bottleneck = nn.Identity()
 

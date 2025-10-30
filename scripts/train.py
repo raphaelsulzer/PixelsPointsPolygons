@@ -17,6 +17,7 @@ def main(cfg):
         trainer = Pix2PolyTrainer(cfg, local_rank, world_size)
     else:
         raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
+    
     trainer.train()
 
 if __name__ == "__main__":
