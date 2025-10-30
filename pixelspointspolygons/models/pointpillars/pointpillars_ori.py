@@ -282,7 +282,7 @@ class PointPillarsEncoder(nn.Module):
         head: Config of anchor head module.
     """
 
-    def __init__(self, cfg, voxel_encoder, scatter, local_rank=0):
+    def __init__(self, cfg, voxel_encoder, scatter, flatten_embedding=True, local_rank=0):
         
         super(PointPillarsEncoder, self).__init__()
 
@@ -291,6 +291,7 @@ class PointPillarsEncoder(nn.Module):
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity, local_rank=local_rank)
         
+        self.flatten_embedding = flatten_embedding
         
         # see here for allowed params: https://github.com/isl-org/Open3D-ML/blob/fcf97c07bf7a113a47d0fcf63760b245c2a2784e/ml3d/configs/pointpillars_lyft.yml
         point_cloud_range = [0, 0, 0, 
@@ -353,7 +354,7 @@ class PointPillarsEncoder(nn.Module):
         coors_batch = torch.cat(coors_batch, dim=0)
         return voxels, num_points, coors_batch
         
-    def forward(self, x_lidar, return_flattened=True):
+    def forward(self, x_lidar):
         """Extract features from points."""
         
         # self.compute_density(x_lidar)
@@ -378,15 +379,14 @@ class PointPillarsEncoder(nn.Module):
         batch_size = x_lidar.shape[0] # WARNING: do not use self.cfg.experiment.model.batch_size here, because it can be wrong for truncated batches at the end of the loader in drop_last=False, e.g. in validation and testing
         x = self.middle_encoder(voxel_features, coors, batch_size)
         
+        x = x.transpose(1, 2)
         
-        
-        if return_flattened:
-            ## flatten patches, NCHW -> NLC. Needed to pass directly to next layer of VisionTransformer (self.vit)
-            return x.transpose(1, 2)
-        else:
-            x = x.view(batch_size, self.middle_encoder.in_channels, self.middle_encoder.ny,
-                                         self.middle_encoder.nx)
-            return x
+        if not self.flatten_embedding:
+
+            x = x.view(batch_size, 
+                       self.middle_encoder.ny, self.middle_encoder.nx,
+                       self.middle_encoder.in_channels)
+        return x
         
         
         

@@ -1,6 +1,6 @@
 defaults:
   - /dataset: p3
-  - /encoder: convnext_dinov3
+  - /encoder: pointpillars_vit_dinov3
   - /model: pix2poly
   - /polygonization: asm_acm
   - _self_
@@ -18,6 +18,6 @@ encoder:
     - D4
     - Normalize
 
-model:
-  decoder:
-    in_feature_dim: 768
+# model:
+#   decoder:
+#     in_feature_dim: 768

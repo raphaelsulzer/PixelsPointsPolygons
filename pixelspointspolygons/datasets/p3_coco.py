@@ -47,7 +47,7 @@ class P3Dataset(Dataset):
             self.stats_filepath = self.cfg.experiment.dataset.ffl_stats[split]
             if not os.path.isfile(self.stats_filepath):
                 raise FileExistsError(self.stats_filepath)
-            self.stats = torch.load(self.stats_filepath)
+            self.stats = torch.load(self.stats_filepath, weights_only=False)
         else:
             self.ann_file = self.cfg.experiment.dataset.annotations[split]
         if not os.path.isfile(self.ann_file):
@@ -433,7 +433,7 @@ class P3Dataset(Dataset):
             perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
 
         
-        return image, lidar, coords_seqs, perm_matrix, torch.tensor([img_info['id']])
+        return image, lidar, coords_seqs, perm_matrix, torch.tensor([img_id])
 
 
 
@@ -533,7 +533,7 @@ class P3Dataset(Dataset):
             perm_matrix = self.shuffle_perm_matrix_by_indices(perm_matrix, rand_idxs)
 
         
-        return image, lidar, coords_seqs, perm_matrix, torch.tensor([img_info['id']])
+        return image, lidar, coords_seqs, perm_matrix, torch.tensor([img_id])
 
 
     def __getitem__hisup(self, index):
@@ -605,7 +605,7 @@ class P3Dataset(Dataset):
             if isinstance(v, np.ndarray):
                 annotations[k] = torch.from_numpy(v)
 
-        return image, lidar, annotations, torch.tensor([img_info['id']])
+        return image, lidar, annotations, torch.tensor([img_id])
 
 
     def resize_hisup_annotations(self,ann):

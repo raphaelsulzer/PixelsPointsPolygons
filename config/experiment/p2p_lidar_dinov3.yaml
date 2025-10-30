@@ -1,11 +1,11 @@
 defaults:
   - /dataset: p3
-  - /encoder: pointpillars_vit
+  - /encoder: pointpillars_vit_dinov3
   - /model: pix2poly
   - _self_
 
-name: lidar_pp_vit_bs2x16_mnv64
-group_name: v2_${.model.name}
+name: lidar_dinov3
+group_name: v3_${.model.name}
 project_name: HiSup
 
 lidar_dropout: null

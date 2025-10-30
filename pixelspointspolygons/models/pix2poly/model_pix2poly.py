@@ -6,7 +6,7 @@ from torch.nn import functional as F
 from timm.models.layers import trunc_normal_
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from ..pointpillars import PointPillarsViT
+from ..pointpillars import PointPillarsViT, PointPillarsViTDINOv3
 from ..vision_transformer import ViTDINOv1, ViTDINOv2, ViTDINOv3
 from ..convnext import ConvNextDINOv3
 from ..fusion_layers import EarlyFusionViT
@@ -309,6 +309,8 @@ class Pix2PolyModel(torch.nn.Module):
             
             if self.cfg.experiment.encoder.name == "pointpillars_vit":
                 encoder = PointPillarsViT(self.cfg,bottleneck=True,local_rank=local_rank)
+            elif self.cfg.experiment.encoder.name == "pointpillars_vit_dinov3":
+                encoder = PointPillarsViTDINOv3(self.cfg,bottleneck=True,local_rank=local_rank)
             else:
                 raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
@@ -318,7 +320,6 @@ class Pix2PolyModel(torch.nn.Module):
         decoder = Decoder(
             vocab_size=vocab_size,
             encoder_len=self.cfg.experiment.encoder.num_patches,
-            # dim=self.cfg.experiment.encoder.out_feature_dim,
             dim=self.cfg.experiment.model.decoder.in_feature_dim,
             num_heads=8,
             num_layers=6,
