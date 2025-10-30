@@ -17,7 +17,7 @@ def parse_cli_overrides():
 
 def predict_all():
     
-    logger = getLogger("DINO v2 ablation")
+    logger = getLogger("ViT DINO ablation")
     
     experiments = [
         # Pix2Poly

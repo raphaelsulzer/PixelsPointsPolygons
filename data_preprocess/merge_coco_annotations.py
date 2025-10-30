@@ -63,7 +63,7 @@ def merge_pt_files(input_files, output_file):
     
     for input_file in input_files:
         
-        data = torch.load(input_file)
+        data = torch.load(input_file,weights_only=False)
         
         for k,v in data.items():
             data_dicts[k].append(v[:3])
@@ -102,7 +102,7 @@ def main(cfg):
         merge_pt_files(input_files, output_file)
         
              
-        # Example usage
+        # FFL
         input_files = [
             fflp.ann_ffl_file.replace(cfg.experiment.dataset.country, "CH"),
             fflp.ann_ffl_file.replace(cfg.experiment.dataset.country, "NZ"),
@@ -112,14 +112,14 @@ def main(cfg):
         merge_coco_annotations(input_files, output_file)
         
         
-        # Example usage
-        input_files = [
-            fflp.ann_file.replace(cfg.experiment.dataset.country, "CH"),
-            fflp.ann_file.replace(cfg.experiment.dataset.country, "NZ"),
-            fflp.ann_file.replace(cfg.experiment.dataset.country, "NY"),
-        ]
-        output_file = fflp.ann_file.replace(cfg.experiment.dataset.country, "all")
-        merge_coco_annotations(input_files, output_file)
+        # # General
+        # input_files = [
+        #     fflp.ann_file.replace(cfg.experiment.dataset.country, "CH"),
+        #     fflp.ann_file.replace(cfg.experiment.dataset.country, "NZ"),
+        #     fflp.ann_file.replace(cfg.experiment.dataset.country, "NY"),
+        # ]
+        # output_file = fflp.ann_file.replace(cfg.experiment.dataset.country, "all")
+        # merge_coco_annotations(input_files, output_file)
 
 
 

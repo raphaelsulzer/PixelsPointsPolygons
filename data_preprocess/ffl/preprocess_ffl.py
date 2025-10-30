@@ -62,10 +62,12 @@ def get_offline_transform_patch(raster: bool = True, fill: bool = True, edges: b
 
 
 class FFLPreprocessing(torch.utils.data.Dataset):
-    def __init__(self, cfg, pre_transform, fold="train"):
+    def __init__(self, cfg, pre_transform, fold="train", ignore_existing=False):
         super().__init__()
         
         self.cfg = cfg
+        
+        self.ignore_existing = ignore_existing
         
         verbosity = getattr(logging, self.cfg.run_type.logging.upper(), logging.INFO)
         self.logger = make_logger(self.__class__.__name__, level=verbosity)
@@ -83,7 +85,7 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         self.stats_filepath = self.cfg.experiment.dataset.ffl_stats[fold]
         self.stats = None
         if os.path.exists(self.stats_filepath):
-            self.stats = torch.load(self.stats_filepath)
+            self.stats = torch.load(self.stats_filepath, weights_only=False)
         self.processed_flag_filepath = os.path.join(self.processed_dir, f"processed-flag-{self.cfg.experiment.dataset.country}")
 
         self.ann_ffl_file = self.ann_file.replace("annotations_","annotations_ffl_")        
@@ -144,7 +146,7 @@ class FFLPreprocessing(torch.utils.data.Dataset):
         #         'make use of another pre-fitering technique, make sure to '
         #         'delete `{}` first.'.format(self.processed_dir))
 
-        if os.path.exists(self.processed_flag_filepath):
+        if os.path.exists(self.processed_flag_filepath) and not self.ignore_existing:
             print("Dataset already processed. Skipping pre-processing...")
             return
 
@@ -345,7 +347,7 @@ def main(cfg):
         
         dataset = FFLPreprocessing(cfg,
                                 pre_transform=get_offline_transform_patch(),
-                                fold=fold)
+                                fold=fold, ignore_existing=True)
         dataset._process()
 
     ###########################################
