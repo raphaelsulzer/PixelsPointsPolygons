@@ -1,6 +1,6 @@
 defaults:
   - /dataset: p3
-  - /encoder: vit
+  - /encoder: vit_dinov1
   - /model: pix2poly
   - _self_
 

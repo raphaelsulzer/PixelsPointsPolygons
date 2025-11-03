@@ -6,7 +6,7 @@ from hydra import initialize, compose
 from tqdm import tqdm
 from logging import getLogger
 
-from pixelspointspolygons.predict import FFLPredictor, HiSupPredictor, Pix2PolyPredictor
+from pixelspointspolygons.predict import Pix2PolyPredictor
 from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf, count_trainable_parameters
 from pixelspointspolygons.eval import Evaluator
 
@@ -21,8 +21,9 @@ def predict_all():
     
     experiments = [
         # Pix2Poly
+        ("p2p_image", "v4_image_vit_bs4x16"),
         ("p2p_image_dinov2", "dinov2"),
-        ("p2p_image", "v4_image_vit_bs4x16")
+        ("p2p_image_dinov3", "image_bs2x16_dinov3"),
         ]
     
     setup_hydraconf()
@@ -36,7 +37,7 @@ def predict_all():
             
             overrides = cli_overrides + \
                 [f"experiment={experiment}",
-                 f"experiment.name={name}", f"experiment.dataset.country=CH", f"evaluation=test",
+                 f"experiment.name={name}", f"experiment.dataset.country=CH",
                 "checkpoint=best_val_iou"]
             cfg = compose(config_name="config", 
                           overrides=overrides)
@@ -52,15 +53,8 @@ def predict_all():
 
             local_rank, world_size = setup_ddp(cfg)
                         
-            if cfg.experiment.model.name == "ffl":
-                predictor = FFLPredictor(cfg, local_rank, world_size)
-            elif cfg.experiment.model.name == "hisup":
-                predictor = HiSupPredictor(cfg, local_rank, world_size)
-            elif cfg.experiment.model.name == "pix2poly":
-                predictor = Pix2PolyPredictor(cfg, local_rank, world_size)
-            else:
-                raise ValueError(f"Unknown model name: {cfg.experiment.model.name}")
-            
+            predictor = Pix2PolyPredictor(cfg, local_rank, world_size)
+
             time_dict = predictor.predict_dataset(split=cfg.evaluation.split)
             ### Read time dict from file if needed
             # time_dict_file = f"{cfg.evaluation.eval_file}_modality_ablation_{cfg.experiment.dataset.country}_{cfg.evaluation.split}.csv".replace("metrics", "time")

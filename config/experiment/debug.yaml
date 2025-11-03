@@ -1,7 +1,7 @@
 defaults:
   - /dataset: p3
-  - /encoder: convnext_dinov3
-  # - /encoder: vit_dinov1
+  # - /encoder: convnext_dinov3
+  - /encoder: vit_dinov3
   - /model: pix2poly
   - /polygonization: asm_acm
   - _self_
@@ -22,3 +22,6 @@ encoder:
 # model:
 #   decoder:
 #     in_feature_dim: 768
+
+model:
+  shuffle_polygons: true
