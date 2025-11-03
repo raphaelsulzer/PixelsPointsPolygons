@@ -8,9 +8,10 @@
 \midrule
 \textbf{Model} & \textbf{Modality} & Unnamed: 0 & \textbf{IoU} $\uparrow$ & \textbf{NR=1} & \textbf{Time [s]} $\downarrow$ & \textbf{Params [$\times 10^6$]} $\downarrow$ \\
 \midrule
-\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}} & \textbf{Image} & \detokenize{pix2poly/v4_image_vit_bs4x16} & \cellcolor{blue!25} 0.765 & \cellcolor{blue!25} 0.828 & \cellcolor{blue!10} 1.15 & \cellcolor{blue!25} 31.9 \\
+\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}} & \textbf{Image} & \detokenize{pix2poly/v4_image_vit_bs4x16} & \cellcolor{blue!25} 0.765 & \cellcolor{blue!10} 0.828 & 1.07 & \cellcolor{blue!25} 31.9 \\
 \midrule
- & \textbf{Fusion} & \detokenize{pix2poly/dinov2} & \cellcolor{blue!10} 0.686 & \cellcolor{blue!10} 0.772 & \cellcolor{blue!25} 0.893 & \cellcolor{blue!10} 32.2 \\
+ & \textbf{Fusion} & \detokenize{pix2poly/dinov2} & 0.686 & 0.772 & \cellcolor{blue!25} 0.812 & \cellcolor{blue!10} 32.2 \\
+\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}} & \textbf{Image} & \detokenize{pix2poly/image_bs2x16_dinov3} & \cellcolor{blue!10} 0.763 & \cellcolor{blue!25} 0.833 & \cellcolor{blue!10} 0.838 & 38.8 \\
 \bottomrule
 \end{tabular}
 }

@@ -4,7 +4,7 @@ defaults:
   - /model: pix2poly
   - _self_
 
-name: lidar_dinov3
+name: lidar_dinov3_shuffle_polys
 group_name: v3_${.model.name}
 project_name: HiSup
 
@@ -13,3 +13,6 @@ lidar_dropout: null
 dataset:
   country: CH
   annotation_type: blocks
+
+model:
+  shuffle_polygons: true

@@ -161,7 +161,7 @@ class Trainer:
         self.logger.info(f"Loading model from checkpoint: {checkpoint_file}")
         
         ## load the checkpoint
-        checkpoint = torch.load(checkpoint_file, map_location=self.cfg.host.device)
+        checkpoint = torch.load(checkpoint_file, map_location=self.cfg.host.device, weights_only=False)
         
         temp = {}
         for k,v in checkpoint.items():
