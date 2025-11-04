@@ -3,9 +3,9 @@
 #OAR -q production 
 #OAR -l host=1/gpu=2,walltime=24
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
-#OAR -O oar/runs/p2p_image_convnext_tiny.out
-#OAR -E oar/runs/p2p_image_convnext_tiny.out
-#OAR -n p2p_image_convnext_tiny
+#OAR -O oar/runs/p2p_image_convnext_tiny_cont.out
+#OAR -E oar/runs/p2p_image_convnext_tiny_cont.out
+#OAR -n p2p_image_convnext_tiny_cont
 
 # display some information about attributed resources
 hostname 
@@ -23,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 --master-port=$((10000 + RANDOM % 50000)) scripts/train.py run_type=release host=g5k experiment=p2p_image_convnext_tiny experiment.name=image_bs2x16_convnext_tiny_fd256 experiment.group_name=v3_pix2poly
+torchrun --nproc_per_node=2 --master-port=$((10000 + RANDOM % 50000)) scripts/train.py run_type=release host=g5k experiment=p2p_image_convnext_tiny experiment.name=image_bs2x16_convnext_tiny_fd256 experiment.group_name=v3_pix2poly checkpoint=latest
