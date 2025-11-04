@@ -21,6 +21,7 @@ def predict_all():
     
     experiments = [
         # Pix2Poly
+        ("p2p_image_convnext_tiny", "image_bs2x16_convnext_tiny_fd256"),
         ("p2p_image", "v4_image_vit_bs4x16"),
         ("p2p_image_dinov2", "dinov2"),
         ("p2p_image_dinov3", "image_bs2x16_dinov3"),
