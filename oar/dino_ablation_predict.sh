@@ -23,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-python scripts/vit_dino_ablation.py host=g5k host.multi_gpu=false evaluation=test
+python scripts/vit_dino_ablation.py host=g5k host.multi_gpu=false evaluation=test_no_linedof
