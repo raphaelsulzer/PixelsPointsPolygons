@@ -1,0 +1,9 @@
+split: test
+pred_file: ${..output_dir}/predictions_${..experiment.dataset.country}_${.split}/${..checkpoint}.json
+modes:
+    - hausdorff
+    - coco
+    - iou
+    - polis
+    - mta
+eval_file: results/metrics
