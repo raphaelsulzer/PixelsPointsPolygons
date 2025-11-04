@@ -1,11 +1,11 @@
 #!/bin/bash 
 
 #OAR -q production 
-#OAR -l host=1/gpu=2,walltime=48
+#OAR -l host=1/gpu=1,walltime=12
 #OAR -p gpu-24GB AND gpu_compute_capability_major>=5
-#OAR -O oar/runs/hisup_all.out
-#OAR -E oar/runs/hisup_all.out
-#OAR -n hisup_all
+#OAR -O oar/runs/dino_ablation_predict.out
+#OAR -E oar/runs/dino_ablation_predict.out
+#OAR -n dino_ablation_predict
 
 # display some information about attributed resources
 hostname 
@@ -23,4 +23,4 @@ cd ./pixelspointspolygons/models/hisup/afm_module
 make
 cd ../../../../
 
-torchrun --nproc_per_node=2 scripts/train.py log_to_wandb=true host=g5k run_type=release host.multi_gpu=true checkpoint=null experiment=hisup_fusion experiment.name=v0_all_bs2x16 country=all
+python scripts/vit_dino_ablation.py host=g5k host.multi_gpu=false evaluation=test
