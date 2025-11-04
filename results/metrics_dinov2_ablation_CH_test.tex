@@ -8,10 +8,11 @@
 \midrule
 \textbf{Model} & \textbf{Modality} & Unnamed: 0 & \textbf{POLIS [m]} $\downarrow$ & \textbf{CD [m]} $\downarrow$ & \textbf{HD [m]} $\downarrow$ & \textbf{MTA [$^\circ$]} $\downarrow$ & \textbf{AP} $\uparrow$ & \textbf{AR} $\uparrow$ & \textbf{IoU} $\uparrow$ & \textbf{NR=1} & \textbf{Time [s]} $\downarrow$ & \textbf{Params [$\times 10^6$]} $\downarrow$ \\
 \midrule
-\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}} & \textbf{Image} & \detokenize{pix2poly/v4_image_vit_bs4x16} & \cellcolor{blue!25} 2.46 & \cellcolor{blue!25} 2.5 & \cellcolor{blue!25} 10.8 & 34.3 & \cellcolor{blue!25} 0.317 & \cellcolor{blue!25} 0.492 & \cellcolor{blue!25} 0.845 & \cellcolor{blue!25} 0.906 & \cellcolor{blue!25} 1.07 & \cellcolor{blue!25} 31.9 \\
+\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}} & \textbf{Image} & \detokenize{pix2poly/image_bs2x16_convnext_tiny_fd256} & 2.99 & 3.01 & 12.7 & 34.2 & 0.237 & 0.417 & 0.817 & 0.897 & \cellcolor{blue!25} 0.189 & 37.9 \\
 \midrule
- & \textbf{Fusion} & \detokenize{pix2poly/dinov2} & 3.3 & 3.3 & 13.4 & \cellcolor{blue!25} 34.1 & 0.209 & 0.381 & 0.805 & 0.883 & \cellcolor{blue!10} 1.15 & \cellcolor{blue!10} 32.2 \\
-\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}} & \textbf{Image} & \detokenize{pix2poly/image_bs2x16_dinov3} & \cellcolor{blue!10} 2.58 & \cellcolor{blue!10} 2.61 & \cellcolor{blue!10} 11.2 & \cellcolor{blue!25} 34.1 & \cellcolor{blue!10} 0.295 & \cellcolor{blue!10} 0.473 & \cellcolor{blue!10} 0.836 & \cellcolor{blue!10} 0.902 & 1.18 & 38.8 \\
+\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}} & \textbf{Image} & \detokenize{pix2poly/v4_image_vit_bs4x16} & \cellcolor{blue!25} 2.46 & \cellcolor{blue!25} 2.51 & \cellcolor{blue!25} 10.8 & 34.3 & \cellcolor{blue!25} 0.317 & \cellcolor{blue!25} 0.492 & \cellcolor{blue!25} 0.845 & \cellcolor{blue!25} 0.906 & 0.263 & \cellcolor{blue!25} 31.9 \\
+ & \textbf{Fusion} & \detokenize{pix2poly/dinov2} & 3.3 & 3.3 & 13.4 & \cellcolor{blue!25} 34.1 & 0.209 & 0.381 & 0.805 & 0.883 & 0.207 & \cellcolor{blue!10} 32.2 \\
+\multirow{3}{*}{\shortstack{\textbf{ViT}~\cite{vit}~+ \\ \textbf{Pix2Poly}~\cite{pix2poly}}} & \textbf{Image} & \detokenize{pix2poly/image_bs2x16_dinov3} & \cellcolor{blue!10} 2.58 & \cellcolor{blue!10} 2.61 & \cellcolor{blue!10} 11.3 & \cellcolor{blue!25} 34.1 & \cellcolor{blue!10} 0.295 & \cellcolor{blue!10} 0.473 & \cellcolor{blue!10} 0.836 & \cellcolor{blue!10} 0.902 & \cellcolor{blue!10} 0.203 & 38.8 \\
 \bottomrule
 \end{tabular}
 }
