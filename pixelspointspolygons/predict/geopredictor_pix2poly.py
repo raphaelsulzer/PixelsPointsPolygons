@@ -91,7 +91,7 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
     
     
     
-    def tensor_to_shapely_polys(self, tensor_polygons, translation):
+    def tensor_to_shapely_polys(self, tensor_polygons, translation, flip_y=False):
         
         shapely_polygons = []
         
@@ -99,6 +99,9 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
             if poly.shape[0] < 3:
                 continue
             poly_np = poly.cpu().numpy()
+            
+            if flip_y:
+                poly_np[:,1] = self.img_dim - poly_np[:,1]
             
             poly_np*=self.img_res
             poly_np+=translation
@@ -191,7 +194,7 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
         self.setup_image_size(img_res=img_infos[0]['res_x'], img_dim=img_infos[0]['width'])
         shapely_polygons = []
         for i in range(len(batch_polygons)):
-            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i],translation=img_infos[i]['top_left'])
+            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i], translation=img_infos[i]['top_left'], flip_y=True)
 
         self.export_to_shp(shapely_polygons,outfile=outfile,epsg=2056)
         
