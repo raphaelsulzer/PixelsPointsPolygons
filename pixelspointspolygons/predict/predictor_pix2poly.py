@@ -16,7 +16,6 @@ from scipy.optimize import linear_sum_assignment
 
 from ..models.pix2poly import Tokenizer, Pix2PolyModel
 from ..misc.coco_conversions import generate_coco_ann
-from ..datasets import get_val_loader
 from ..datasets import get_train_loader, get_val_loader, get_test_loader
 
 from .predictor import Predictor

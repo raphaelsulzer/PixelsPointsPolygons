@@ -6,7 +6,6 @@ os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 
 import laspy
 import torch
-import shapely
 import numpy as np
 import geopandas as gpd
 
@@ -16,6 +15,7 @@ from tqdm import tqdm
 
 from .predictor_pix2poly import Pix2PolyPredictor
 
+from ..datasets import get_train_loader, get_val_loader, get_test_loader
 class Tile:
     def __init__(self, image=None, lidar=None, translation=None, scale=0.25):
         self.image = image  # Tensor of shape (C, H, W)
@@ -26,11 +26,12 @@ class Tile:
 
 class Pix2PolyGeoPredictor(Pix2PolyPredictor):
     
-    def setup_image_size(self):
-        self.img_res = 0.25
-        self.img_dim = 224
+    def setup_image_size(self, img_res=0.25, img_dim=224):
+        self.img_res = img_res
+        self.img_dim = img_dim
 
-    def input_to_tiles(self, img=None, las=None):
+
+    def tile_input(self, img=None, las=None):
         """
         Split a LAS point cloud into 56m x 56m tiles and return a jagged tensor.
 
@@ -88,6 +89,8 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
 
         return tiles
     
+    
+    
     def tensor_to_shapely_polys(self, tensor_polygons, translation):
         
         shapely_polygons = []
@@ -105,7 +108,7 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
         return shapely_polygons
     
     
-    def export_to_shp(self,shapely_polygons, outfile="polygons.shp", epsg=4326):
+    def export_to_shp(self, shapely_polygons, outfile="polygons.shp", epsg=4326):
         # Create a GeoDataFrame
         gdf = gpd.GeoDataFrame(geometry=shapely_polygons)
 
@@ -114,6 +117,8 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
 
         # Export to shapefile
         gdf.to_file(outfile)
+    
+    
     
     def predict_geofile(self,img_infile=None,lidar_infile=None,outfile="polygons.shp"):
         
@@ -125,10 +130,8 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
         
         las = laspy.read(lidar_infile)
         
-        tiles = self.input_to_tiles(las=las)
-        
-        # tiles = tiles[:17]
-        
+        tiles = self.tile_input(las=las)
+                
         iters = len(tiles)//batch_size + int(len(tiles)%batch_size>0)
         
         batch_polygons = []
@@ -155,3 +158,40 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
         self.export_to_shp(shapely_polygons,outfile=outfile,epsg=las.header.parse_crs().to_epsg())
      
     
+
+    def predict_dataset_to_shp(self, split="val", outfile="./polygon_predictions/out.shp"):
+        
+        self.setup_model()
+        self.load_checkpoint()
+
+        if split == "train":
+            loader = get_train_loader(self.cfg,tokenizer=self.tokenizer,logger=self.logger)
+        elif split == "val":
+            loader = get_val_loader(self.cfg,tokenizer=self.tokenizer,logger=self.logger)
+        elif split == "test":
+            loader = get_test_loader(self.cfg,tokenizer=self.tokenizer,logger=self.logger)
+        else:   
+            raise ValueError(f"Unknown split {split}.")
+        
+        self.logger.info(f"Predicting on {len(loader)} batches...")
+        
+        batch_polygons = []
+        img_infos = []
+
+        for x_image, x_lidar, y_sequence, y_perm, image_ids in self.progress_bar(loader):
+            
+            if self.cfg.experiment.encoder.use_images:
+                x_image = x_image.to(self.device, non_blocking=True)
+            if self.cfg.experiment.encoder.use_lidar:
+                x_lidar = x_lidar.to(self.device, non_blocking=True)
+            
+            batch_polygons+= self.batch_to_polygons(x_image, x_lidar, self.model, self.tokenizer)
+            img_infos+= loader.dataset.coco.loadImgs(image_ids.squeeze().cpu().numpy())
+            
+        self.setup_image_size(img_res=img_infos[0]['res_x'], img_dim=img_infos[0]['width'])
+        shapely_polygons = []
+        for i in range(len(batch_polygons)):
+            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i],translation=img_infos[i]['top_left'])
+
+        self.export_to_shp(shapely_polygons,outfile=outfile)
+        
