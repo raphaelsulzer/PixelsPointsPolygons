@@ -14,7 +14,9 @@ nvidia-smi
 # make use of a python torch environment
 module load conda
 conda activate p3pt2.9
+export TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6;8.6+PTX"
 python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))";
+pip install -e .
 
 # to get rid of this annoying warning: sh: /home/rsulzer/.conda/envs/ppp/bin/../lib/libtinfo.so.6: no version information available (required by sh)
 export LD_BIND_NOW=1
