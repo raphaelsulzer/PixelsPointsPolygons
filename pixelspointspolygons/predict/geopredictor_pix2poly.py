@@ -189,7 +189,7 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
                 x_lidar = x_lidar.to(self.device, non_blocking=True)
             
             batch_polygons+= self.batch_to_polygons(x_image, x_lidar, self.model, self.tokenizer)
-            img_infos+= loader.dataset.coco.loadImgs(image_ids.squeeze().cpu().numpy())
+            img_infos+= loader.dataset.coco.loadImgs(np.atleast_1d(image_ids.squeeze().cpu().numpy()))
             
         self.setup_image_size(img_res=img_infos[0]['res_x'], img_dim=img_infos[0]['width'])
         shapely_polygons = []

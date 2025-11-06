@@ -1,4 +1,5 @@
 import hydra
+import os
 
 from pixelspointspolygons.predict import Pix2PolyGeoPredictor
 from pixelspointspolygons.misc.shared_utils import setup_ddp, setup_hydraconf
@@ -13,7 +14,9 @@ def main(cfg):
 
     predictor = Pix2PolyGeoPredictor(cfg, local_rank, world_size)
     
-    predictor.predict_dataset_to_shp(split=cfg.evaluation.split)
+    
+    outfile = os.path.join("polygon_predictions", f"{cfg.experiment.name}_{cfg.experiment.dataset.country}_{cfg.evaluation.split}.shp")
+    predictor.predict_dataset_to_shp(split=cfg.evaluation.split, outfile=outfile)
     
         
 if __name__ == "__main__":
