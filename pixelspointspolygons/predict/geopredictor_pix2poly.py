@@ -101,7 +101,7 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
             poly_np = poly.cpu().numpy()
             
             poly_np*=self.img_res
-            poly_np-=translation
+            poly_np+=translation
             
             shapely_polygons.append(Polygon(poly_np))
 
@@ -153,7 +153,7 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
 
         shapely_polygons = []
         for i in range(len(tiles)):
-            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i],translation=tiles[i].translation)
+            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i],translation=-tiles[i].translation)
 
         self.export_to_shp(shapely_polygons,outfile=outfile,epsg=las.header.parse_crs().to_epsg())
      
