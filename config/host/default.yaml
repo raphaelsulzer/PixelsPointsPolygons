@@ -1,6 +1,6 @@
 name: default
-dataset_root: data/${..dataset.name}
-model_root: data/${..dataset.name}_output
+dataset_root: /data
+model_root: /data
 
 multi_gpu: false
 device: cuda

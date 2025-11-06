@@ -193,5 +193,5 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
         for i in range(len(batch_polygons)):
             shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i],translation=img_infos[i]['top_left'])
 
-        self.export_to_shp(shapely_polygons,outfile=outfile)
+        self.export_to_shp(shapely_polygons,outfile=outfile,epsg=2056)
         
