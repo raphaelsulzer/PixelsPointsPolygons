@@ -4,7 +4,7 @@ defaults:
   - /model: pix2poly
   - _self_
 
-name: lidar_dinov3_shuffle_polys
+name: lidar_dinov3_sort_vert_by_coords
 group_name: v3_${.model.name}
 project_name: HiSup
 
@@ -16,3 +16,4 @@ dataset:
 
 model:
   shuffle_polygons: true
+  vertex_order: coord

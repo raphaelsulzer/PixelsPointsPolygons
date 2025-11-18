@@ -1,0 +1,20 @@
+\begin{table}[]
+\setlength{\tabcolsep}{2pt}
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tabular}{@{}lcc@{}H|cccccc@{}}
+\toprule
+    & & & & \multicolumn{4}{c}{\emph{Boundary}}& \multicolumn{3}{c}{\emph{Area}}  & \emph{Complexity} &  \multicolumn{2}{c}{\emph{Efficiency}} \\
+\midrule
+\textbf{Backbone} & \textbf{Pretraining} & \textbf{Patch size} & Unnamed: 0 & \textbf{POLIS [m]} $\downarrow$ & \textbf{MTA [$^\circ$]} $\downarrow$ & \textbf{IoU} $\uparrow$ & \textbf{NR=1} & \textbf{Time [s]} $\downarrow$ & \textbf{Params [$\times 10^6$]} $\downarrow$ \\
+\midrule
+\textbf{ConvNeXt-T}~\citep{convnext} & DINOv3~\citep{dinov3} & -- & \detokenize{pix2poly/image_bs2x16_convnext_tiny_fd256} & 2.99 & 34.2 & 0.817 & 0.897 & \cellcolor{blue!25} 0.189 & 37.9 \\
+\textbf{ViT-S}~\citep{vit} & DINOv1~\citep{dinov1} & 8x8 & \detokenize{pix2poly/v4_image_vit_bs4x16} & \cellcolor{blue!25} 2.46 & 34.3 & \cellcolor{blue!25} 0.845 & \cellcolor{blue!25} 0.906 & 0.263 & \cellcolor{blue!25} 31.9 \\
+\textbf{ViT-S}~\citep{vit} & DINOv2~\citep{dinov2} & 14x14 & \detokenize{pix2poly/dinov2} & 3.3 & \cellcolor{blue!25} 34.1 & 0.805 & 0.883 & 0.207 & \cellcolor{blue!10} 32.2 \\
+\textbf{ViT-S+}~\citep{vit} & DINOv3~\citep{dinov3} & 16x16 & \detokenize{pix2poly/image_bs2x16_dinov3} & \cellcolor{blue!10} 2.58 & \cellcolor{blue!25} 34.1 & \cellcolor{blue!10} 0.836 & \cellcolor{blue!10} 0.902 & \cellcolor{blue!10} 0.203 & 38.8 \\
+\bottomrule
+\end{tabular}
+}
+\caption{Patch prediction}
+\label{tab:patch}
+\end{table}
