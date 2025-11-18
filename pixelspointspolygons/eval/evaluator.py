@@ -395,6 +395,8 @@ class Evaluator:
             desc = r'    & & \multicolumn{4}{c}{\emph{Boundary}}  & \multicolumn{3}{c}{\emph{Area}}  &  \multicolumn{3}{c}{\emph{Complexity}} \\'
         elif table_type == "modality":
             desc = r'    & & & \multicolumn{4}{c}{\emph{Boundary}}& \multicolumn{3}{c}{\emph{Area}}  & \emph{Complexity} &  \multicolumn{2}{c}{\emph{Efficiency}} \\'
+        elif table_type == "backbone":
+            desc = r'    & & & & \multicolumn{2}{c}{\emph{Boundary}}& \multicolumn{1}{c}{\emph{Area}}  & \emph{Complexity} &  \multicolumn{2}{c}{\emph{Efficiency}} \\'
         elif table_type == "all":
             desc = r'    & & \multicolumn{4}{c}{\emph{Boundary}}  & \multicolumn{3}{c}{\emph{Area}}  &  \multicolumn{3}{c}{\emph{Complexity}} \\'
         else:
@@ -416,6 +418,8 @@ class Evaluator:
 
         if type == "density":
             df = df.filter(items=["Unnamed: 0","POLIS", "chamfer", "hausdorff", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
+        elif type == "backbone":
+            df = df.filter(items=["Unnamed: 0","POLIS", "MTA", "IoU", "NR", "prediction_time", "num_params"])  
         elif type == "resolution":
             df = df.filter(items=["Unnamed: 0","POLIS", "chamfer", "hausdorff", "MTA", "AP", "AR10", "IoU", "C-IoU", "NR", "norm_line_dofs"])
         elif type == "modality":
@@ -439,6 +443,10 @@ class Evaluator:
             cols = [r'\textbf{Density [$pts/m^2$]}'] + cols
             align = '@{}c'+ 'H|' + ('c' * (len(cols)-2))  + '@{}'
             lines.append(r'\setlength{\tabcolsep}{2pt}')
+        elif type == "backbone":
+            cols = [r'\textbf{Backbone}', r'\textbf{Pretraining}', r'\textbf{Patch size}'] + cols
+            align = '@{}lcc@{}'+ 'H|' + ('c' * (len(cols)-4))  + '@{}'
+            lines.append(r'\setlength{\tabcolsep}{2pt}')    
         elif type == "resolution":
             cols = [r'\textbf{GSD [cm]}'] + cols
             align = '@{}c'+ 'H|' + ('c' * (len(cols)-2))  + '@{}'
@@ -478,6 +486,11 @@ class Evaluator:
             elif type == "resolution":
                 gsd = [15,25]
                 formatted_row = [str(gsd[i])]
+            elif type == "backbone":
+                model = [r"\textbf{ConvNeXt-T}~\citep{convnext}"]+[r"\textbf{ViT-S}~\citep{vit}"]*2+[r"\textbf{ViT-S+}~\citep{vit}"]
+                patch_size = ['--','8x8','14x14','16x16']
+                pretrain = ['DINOv3~\citep{dinov3}','DINOv1~\citep{dinov1}','DINOv2~\citep{dinov2}','DINOv3~\citep{dinov3}']
+                formatted_row = [model[i], pretrain[i], patch_size[i]]
             elif type == "all":
                 model = self.get_model_name(row.iloc[0])
                 formatted_row = [model]

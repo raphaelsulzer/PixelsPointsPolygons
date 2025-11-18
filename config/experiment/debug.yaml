@@ -25,3 +25,4 @@ encoder:
 
 model:
   shuffle_polygons: true
+  vertex_order: coord

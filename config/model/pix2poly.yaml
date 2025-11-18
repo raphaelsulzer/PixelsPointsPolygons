@@ -9,13 +9,13 @@ decoder:
 
 tokenizer: 
     num_bins: ${...encoder.in_size}
-    shuffle_tokens: false
     max_num_vertices: 192
     max_len: null
     pad_idx: null
     generation_steps: null
 
-shuffle_polygons: false
+shuffle_polygons: true
+vertex_order: gt  # or random
 
 fusion: patch_concat # or feature_concat
 

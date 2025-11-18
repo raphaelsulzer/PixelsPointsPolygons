@@ -13,9 +13,10 @@ from ffl import FFLPreprocessing, get_offline_transform_patch
 
 def merge_coco_annotations(input_files, output_file):
     merged = {
+        "info": {},
+        "categories": [],
         "images": [],
         "annotations": [],
-        "categories": []
     }
 
     image_id_offset = 0
@@ -26,6 +27,8 @@ def merge_coco_annotations(input_files, output_file):
         with open(file_path, 'r') as f:
             print("Loading", file_path)
             data = json.load(f)
+
+        merged["info"] = data["info"]
 
         if category_set is None:
             merged["categories"] = data["categories"]
@@ -82,6 +85,7 @@ def main(cfg):
     setup_hydraconf(cfg)
     
     regions = ["train", "val", "test"]
+    # regions = ["val"]
 
     for region in regions:
         
@@ -112,14 +116,14 @@ def main(cfg):
         merge_coco_annotations(input_files, output_file)
         
         
-        # # General
-        # input_files = [
-        #     fflp.ann_file.replace(cfg.experiment.dataset.country, "CH"),
-        #     fflp.ann_file.replace(cfg.experiment.dataset.country, "NZ"),
-        #     fflp.ann_file.replace(cfg.experiment.dataset.country, "NY"),
-        # ]
-        # output_file = fflp.ann_file.replace(cfg.experiment.dataset.country, "all")
-        # merge_coco_annotations(input_files, output_file)
+        # General
+        input_files = [
+            fflp.ann_file.replace(cfg.experiment.dataset.country, "CH"),
+            fflp.ann_file.replace(cfg.experiment.dataset.country, "NZ"),
+            fflp.ann_file.replace(cfg.experiment.dataset.country, "NY"),
+        ]
+        output_file = fflp.ann_file.replace(cfg.experiment.dataset.country, "all")
+        merge_coco_annotations(input_files, output_file)
 
 
 
