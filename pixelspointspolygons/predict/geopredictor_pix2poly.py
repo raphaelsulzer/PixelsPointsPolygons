@@ -31,65 +31,140 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
         self.img_dim = img_dim
 
 
-    def tile_input(self, img=None, las=None):
+    # def tile_input(self, img=None, las=None):
+    #     """
+    #     Split a LAS point cloud into 56m x 56m tiles and return a jagged tensor.
+
+    #     Args:
+    #         las: laspy.LasData object
+    #         tile_size (float): Tile width and height in meters (default 56).
+    #         device (str): Torch device ('cpu' or 'cuda').
+
+    #     Returns:
+    #         torch.nested.nested_tensor: shape (B, Ni, 3) with jagged layout
+    #     """
+        
+    #     tile_size = self.img_res * self.img_dim  # 56.0 meters
+        
+    #     # Extract coordinates as (M, 3)
+    #     xyz = np.vstack((las.x, las.y, las.z)).T
+
+    #     # Bounding box
+    #     min_x, min_y, _ = las.header.min
+    #     max_x, max_y, _ = las.header.max
+
+    #     # Compute grid dimensions
+    #     num_tiles_x = int(np.ceil((max_x - min_x) / tile_size))
+    #     num_tiles_y = int(np.ceil((max_y - min_y) / tile_size))
+
+    #     # Compute tile indices per point
+    #     ix = np.floor((xyz[:, 0] - min_x) / tile_size).astype(int)
+    #     iy = np.floor((xyz[:, 1] - min_y) / tile_size).astype(int)
+    #     tile_ids = iy * num_tiles_x + ix
+
+    #     scaler = MinMaxScaler(feature_range=(0,self.cfg.experiment.encoder.in_voxel_size.z))
+
+    #     # Group points per tile
+    #     tiles = []
+    #     for tid in np.unique(tile_ids):
+    #         pts = xyz[tile_ids == tid]
+            
+    #         # Recover ix, iy from tile ID
+    #         iy_tile = tid // num_tiles_x
+    #         ix_tile = tid % num_tiles_x
+
+    #         tile_min_x = min_x + ix_tile * tile_size
+    #         tile_min_y = min_y + iy_tile * tile_size
+            
+    #         translation = -np.array([tile_min_x, tile_min_y])
+    #         pts[:,:2] = pts[:,:2]+translation  # Translate points to tile local coords
+    #         pts[:,:2] = pts[:,:2]/self.img_res  # Scale to 224x224x100 grid
+    #         pts[:, -1] = scaler.fit_transform(pts[:, -1].reshape(-1, 1)).squeeze()
+            
+    #         assert np.all(pts[:,0] >=0) and np.all(pts[:,0] <= self.img_dim), "X coordinates out of bounds after tiling."
+    #         assert np.all(pts[:,1] >=0) and np.all(pts[:,1] <= self.img_dim), "Y coordinates out of bounds after tiling."
+            
+    #         t = Tile(lidar=pts,translation=translation)
+    #         tiles.append(t)
+
+    #     return tiles
+    
+    
+    def tile_input(self, img=None, las=None, overlap_pct=0.2):
         """
-        Split a LAS point cloud into 56m x 56m tiles and return a jagged tensor.
+        Split a LAS point cloud into 56m × 56m tiles with optional overlap.
 
         Args:
-            las: laspy.LasData object
-            tile_size (float): Tile width and height in meters (default 56).
-            device (str): Torch device ('cpu' or 'cuda').
+            las (laspy.LasData): Input point cloud
+            overlap_pct (float): Percentage overlap between tiles (0.0–0.9)
+                                Example: 0.25 → 25% overlap.
 
         Returns:
-            torch.nested.nested_tensor: shape (B, Ni, 3) with jagged layout
+            list[Tile]: A list of Tile objects (jagged)
         """
-        
-        tile_size = self.img_res * self.img_dim  # 56.0 meters
-        
-        # Extract coordinates as (M, 3)
+
+        # --- Basic parameters ---
+        tile_size = self.img_res * self.img_dim     # 56 m
+        overlap_pct = float(overlap_pct)
+        assert 0.0 <= overlap_pct < 1.0
+
+        stride = tile_size * (1 - overlap_pct)       # effective step size between tile origins
+
+        # Extract coordinates (M, 3)
         xyz = np.vstack((las.x, las.y, las.z)).T
 
         # Bounding box
         min_x, min_y, _ = las.header.min
         max_x, max_y, _ = las.header.max
 
-        # Compute grid dimensions
-        num_tiles_x = int(np.ceil((max_x - min_x) / tile_size))
-        num_tiles_y = int(np.ceil((max_y - min_y) / tile_size))
+        # --- Determine tile origins based on stride ---
+        x_starts = np.arange(min_x, max_x, stride)
+        y_starts = np.arange(min_y, max_y, stride)
 
-        # Compute tile indices per point
-        ix = np.floor((xyz[:, 0] - min_x) / tile_size).astype(int)
-        iy = np.floor((xyz[:, 1] - min_y) / tile_size).astype(int)
-        tile_ids = iy * num_tiles_x + ix
 
-        scaler = MinMaxScaler(feature_range=(0,self.cfg.experiment.encoder.in_voxel_size.z))
+        # Pre-scaler
+        scaler = MinMaxScaler(
+            feature_range=(0, self.cfg.experiment.encoder.in_voxel_size.z)
+        )
 
-        # Group points per tile
         tiles = []
-        for tid in np.unique(tile_ids):
-            pts = xyz[tile_ids == tid]
-            
-            # Recover ix, iy from tile ID
-            iy_tile = tid // num_tiles_x
-            ix_tile = tid % num_tiles_x
 
-            tile_min_x = min_x + ix_tile * tile_size
-            tile_min_y = min_y + iy_tile * tile_size
-            
-            translation = -np.array([tile_min_x, tile_min_y])
-            pts[:,:2] = pts[:,:2]+translation  # Translate points to tile local coords
-            pts[:,:2] = pts[:,:2]/self.img_res  # Scale to 224x224x100 grid
-            pts[:, -1] = scaler.fit_transform(pts[:, -1].reshape(-1, 1)).squeeze()
-            
-            assert np.all(pts[:,0] >=0) and np.all(pts[:,0] <= self.img_dim), "X coordinates out of bounds after tiling."
-            assert np.all(pts[:,1] >=0) and np.all(pts[:,1] <= self.img_dim), "Y coordinates out of bounds after tiling."
-            
-            t = Tile(lidar=pts,translation=translation)
-            tiles.append(t)
+        # Loop over tile grid
+        for tile_min_y in y_starts:
+            for tile_min_x in x_starts:
+
+                # Calculate tile bounding box
+                tile_max_x = tile_min_x + tile_size
+                tile_max_y = tile_min_y + tile_size
+
+                # Select points in this tile (points may appear in multiple tiles!)
+                mask = (
+                    (xyz[:, 0] >= tile_min_x) & (xyz[:, 0] < tile_max_x) &
+                    (xyz[:, 1] >= tile_min_y) & (xyz[:, 1] < tile_max_y)
+                )
+                pts = xyz[mask]
+
+                if pts.shape[0] == 0:
+                    continue
+
+                # --- Local normalization ---
+                translation = -np.array([tile_min_x, tile_min_y])
+                pts = pts.copy()
+                pts[:, :2] = pts[:, :2] + translation       # move to local tile frame
+                pts[:, :2] = pts[:, :2] / self.img_res      # scale to 224×224 grid
+                pts[:, 2] = scaler.fit_transform(pts[:, 2].reshape(-1, 1)).squeeze()
+
+                # Assertions
+                assert np.all((pts[:, 0] >= 0) & (pts[:, 0] <= self.img_dim)), \
+                        "X coordinates out of bounds after tiling."
+                assert np.all((pts[:, 1] >= 0) & (pts[:, 1] <= self.img_dim)), \
+                        "Y coordinates out of bounds after tiling."
+
+                # Append tile
+                tiles.append(Tile(lidar=pts, translation=translation))
 
         return tiles
-    
-    
+
     
     def tensor_to_shapely_polys(self, tensor_polygons, translation, flip_y=False):
         

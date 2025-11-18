@@ -11,9 +11,7 @@ def main(cfg):
     setup_hydraconf(cfg)
     local_rank, world_size = setup_ddp(cfg)
     
-    
     predictor = Pix2PolyGeoPredictor(cfg, local_rank=local_rank, world_size=world_size)
-    
     
     if 'image_file' in cfg:
         if not os.path.isfile(cfg.image_file):
@@ -41,10 +39,6 @@ def main(cfg):
         raise ValueError("Either an image_file or lidar_file must be provided using +image_file=$FILE_NAME or +lidar_file=$FILE_NAME.")
     
     predictor.predict_geofile(img_infile=image_file, lidar_infile=lidar_file)
-    
-    
-    # TODO: implement batch prediction for tiles.
-    # It needs a split function and a translate function and a merge function
     
     
 if __name__ == "__main__":
