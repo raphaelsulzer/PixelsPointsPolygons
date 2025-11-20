@@ -16,21 +16,10 @@ from tqdm import tqdm
 from .predictor_pix2poly import Pix2PolyPredictor
 
 from ..datasets import get_train_loader, get_val_loader, get_test_loader
-class Tile:
-    def __init__(self, image=None, lidar=None, translation=None, scale=0.25):
-        self.image = image  # Tensor of shape (C, H, W)
-        self.lidar = lidar  # Tensor of shape (N, 3)
-        self.translation = translation  # Affine transform for georeferencing
-        self.scale = scale
-
+from ..misc import GeoTile
 
 class Pix2PolyGeoPredictor(Pix2PolyPredictor):
     
-    def setup_image_size(self, img_res=0.25, img_dim=224):
-        self.img_res = img_res
-        self.img_dim = img_dim
-
-
     # def tile_input(self, img=None, las=None):
     #     """
     #     Split a LAS point cloud into 56m x 56m tiles and return a jagged tensor.
@@ -90,7 +79,7 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
     #     return tiles
     
     
-    def tile_input(self, img=None, las=None, overlap_pct=0.2):
+    def tile_lidar_to_224(self, img=None, las=None, overlap_pct=0.2):
         """
         Split a LAS point cloud into 56m × 56m tiles with optional overlap.
 
@@ -161,30 +150,10 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
                         "Y coordinates out of bounds after tiling."
 
                 # Append tile
-                tiles.append(Tile(lidar=pts, translation=translation))
+                tiles.append(GeoTile(lidar=pts, translation=translation))
 
         return tiles
 
-    
-    def tensor_to_shapely_polys(self, tensor_polygons, translation, flip_y=False):
-        
-        shapely_polygons = []
-        
-        for i,poly in enumerate(tensor_polygons):
-            if poly.shape[0] < 3:
-                continue
-            poly_np = poly.cpu().numpy()
-            
-            if flip_y:
-                poly_np[:,1] = self.img_dim - poly_np[:,1]
-            
-            poly_np*=self.img_res
-            poly_np+=translation
-            
-            shapely_polygons.append(Polygon(poly_np))
-
-        return shapely_polygons
-    
     
     def export_to_shp(self, shapely_polygons, outfile="polygons.shp", epsg=4326):
         # Create a GeoDataFrame
@@ -197,19 +166,17 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
         gdf.to_file(outfile)
     
     
-    
     def predict_geofile(self,img_infile=None,lidar_infile=None,outfile="polygons.shp"):
         
         self.setup_image_size()
         self.setup_model()
         self.load_checkpoint()
         
-        batch_size = self.cfg.run_type.batch_size
-        
         las = laspy.read(lidar_infile)
         
-        tiles = self.tile_input(las=las)
+        tiles = self.tile_lidar_to_224(las=las)
                 
+        batch_size = self.cfg.run_type.batch_size
         iters = len(tiles)//batch_size + int(len(tiles)%batch_size>0)
         
         batch_polygons = []

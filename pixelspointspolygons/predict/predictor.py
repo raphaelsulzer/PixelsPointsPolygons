@@ -41,6 +41,9 @@ class Predictor:
             os.makedirs(cfg.output_dir, exist_ok=True)
             
         self.is_ddp = self.cfg.host.multi_gpu
+        
+        self.time_dict = TimeDict()
+
 
                            
     def progress_bar(self,item):
@@ -57,6 +60,10 @@ class Predictor:
     
         return pbar
     
+    def setup_image_size(self, img_res=0.25, img_dim=224):
+        self.img_res = img_res
+        self.img_dim = img_dim
+        
     def load_checkpoint(self):
         
         ## get the file
@@ -95,24 +102,22 @@ class Predictor:
         
         self.logger.info(f"Model loaded from epoch: {epoch}")
         
-    def load_image_from_file(self, img_infile):
+    def load_image(self, img_infile):
         
         if img_infile is not None:
             
             with rasterio.open(img_infile) as src:
-                image_np = src.read([1, 2, 3])  # shape (3, H, W)
-                image_np = np.moveaxis(image_np, 0, -1)  # shape (H, W, 3)
+                image = src.read([1, 2, 3])  # shape (3, H, W)
             
-            # image_pil = np.array(Image.open(img_infile).convert("RGB"))
-            image = torch.from_numpy(image_np).permute(2, 0, 1).unsqueeze(0).to(self.cfg.host.device).to(torch.float32)/255.0
+            image = torch.from_numpy(image).unsqueeze(0).to(self.cfg.host.device).to(torch.float32)/255.0
             image = F.normalize(image, mean=self.cfg.experiment.encoder.image_mean, std=self.cfg.experiment.encoder.image_std)
-            return image, image_np
+            return image
         else:
-            return None, None
+            return None
         
     
     
-    def load_lidar_from_file(self, lidar_infile):
+    def load_lidar(self, lidar_infile):
         
         img_res = 0.25
         img_dim = 224
@@ -135,9 +140,135 @@ class Predictor:
         else:
             return None
     
+
+
+    def load_image_and_tile(self, path, tile_width=224, tile_height=224, downsample_factor=1, out_dir=None):
+        """
+        Load a raster with rasterio, optionally downsample it, and split into tiles.
+        Border tiles are padded with black (zeros).
+
+        Args:
+            path (str): Path to the raster.
+            tile_width (int): Tile width in pixels.
+            tile_height (int): Tile height in pixels.
+            downsample_factor (int): Factor to downsample the entire image.
+                                    Must be >= 1 (1 = no downsampling).
+
+        Returns:
+            List[np.ndarray]: Tiles with shape (C, H, W)
+        """
+
+
+        with rasterio.open(path) as src:
+            image = src.read([1, 2, 3])/255.0  # shape (3, H, W)/255.0
+            # image = torch.from_numpy(image).to(self.cfg.host.device).to(torch.float32)/255.0
+            
+            profile = src.profile
+            transform = src.transform
+
+        # ----- Downsample full image if requested -----
+        if downsample_factor > 1:
+            C, H, W = image.shape
+            self.logger.info(f"Loaded image {path} with shape (C={C}, H={H}, W={W})")
+            new_H = H // downsample_factor
+            new_W = W // downsample_factor
+
+            # Nearest-neighbour downsampling (fast and simple)
+            image = image[:, :new_H*downsample_factor, :new_W*downsample_factor]
+            image = image.reshape(
+                C,
+                new_H,
+                downsample_factor,
+                new_W,
+                downsample_factor
+            ).mean(axis=(2, 4))  # average pooling for smoother result
+            # If you prefer strict nearest-neighbour:
+            # image = image[:, ::downsample_factor, ::downsample_factor]
+
+        C, H, W = image.shape
+        self.logger.info(f"Tilling image {path} with shape (C={C}, H={H}, W={W})")
+
+        tiles = []
+
+        # Compute number of tiles
+        rows = (H + tile_height - 1) // tile_height
+        cols = (W + tile_width - 1) // tile_width
+
+        for r in range(rows):
+            for c in range(cols):
+                y0 = r * tile_height
+                x0 = c * tile_width
+                y1 = y0 + tile_height
+                x1 = x0 + tile_width
+
+                tile = image[:, y0:y1, x0:x1]
+
+                # Padding if tile is too small
+                pad_h = tile_height - tile.shape[1]
+                pad_w = tile_width - tile.shape[2]
+
+                if pad_h > 0 or pad_w > 0:
+                    tile = np.pad(
+                        tile,
+                        ((0, 0), (0, pad_h), (0, pad_w)),
+                        mode="constant",
+                        constant_values=0
+                    )
+            
+                # Save tile if requested
+                if out_dir is not None:
+                    out_path = f"{out_dir}/tile{r}_{c}.jpeg"
+                    out_profile = profile.copy()
+                    out_profile.update({
+                        "width": tile_width,
+                        "height": tile_height,
+                        "transform": rasterio.Affine(
+                            transform.a,
+                            transform.b,
+                            transform.c + x0 * transform.a,
+                            transform.d,
+                            transform.e,
+                            transform.f + y0 * transform.e,
+                        )
+                    })
+                    with rasterio.open(out_path, "w", **out_profile) as dst:
+                        dst.write(tile)
+                
+                translation = (transform.c + x0 * transform.a, transform.f + y0 * transform.e)
+                translation = np.array(translation)
+                tile = GeoTile(image=tile, translation=translation, image_resolution=transform.a)
+                tiles.append(tile)
+
+        self.logger.info(f"Tiled image into {len(tiles)} tiles of size (C={C}, H={tile_height}, W={tile_width})")
+
+        image = np.moveaxis(image,0,2)
+        return image, tiles
     
-    def plot_prediction(self, polygons, image=None, image_np=None, lidar=None, outfile=None):
+    
+    def tensor_to_shapely_polys(self, tensor_polygons, translation, flip_y=False):
         
+        shapely_polygons = []
+        
+        for i,poly in enumerate(tensor_polygons):
+            if poly.shape[0] < 3:
+                continue
+            poly_np = poly.cpu().numpy()
+            
+            if flip_y:
+                poly_np[:,1] = self.img_dim - poly_np[:,1]
+            
+            poly_np*=self.img_res
+            poly_np+=translation
+            
+            shapely_polygons.append(Polygon(poly_np))
+
+        return shapely_polygons
+    
+    def plot_prediction(self, polygons, image=None, lidar=None, outfile=None):
+        
+        if not isinstance(image,np.ndarray):
+            image = image.cpu().squeeze().permute(1,2,0).numpy() if image is not None else image
+                
         if not len(polygons):
             self.logger.warning(f"No polygons predicted.")
             return
@@ -150,11 +281,11 @@ class Predictor:
                 name = "lidar"
             if image is not None and lidar is not None:
                 name = "fusion"
-            outfile = f"prediction_{self.cfg.experiment.model.name}_{name}.png"
+            outfile = f"prediction_{self.cfg.experiment.model.name}_{name}.jpg"
             
         
         px = 1/plt.rcParams['figure.dpi']
-        fig, ax = plt.subplots(1, 1, figsize=(1000*px, 1000*px))
+        fig, ax = plt.subplots(1, 1, figsize=(4*image.shape[0]*px, 4*image.shape[0]*px))
         
         
         shapely_polygons = []
@@ -167,7 +298,7 @@ class Predictor:
         alpha = 1.0
         if image is not None:
             alpha = 0.7
-            plot_image(image_np, ax=ax)
+            plot_image(image, ax=ax)
         
         if lidar is not None:
             if not ax.yaxis_inverted():

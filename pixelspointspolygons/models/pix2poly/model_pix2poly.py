@@ -315,7 +315,7 @@ class Pix2PolyModel(torch.nn.Module):
                 raise NotImplementedError(f"Encoder {self.cfg.experiment.encoder.name} not implemented for {self.__name__}")
             
         else:
-            raise ValueError("Please specify either and image or lidar encoder with encoder=<name>. See help for a list of available encoders.")
+            raise ValueError("Encoder config file does not specify if LiDAR or image encoder.")
         
         decoder = Decoder(
             vocab_size=vocab_size,

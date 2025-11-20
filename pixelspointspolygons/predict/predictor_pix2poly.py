@@ -11,11 +11,12 @@ import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 import numpy as np
 
+from torchvision.transforms import functional as F
 from scipy.optimize import linear_sum_assignment
-# from transformers.generation.utils import top_k_top_p_filtering
+from tqdm import tqdm
 
 from ..models.pix2poly import Tokenizer, Pix2PolyModel
-from ..misc.coco_conversions import generate_coco_ann
+from ..misc import generate_coco_ann
 from ..datasets import get_train_loader, get_val_loader, get_test_loader
 
 from .predictor import Predictor
@@ -47,7 +48,7 @@ class Pix2PolyPredictor(Predictor):
         
         with torch.no_grad():
             t0 = time.time()
-            coco_predictions = self.predict_from_loader(self.model,self.tokenizer,self.loader)
+            coco_predictions = self.predict_dataloader(self.model,self.tokenizer,self.loader)
 
         self.logger.info(f"Average prediction speed: {(time.time() - t0) / len(self.loader.dataset):.2f} [s / image]")
         time_dict = {}
@@ -67,15 +68,17 @@ class Pix2PolyPredictor(Predictor):
 
         return time_dict
 
-    def predict_from_loader(self, model, tokenizer, loader):
+
+
+    def predict_dataloader(self, model, tokenizer, dataloader):
                 
-        if isinstance(loader.dataset, torch.utils.data.Subset):
-            self.logger.warning("You are predicting only a subset of the dataset. Your coco evaluation will not be very useful.")
+        if isinstance(dataloader.dataset, torch.utils.data.Subset):
+            self.logger.warning("You are predicting only a subset of the dataset. Your COCO evaluation will not be very useful.")
         
         model.eval()
         
         coco_predictions = []
-        for x_image, x_lidar, y_sequence, y_perm, image_ids in self.progress_bar(loader):
+        for x_image, x_lidar, y_sequence, y_perm, image_ids in self.progress_bar(dataloader):
             
             if self.cfg.experiment.encoder.use_images:
                 x_image = x_image.to(self.device, non_blocking=True)
@@ -89,13 +92,15 @@ class Pix2PolyPredictor(Predictor):
                 
         return coco_predictions
 
-    def predict_file(self,img_infile=None,lidar_infile=None,outfile=None):
-                
-        image, image_pillow = self.load_image_from_file(img_infile)
-        lidar = self.load_lidar_from_file(lidar_infile)
+
+
+    def predict_file_224(self,img_infile=None,lidar_infile=None,outfile=None):
 
         self.setup_model()
         self.load_checkpoint()
+        
+        image = self.load_image(img_infile)
+        lidar = self.load_lidar(lidar_infile)
 
         with torch.no_grad():
             
@@ -105,7 +110,50 @@ class Pix2PolyPredictor(Predictor):
                 lidar = lidar.to(self.device, non_blocking=True)
             
             batch_polygons = self.batch_to_polygons(image, lidar, self.model, self.tokenizer)
-            self.plot_prediction(batch_polygons[0], image=image, image_np=image_pillow, lidar=lidar, outfile=outfile)
+            self.plot_prediction(batch_polygons[0], image=image, lidar=lidar, outfile=outfile)
+    
+    
+    
+    def predict_file_with_tilling(self,img_infile=None,lidar_infile=None,outfile=None):
+        
+        self.setup_model()
+        self.load_checkpoint()
+        
+        self.setup_image_size(img_res=1.0) # for predicting a non-georeferenced image we work in pixel space
+        
+        out_dir = None
+        # out_dir = "./polygon_predictions/debug/"
+        full_image, tiles = self.load_image_and_tile(img_infile,downsample_factor=4,out_dir=out_dir)
+        
+        batch_size = self.cfg.run_type.batch_size
+        iters = len(tiles)//batch_size + int(len(tiles)%batch_size>0)
+        batch_polygons = []
+        for i in tqdm(range(iters),desc="Predict batches"):
+            
+            batch_start = i*batch_size
+            batch_end = min((i+1)*batch_size, len(tiles))
+            
+            image_batch = []
+            for t in tiles[batch_start:batch_end]:
+                image_batch.append(t.image)
+
+            batch = torch.from_numpy(np.stack(image_batch,axis=0)).float().to(self.device)
+            batch = F.normalize(batch, mean=self.cfg.experiment.encoder.image_mean, std=self.cfg.experiment.encoder.image_std)
+            
+            batch_polygons += self.batch_to_polygons(batch, None, self.model, self.tokenizer)
+            
+            # break
+    
+        # assert(len(batch_polygons) == len(tiles)), f"Number of predicted polygon sets ({len(batch_polygons)}) does not match number of tiles ({len(tiles)})."
+
+        shapely_polygons = []
+        for i in range(len(batch_polygons)):
+            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i],translation=tiles[i].translation)
+            
+        self.logger.info(f"Total polygons predicted: {len(batch_polygons)}")
+        self.plot_prediction(shapely_polygons, image=full_image, lidar=None, outfile=outfile)
+    
+    
     
     def coord_and_perm_to_polygons(self, coord_preds, perm_preds):
         
@@ -149,8 +197,16 @@ class Pix2PolyPredictor(Predictor):
         
         return self.coord_and_perm_to_polygons(coord_preds, perm_preds)
 
+    
+    def get_time_dict(self):
+        time_dict = {}
+        time_dict["Feature extraction"] = 0
+        time_dict["Autoregressive decoding"] = 0
+        time_dict["Permutation prediction"] = 0
+        time_dict["Total time"] = 0
+        return time_dict
         
-    def test_generate(self, x_images, x_lidar, top_k=0, top_p=1):
+    def test_generate(self, x_images, x_lidar):
         
         batch_size = x_images.size(0) if x_images is not None else x_lidar.size(0)
         
@@ -158,12 +214,10 @@ class Pix2PolyPredictor(Predictor):
 
         confs = []
 
-        if top_k != 0 or top_p != 1:
-            sample = lambda preds: torch.softmax(preds, dim=-1).multinomial(num_samples=1).view(-1, 1)
-        else:
-            sample = lambda preds: torch.softmax(preds, dim=-1).argmax(dim=-1).view(-1, 1)
-
         with torch.no_grad():
+            
+            t0 = time.time()
+            
             if self.is_ddp:
                 
                 if self.cfg.experiment.encoder.use_images and not self.cfg.experiment.encoder.use_lidar:
@@ -185,30 +239,43 @@ class Pix2PolyPredictor(Predictor):
                     features = self.model.encoder(x_images, x_lidar)
                 else:
                     raise ValueError("At least one of use_images or use_lidar must be True")
-                
+            
+            
+            
+            
+            t0 = time.time()
                 
             for i in range(self.cfg.experiment.model.tokenizer.generation_steps):
                 if self.is_ddp:
                     preds, feats = self.model.module.predict(features, batch_preds)
                 else:
                     preds, feats = self.model.predict(features, batch_preds)
-                    
-                # preds = top_k_top_p_filtering(preds, top_k=top_k, top_p=top_p)  # if top_k and top_p are set to default, this line does nothing.
-                
+                                    
                 if i % 2 == 0:
                     confs_ = torch.softmax(preds, dim=-1).sort(axis=-1, descending=True)[0][:, 0].cpu()
                     confs.append(confs_)
-                preds = sample(preds)
+                    
+                preds = torch.softmax(preds, dim=-1).argmax(dim=-1).view(-1, 1)
                 batch_preds = torch.cat([batch_preds, preds], dim=1)
-
+                
+                if preds[:, -1].eq(self.tokenizer.EOS_code).all():
+                    self.logger.debug(f"All sequences finished at step {i}.")
+                    break
+                
+            self.logger.debug(f"Decoder forward pass time: {time.time() - t0:.2f} seconds.")
+            t0 = time.time()
             if self.is_ddp:
                 perm_preds = self.model.module.scorenet1(feats) + torch.transpose(self.model.module.scorenet2(feats), 1, 2)
             else:
                 perm_preds = self.model.scorenet1(feats) + torch.transpose(self.model.scorenet2(feats), 1, 2)
 
+            self.logger.debug(f"Permutation head forward pass time: {time.time() - t0:.2f} seconds.")
+            
             perm_preds = self.scores_to_permutations(perm_preds)
 
         return batch_preds.cpu(), confs, perm_preds
+    
+    
     
     def permutations_to_polygons(self, perm, graph, out='torch'):
         B, N, N = perm.shape
@@ -282,6 +349,8 @@ class Pix2PolyPredictor(Predictor):
                 batch.append([])
 
         return batch
+
+
 
     def postprocess(self, batch_preds):
         EOS_idxs = (batch_preds == self.tokenizer.EOS_code).float().argmax(dim=-1)
