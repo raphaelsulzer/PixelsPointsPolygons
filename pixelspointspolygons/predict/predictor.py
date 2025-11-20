@@ -318,7 +318,7 @@ class Predictor:
             poly_np = poly.cpu().numpy()
             
             if flip_y:
-                poly_np[:,1] = img_dim - poly_np[:,1]
+                poly_np[:,1] = img_dim - poly_np[:,1] + img_dim
             
             poly_np*=transform.a
             poly_np+=np.array([transform.c, transform.f])
