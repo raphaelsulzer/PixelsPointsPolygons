@@ -198,7 +198,7 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
 
         shapely_polygons = []
         for i in range(len(tiles)):
-            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i],transform=-tiles[i].translation)
+            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i],transform=-tiles[i].transform)
 
         self.export_to_shp(shapely_polygons,outfile=outfile,epsg=las.header.parse_crs().to_epsg())
      
@@ -236,7 +236,11 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
         self.setup_image_size(img_res=img_infos[0]['res_x'], img_dim=img_infos[0]['width'])
         shapely_polygons = []
         for i in range(len(batch_polygons)):
+<<<<<<< HEAD
             shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i], transform=img_infos[i]['top_left'], flip_y=True)
+=======
+            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i], translation=img_infos[i]['top_left'], flip_y=True)
+>>>>>>> 61a5f63d053c386b6e54218a1ce0101e199998d8
 
         self.export_to_shp(shapely_polygons,outfile=outfile,epsg=2056)
         
