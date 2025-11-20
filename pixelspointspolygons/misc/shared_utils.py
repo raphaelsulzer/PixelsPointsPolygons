@@ -137,19 +137,25 @@ class TimeDict:
             self.time[key] += value
         else:
             self.time[key] = value
+
+    def add_count(self, count=1):
         self.n_samples += count
 
-    def get_final_time_dict(self):
+    def print_final_time_dict(self):
         
         avg_time_dict = {}
         for key, value in self.time.items():
             avg_time_dict[key] = value / self.n_samples if self.n_samples > 0 else 0
         
+        total_time = 0.0
         for value in avg_time_dict.values():
-            avg_time_dict["Total time"] += value
+            total_time += value
+        avg_time_dict["Total time"] = total_time
         
-        return avg_time_dict
-
+        print(f"Timing report (averaged over {self.n_samples} samples):")
+        for key, value in avg_time_dict.items():
+            print(f"  - {key}: {value:.4f} seconds")
+        
 
 class AverageMeter:
     def __init__(self, name="Metric"):

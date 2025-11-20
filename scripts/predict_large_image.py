@@ -39,7 +39,9 @@ def main(cfg):
         raise ValueError("Either an image_file or lidar_file must be provided using +image_file=$FILE_NAME or +lidar_file=$FILE_NAME.")
     
     
-    predictor.predict_file_with_tilling(img_infile=image_file, lidar_infile=lidar_file, outfile=f"./polygon_predictions/{os.path.split(image_file)[-1]}")
+    predictor.predict_file_with_tilling(img_infile=image_file, lidar_infile=lidar_file, 
+                                        downsample_factor=1,
+                                        outfile=f"./polygon_predictions/{os.path.splitext(os.path.basename(image_file))[0]}.jpg")
     
     
 if __name__ == "__main__":

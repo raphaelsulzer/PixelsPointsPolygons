@@ -65,6 +65,7 @@ class Pix2PolyPredictor(Predictor):
             with open(prediction_outfile, "w") as fp:
                 fp.write(json.dumps(coco_predictions))
         
+        self.time_dict.print_final_time_dict()
 
         return time_dict
 
@@ -89,7 +90,10 @@ class Pix2PolyPredictor(Predictor):
             
             for i, polys in enumerate(batch_polygons):
                 coco_predictions.extend(generate_coco_ann(polys,image_ids[i].item()))
-                
+        
+        
+        self.time_dict.print_final_time_dict()
+
         return coco_predictions
 
 
@@ -112,9 +116,14 @@ class Pix2PolyPredictor(Predictor):
             batch_polygons = self.batch_to_polygons(image, lidar, self.model, self.tokenizer)
             self.plot_prediction(batch_polygons[0], image=image, lidar=lidar, outfile=outfile)
     
+        self.time_dict.print_final_time_dict()
+        
+        
     
-    
-    def predict_file_with_tilling(self,img_infile=None,lidar_infile=None,outfile=None):
+    def predict_file_with_tilling(self,
+                                  img_infile=None,lidar_infile=None,
+                                  downsample_factor=1,
+                                  outfile=None):
         
         self.setup_model()
         self.load_checkpoint()
@@ -123,7 +132,7 @@ class Pix2PolyPredictor(Predictor):
         
         out_dir = None
         # out_dir = "./polygon_predictions/debug/"
-        full_image, tiles = self.load_image_and_tile(img_infile,downsample_factor=4,out_dir=out_dir)
+        full_image, tiles = self.load_image_and_tile(img_infile,downsample_factor=downsample_factor,out_dir=out_dir)
         
         batch_size = self.cfg.run_type.batch_size
         iters = len(tiles)//batch_size + int(len(tiles)%batch_size>0)
@@ -142,7 +151,7 @@ class Pix2PolyPredictor(Predictor):
             
             batch_polygons += self.batch_to_polygons(batch, None, self.model, self.tokenizer)
             
-            # break
+            break
     
         # assert(len(batch_polygons) == len(tiles)), f"Number of predicted polygon sets ({len(batch_polygons)}) does not match number of tiles ({len(tiles)})."
 
@@ -210,6 +219,8 @@ class Pix2PolyPredictor(Predictor):
         
         batch_size = x_images.size(0) if x_images is not None else x_lidar.size(0)
         
+        early_stop = torch.zeros((batch_size, 1), device=self.device).bool()
+        
         batch_preds = torch.ones((batch_size, 1), device=self.device).fill_(self.tokenizer.BOS_code).long()
 
         confs = []
@@ -240,11 +251,9 @@ class Pix2PolyPredictor(Predictor):
                 else:
                     raise ValueError("At least one of use_images or use_lidar must be True")
             
-            
-            
-            
+            self.time_dict.add_time("Feature extraction", time.time() - t0, count=batch_size)
             t0 = time.time()
-                
+
             for i in range(self.cfg.experiment.model.tokenizer.generation_steps):
                 if self.is_ddp:
                     preds, feats = self.model.module.predict(features, batch_preds)
@@ -258,18 +267,25 @@ class Pix2PolyPredictor(Predictor):
                 preds = torch.softmax(preds, dim=-1).argmax(dim=-1).view(-1, 1)
                 batch_preds = torch.cat([batch_preds, preds], dim=1)
                 
-                if preds[:, -1].eq(self.tokenizer.EOS_code).all():
+                eos = preds == self.tokenizer.EOS_code
+                early_stop = early_stop | eos
+                # if all samples in the batch have predicted EOS, stop decoding
+                if early_stop.all():
                     self.logger.debug(f"All sequences finished at step {i}.")
                     break
                 
-            self.logger.debug(f"Decoder forward pass time: {time.time() - t0:.2f} seconds.")
+            self.time_dict.add_time("Autoregressive decoding", time.time() - t0, count=batch_size)
             t0 = time.time()
+            
             if self.is_ddp:
                 perm_preds = self.model.module.scorenet1(feats) + torch.transpose(self.model.module.scorenet2(feats), 1, 2)
             else:
                 perm_preds = self.model.scorenet1(feats) + torch.transpose(self.model.scorenet2(feats), 1, 2)
 
-            self.logger.debug(f"Permutation head forward pass time: {time.time() - t0:.2f} seconds.")
+            self.time_dict.add_time("Permutation prediction", time.time() - t0, count=batch_size)
+            t0 = time.time()
+
+            self.time_dict.add_count(count=batch_size)
             
             perm_preds = self.scores_to_permutations(perm_preds)
 
