@@ -42,6 +42,7 @@ def main(cfg):
     
     predictor.predict_file_with_tilling(img_infile=image_file, lidar_infile=None, 
                                         downsample_factor=1,
+                                        overlap=0.0,
                                         outfile=f"./polygon_predictions/{os.path.splitext(os.path.basename(image_file))[0]}.shp")
     
     

@@ -323,17 +323,23 @@ class Predictor:
             poly_np*=transform.a
             poly_np+=np.array([transform.c, transform.f])
             
+            
             poly = Polygon(poly_np)
-            rect = box(56*transform.a+transform.c, 56*transform.a+transform.f, 168*transform.a+transform.c, 168*transform.a+transform.f)   # minx, miny, maxx, maxy
             
-            
-            
-            try:
-                poly = self.clip_polygon_with_rect(poly, rect)
-            except Exception as e:
-                self.logger.warning(f"Error clipping polygon {i}: {e}")
-                continue
-            
+            if overlap_clip > 0.0:
+                rect = box(56*transform.a+transform.c, 56*transform.a+transform.f, 168*transform.a+transform.c, 168*transform.a+transform.f)   # minx, miny, maxx, maxy
+                
+                try:
+                    poly = self.clip_polygon_with_rect(poly, rect)
+                except Exception as e:
+                    self.logger.warning(f"Error clipping polygon {i}: {e}")
+                    continue
+            else:
+                if poly.is_valid:
+                    poly = [poly]
+                else:
+                    poly = None
+                
             if poly is not None:
                 shapely_polygons+=poly
 
