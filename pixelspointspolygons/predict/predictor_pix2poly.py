@@ -14,6 +14,7 @@ import numpy as np
 from torchvision.transforms import functional as F
 from scipy.optimize import linear_sum_assignment
 from tqdm import tqdm
+from shapely.ops import unary_union
 
 from ..models.pix2poly import Tokenizer, Pix2PolyModel
 from ..misc import generate_coco_ann
@@ -123,6 +124,7 @@ class Pix2PolyPredictor(Predictor):
     def predict_file_with_tilling(self,
                                   img_infile=None,lidar_infile=None,
                                   downsample_factor=1,
+                                  overlap=0.5,
                                   outfile=None):
         
         self.setup_model()
@@ -132,9 +134,10 @@ class Pix2PolyPredictor(Predictor):
         # out_dir = "./polygon_predictions/debug/"
         full_image, tiles = self.load_image_and_tile(
             img_infile,
-            overlap=0.5,
+            overlap=overlap,
             downsample_factor=downsample_factor,
-            out_dir=out_dir)
+            out_dir=out_dir,
+            georeference=True)
         
         batch_size = self.cfg.run_type.batch_size
         iters = len(tiles)//batch_size + int(len(tiles)%batch_size>0)
@@ -163,10 +166,17 @@ class Pix2PolyPredictor(Predictor):
             shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i],
                                                              img_dim=224,
                                                              transform=tiles[i].transform,
+                                                             overlap_clip=overlap,
                                                              flip_y=False)
             
-        self.logger.info(f"Total polygons predicted: {len(batch_polygons)}")
-        self.plot_prediction(shapely_polygons, image=full_image, lidar=None, outfile=outfile)
+        
+        shapely_polygons = self.merge_shapely_polygons(shapely_polygons)
+            
+        self.logger.info(f"Total polygons predicted: {len(shapely_polygons)}")
+        
+        self.export_to_shp(shapely_polygons,outfile=outfile,epsg=2056)
+        
+        # self.plot_prediction(shapely_polygons, image=full_image, lidar=None, outfile=outfile)
     
     
     

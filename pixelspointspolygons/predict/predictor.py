@@ -11,10 +11,12 @@ import torch
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy("file_system")
 import numpy as np
+import geopandas as gpd
 
 from sklearn.preprocessing import MinMaxScaler
 from torchvision.transforms import functional as F
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, MultiPolygon, box
+from shapely.ops import unary_union
 
 from tqdm import tqdm
 
@@ -253,121 +255,58 @@ class Predictor:
 
         image = np.moveaxis(image, 0, 2)
         return image, tiles
-
-
-    # def load_image_and_tile(self, path, 
-    #                         tile_width=224, tile_height=224, 
-    #                         downsample_factor=1, 
-    #                         georeference=False,
-    #                         out_dir=None):
-    #     """
-    #     Load a raster with rasterio, optionally downsample it, and split into tiles.
-    #     Border tiles are padded with black (zeros).
-
-    #     Args:
-    #         path (str): Path to the raster.
-    #         tile_width (int): Tile width in pixels.
-    #         tile_height (int): Tile height in pixels.
-    #         downsample_factor (int): Factor to downsample the entire image.
-    #                                 Must be >= 1 (1 = no downsampling).
-
-    #     Returns:
-    #         List[np.ndarray]: Tiles with shape (C, H, W)
-    #     """
-
-
-    #     with rasterio.open(path) as src:
-    #         image = src.read([1, 2, 3])/255.0  # shape (3, H, W)/255.0
-    #         # image = torch.from_numpy(image).to(self.cfg.host.device).to(torch.float32)/255.0
-            
-    #         profile = src.profile
-    #         transform = src.transform
-            
-    #     if not georeference:
-    #         transform = rasterio.Affine(1, 0, 0.0,
-    #                                     0, 1, 0.0)
-
-    #     # ----- Downsample full image if requested -----
-    #     if downsample_factor > 1:
-    #         C, H, W = image.shape
-    #         self.logger.info(f"Loaded image {path} with shape (C={C}, H={H}, W={W})")
-    #         new_H = H // downsample_factor
-    #         new_W = W // downsample_factor
-
-    #         # Nearest-neighbour downsampling (fast and simple)
-    #         image = image[:, :new_H*downsample_factor, :new_W*downsample_factor]
-    #         image = image.reshape(
-    #             C,
-    #             new_H,
-    #             downsample_factor,
-    #             new_W,
-    #             downsample_factor
-    #         ).mean(axis=(2, 4))  # average pooling for smoother result
-    #         # If you prefer strict nearest-neighbour:
-    #         # image = image[:, ::downsample_factor, ::downsample_factor]
-
-    #     C, H, W = image.shape
-    #     self.logger.info(f"Tilling image {path} with shape (C={C}, H={H}, W={W})")
-
-    #     tiles = []
-
-    #     # Compute number of tiles
-    #     rows = (H + tile_height - 1) // tile_height
-    #     cols = (W + tile_width - 1) // tile_width
-
-    #     for r in range(rows):
-    #         for c in range(cols):
-    #             y0 = r * tile_height
-    #             x0 = c * tile_width
-    #             y1 = y0 + tile_height
-    #             x1 = x0 + tile_width
-
-    #             tile = image[:, y0:y1, x0:x1]
-
-    #             # Padding if tile is too small
-    #             pad_h = tile_height - tile.shape[1]
-    #             pad_w = tile_width - tile.shape[2]
-
-    #             if pad_h > 0 or pad_w > 0:
-    #                 tile = np.pad(
-    #                     tile,
-    #                     ((0, 0), (0, pad_h), (0, pad_w)),
-    #                     mode="constant",
-    #                     constant_values=0
-    #                 )
-            
-    #             # Save tile if requested.
-    #             tile_transform = rasterio.Affine(
-    #                         transform.a,
-    #                         transform.b,
-    #                         transform.c + x0 * transform.a,
-    #                         transform.d,
-    #                         transform.e,
-    #                         transform.f + y0 * transform.e,
-    #                     )
-    #             if out_dir is not None:
-    #                 out_path = f"{out_dir}/tile{r}_{c}.jpeg"
-    #                 out_profile = profile.copy()
-    #                 out_profile.update({
-    #                     "width": tile_width,
-    #                     "height": tile_height,
-    #                     "transform": tile_transform
-    #                 })
-    #                 with rasterio.open(out_path, "w", **out_profile) as dst:
-    #                     dst.write(tile)
-                
-    #             tile = GeoTile(image=tile, transform=tile_transform)
-    #             tiles.append(tile)
-
-    #     self.logger.info(f"Tiled image into {len(tiles)} tiles of size (C={C}, H={tile_height}, W={tile_width})")
-
-    #     image = np.moveaxis(image,0,2)
-    #     return image, tiles
     
-    
+    def clip_polygon_with_rect(self, poly, rect):
+        """
+        Clips a polygon with a rectangle and returns:
+        - list of valid Polygon objects
+        - or None if the result is empty or invalid
+        """
+        clipped = poly.intersection(rect)
+
+        if clipped.is_empty:
+            return None
+
+        # Case 1: Single polygon
+        if isinstance(clipped, Polygon):
+            return [clipped] if clipped.is_valid else None
+
+        # Case 2: MultiPolygon
+        if isinstance(clipped, MultiPolygon):
+            polys = [g for g in clipped.geoms if isinstance(g, Polygon) and g.is_valid]
+            return polys if polys else None
+
+        # Case 3: Any other geometry (LineString, GeometryCollection, etc.)
+        return None
+
+
+    def merge_shapely_polygons(self, polygons, tolerance=1.0):
+        """
+        Merges polygons that are within a certain tolerance using unary_union.
+        """
+        if not polygons:
+            return []
+
+        # # Buffer polygons by tolerance to merge close ones
+        # buffered_polys = [poly.buffer(tolerance) for poly in polygons]
+
+        # Merge using unary_union
+        merged = unary_union(polygons)
+
+        # If the result is a single polygon, return it in a list
+        if isinstance(merged, Polygon):
+            return [merged]
+
+        # If the result is a MultiPolygon, return the list of polygons
+        if isinstance(merged, MultiPolygon):
+            return list(merged.geoms)
+
+        return []
+
     def tensor_to_shapely_polys(self, 
                                 tensor_polygons,
                                 transform,
+                                overlap_clip=0.0,
                                 img_dim=224,  
                                 flip_y=False):
         
@@ -384,9 +323,32 @@ class Predictor:
             poly_np*=transform.a
             poly_np+=np.array([transform.c, transform.f])
             
-            shapely_polygons.append(Polygon(poly_np))
+            poly = Polygon(poly_np)
+            rect = box(56*transform.a+transform.c, 56*transform.a+transform.f, 168*transform.a+transform.c, 168*transform.a+transform.f)   # minx, miny, maxx, maxy
+            
+            
+            
+            try:
+                poly = self.clip_polygon_with_rect(poly, rect)
+            except Exception as e:
+                self.logger.warning(f"Error clipping polygon {i}: {e}")
+                continue
+            
+            if poly is not None:
+                shapely_polygons+=poly
 
         return shapely_polygons
+    
+
+    def export_to_shp(self, shapely_polygons, outfile="polygons.shp", epsg=4326):
+        # Create a GeoDataFrame
+        gdf = gpd.GeoDataFrame(geometry=shapely_polygons)
+
+        # Optionally set a coordinate reference system (CRS), e.g., WGS84
+        gdf.set_crs(epsg=epsg, inplace=True)
+
+        # Export to shapefile
+        gdf.to_file(outfile)
     
     def plot_prediction(self, polygons, image=None, lidar=None, outfile=None):
         
@@ -397,7 +359,6 @@ class Predictor:
             self.logger.warning(f"No polygons predicted.")
             return
         
-        
         if outfile is None:
             if image is not None:
                 name = "image"
@@ -407,10 +368,8 @@ class Predictor:
                 name = "fusion"
             outfile = f"prediction_{self.cfg.experiment.model.name}_{name}.jpg"
             
-        
         px = 1/plt.rcParams['figure.dpi']
         fig, ax = plt.subplots(1, 1, figsize=(3*image.shape[0]*px, 3*image.shape[0]*px))
-        
         
         shapely_polygons = []
         for poly in polygons:

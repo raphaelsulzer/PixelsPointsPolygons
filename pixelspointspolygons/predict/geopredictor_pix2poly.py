@@ -7,7 +7,6 @@ os.environ['NO_ALBUMENTATIONS_UPDATE'] = '1'
 import laspy
 import torch
 import numpy as np
-import geopandas as gpd
 import rasterio
 
 from sklearn.preprocessing import MinMaxScaler
@@ -96,18 +95,7 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
 
         return tiles
 
-    
-    def export_to_shp(self, shapely_polygons, outfile="polygons.shp", epsg=4326):
-        # Create a GeoDataFrame
-        gdf = gpd.GeoDataFrame(geometry=shapely_polygons)
 
-        # Optionally set a coordinate reference system (CRS), e.g., WGS84
-        gdf.set_crs(epsg=epsg, inplace=True)
-
-        # Export to shapefile
-        gdf.to_file(outfile)
-    
-    
     def predict_geofile(self,img_infile=None,lidar_infile=None,outfile="polygons.shp"):
         
         self.setup_image_size()
