@@ -142,7 +142,11 @@ class Predictor:
     
 
 
-    def load_image_and_tile(self, path, tile_width=224, tile_height=224, downsample_factor=1, out_dir=None):
+    def load_image_and_tile(self, path, 
+                            tile_width=224, tile_height=224, 
+                            downsample_factor=1, 
+                            georeference=False,
+                            out_dir=None):
         """
         Load a raster with rasterio, optionally downsample it, and split into tiles.
         Border tiles are padded with black (zeros).
@@ -165,6 +169,10 @@ class Predictor:
             
             profile = src.profile
             transform = src.transform
+            
+        if not georeference:
+            transform = rasterio.Affine(1, 0, 0.0,
+                                        0, -1, 0.0)
 
         # ----- Downsample full image if requested -----
         if downsample_factor > 1:
@@ -215,14 +223,8 @@ class Predictor:
                         constant_values=0
                     )
             
-                # Save tile if requested
-                if out_dir is not None:
-                    out_path = f"{out_dir}/tile{r}_{c}.jpeg"
-                    out_profile = profile.copy()
-                    out_profile.update({
-                        "width": tile_width,
-                        "height": tile_height,
-                        "transform": rasterio.Affine(
+                # Save tile if requested.
+                tile_transform = rasterio.Affine(
                             transform.a,
                             transform.b,
                             transform.c + x0 * transform.a,
@@ -230,13 +232,18 @@ class Predictor:
                             transform.e,
                             transform.f + y0 * transform.e,
                         )
+                if out_dir is not None:
+                    out_path = f"{out_dir}/tile{r}_{c}.jpeg"
+                    out_profile = profile.copy()
+                    out_profile.update({
+                        "width": tile_width,
+                        "height": tile_height,
+                        "transform": tile_transform
                     })
                     with rasterio.open(out_path, "w", **out_profile) as dst:
                         dst.write(tile)
                 
-                translation = (transform.c + x0 * transform.a, transform.f + y0 * transform.e)
-                translation = np.array(translation)
-                tile = GeoTile(image=tile, translation=translation, image_resolution=transform.a)
+                tile = GeoTile(image=tile, transform=tile_transform)
                 tiles.append(tile)
 
         self.logger.info(f"Tiled image into {len(tiles)} tiles of size (C={C}, H={tile_height}, W={tile_width})")
@@ -245,7 +252,11 @@ class Predictor:
         return image, tiles
     
     
-    def tensor_to_shapely_polys(self, tensor_polygons, translation, flip_y=False):
+    def tensor_to_shapely_polys(self, 
+                                tensor_polygons,
+                                transform,
+                                img_dim=224,  
+                                flip_y=False):
         
         shapely_polygons = []
         
@@ -255,10 +266,10 @@ class Predictor:
             poly_np = poly.cpu().numpy()
             
             if flip_y:
-                poly_np[:,1] = self.img_dim - poly_np[:,1]
+                poly_np[:,1] = img_dim - poly_np[:,1]
             
-            poly_np*=self.img_res
-            poly_np+=translation
+            poly_np*=transform.a
+            poly_np+=np.array([transform.c, transform.f])
             
             shapely_polygons.append(Polygon(poly_np))
 
@@ -285,7 +296,7 @@ class Predictor:
             
         
         px = 1/plt.rcParams['figure.dpi']
-        fig, ax = plt.subplots(1, 1, figsize=(4*image.shape[0]*px, 4*image.shape[0]*px))
+        fig, ax = plt.subplots(1, 1, figsize=(3*image.shape[0]*px, 3*image.shape[0]*px))
         
         
         shapely_polygons = []
@@ -304,9 +315,8 @@ class Predictor:
             if not ax.yaxis_inverted():
                 ax.invert_yaxis()
             plot_point_cloud(lidar, ax=ax, alpha=alpha, pointsize=0.5)
-            
-        
-        plot_shapely_polygons(shapely_polygons, ax=ax,pointcolor=[1,1,0],edgecolor=[1,0,1],linewidth=4,pointsize=8)
+                    
+        plot_shapely_polygons(shapely_polygons, ax=ax,pointcolor=[1,1,0],edgecolor=[1,0,1],linewidth=6,pointsize=12)
         
         self.logger.info(f"Save prediction to {outfile}")
         plt.savefig(outfile)

@@ -127,9 +127,7 @@ class Pix2PolyPredictor(Predictor):
         
         self.setup_model()
         self.load_checkpoint()
-        
-        self.setup_image_size(img_res=1.0) # for predicting a non-georeferenced image we work in pixel space
-        
+                
         out_dir = None
         # out_dir = "./polygon_predictions/debug/"
         full_image, tiles = self.load_image_and_tile(img_infile,downsample_factor=downsample_factor,out_dir=out_dir)
@@ -157,7 +155,9 @@ class Pix2PolyPredictor(Predictor):
 
         shapely_polygons = []
         for i in range(len(batch_polygons)):
-            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i],translation=tiles[i].translation)
+            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i],
+                                                             img_dim=224,
+                                                             transform=tiles[i].transform)
             
         self.logger.info(f"Total polygons predicted: {len(batch_polygons)}")
         self.plot_prediction(shapely_polygons, image=full_image, lidar=None, outfile=outfile)
