@@ -8,9 +8,9 @@ import laspy
 import torch
 import numpy as np
 import geopandas as gpd
+import rasterio
 
 from sklearn.preprocessing import MinMaxScaler
-from shapely.geometry import Polygon
 from tqdm import tqdm
 
 from .predictor_pix2poly import Pix2PolyPredictor
@@ -19,64 +19,6 @@ from ..datasets import get_train_loader, get_val_loader, get_test_loader
 from ..misc import GeoTile
 
 class Pix2PolyGeoPredictor(Pix2PolyPredictor):
-    
-    # def tile_input(self, img=None, las=None):
-    #     """
-    #     Split a LAS point cloud into 56m x 56m tiles and return a jagged tensor.
-
-    #     Args:
-    #         las: laspy.LasData object
-    #         tile_size (float): Tile width and height in meters (default 56).
-    #         device (str): Torch device ('cpu' or 'cuda').
-
-    #     Returns:
-    #         torch.nested.nested_tensor: shape (B, Ni, 3) with jagged layout
-    #     """
-        
-    #     tile_size = self.img_res * self.img_dim  # 56.0 meters
-        
-    #     # Extract coordinates as (M, 3)
-    #     xyz = np.vstack((las.x, las.y, las.z)).T
-
-    #     # Bounding box
-    #     min_x, min_y, _ = las.header.min
-    #     max_x, max_y, _ = las.header.max
-
-    #     # Compute grid dimensions
-    #     num_tiles_x = int(np.ceil((max_x - min_x) / tile_size))
-    #     num_tiles_y = int(np.ceil((max_y - min_y) / tile_size))
-
-    #     # Compute tile indices per point
-    #     ix = np.floor((xyz[:, 0] - min_x) / tile_size).astype(int)
-    #     iy = np.floor((xyz[:, 1] - min_y) / tile_size).astype(int)
-    #     tile_ids = iy * num_tiles_x + ix
-
-    #     scaler = MinMaxScaler(feature_range=(0,self.cfg.experiment.encoder.in_voxel_size.z))
-
-    #     # Group points per tile
-    #     tiles = []
-    #     for tid in np.unique(tile_ids):
-    #         pts = xyz[tile_ids == tid]
-            
-    #         # Recover ix, iy from tile ID
-    #         iy_tile = tid // num_tiles_x
-    #         ix_tile = tid % num_tiles_x
-
-    #         tile_min_x = min_x + ix_tile * tile_size
-    #         tile_min_y = min_y + iy_tile * tile_size
-            
-    #         translation = -np.array([tile_min_x, tile_min_y])
-    #         pts[:,:2] = pts[:,:2]+translation  # Translate points to tile local coords
-    #         pts[:,:2] = pts[:,:2]/self.img_res  # Scale to 224x224x100 grid
-    #         pts[:, -1] = scaler.fit_transform(pts[:, -1].reshape(-1, 1)).squeeze()
-            
-    #         assert np.all(pts[:,0] >=0) and np.all(pts[:,0] <= self.img_dim), "X coordinates out of bounds after tiling."
-    #         assert np.all(pts[:,1] >=0) and np.all(pts[:,1] <= self.img_dim), "Y coordinates out of bounds after tiling."
-            
-    #         t = Tile(lidar=pts,translation=translation)
-    #         tiles.append(t)
-
-    #     return tiles
     
     
     def tile_lidar_to_224(self, img=None, las=None, overlap_pct=0.2):
@@ -233,14 +175,12 @@ class Pix2PolyGeoPredictor(Pix2PolyPredictor):
             batch_polygons+= self.batch_to_polygons(x_image, x_lidar, self.model, self.tokenizer)
             img_infos+= loader.dataset.coco.loadImgs(np.atleast_1d(image_ids.squeeze().cpu().numpy()))
             
-        self.setup_image_size(img_res=img_infos[0]['res_x'], img_dim=img_infos[0]['width'])
         shapely_polygons = []
+
         for i in range(len(batch_polygons)):
-<<<<<<< HEAD
-            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i], transform=img_infos[i]['top_left'], flip_y=True)
-=======
-            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i], translation=img_infos[i]['top_left'], flip_y=True)
->>>>>>> 61a5f63d053c386b6e54218a1ce0101e199998d8
+            transform = transform = rasterio.Affine(0.25, 0, img_infos[i]['top_left'][0],
+                                        0, -0.25, img_infos[i]['top_left'][1])
+            shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i], transform=transform, flip_y=True)
 
         self.export_to_shp(shapely_polygons,outfile=outfile,epsg=2056)
         
