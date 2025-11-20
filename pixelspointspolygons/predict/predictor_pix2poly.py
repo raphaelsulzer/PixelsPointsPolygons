@@ -125,6 +125,7 @@ class Pix2PolyPredictor(Predictor):
                                   img_infile=None,lidar_infile=None,
                                   downsample_factor=1,
                                   overlap=0.5,
+                                  georeference=True,
                                   outfile=None):
         
         self.setup_model()
@@ -137,7 +138,7 @@ class Pix2PolyPredictor(Predictor):
             overlap=overlap,
             downsample_factor=downsample_factor,
             out_dir=out_dir,
-            georeference=True)
+            georeference=georeference)
         
         batch_size = self.cfg.run_type.batch_size
         iters = len(tiles)//batch_size + int(len(tiles)%batch_size>0)
@@ -167,7 +168,7 @@ class Pix2PolyPredictor(Predictor):
                                                              img_dim=224,
                                                              transform=tiles[i].transform,
                                                              overlap_clip=overlap,
-                                                             flip_y=False)
+                                                             flip_y=georeference)
             
         
         shapely_polygons = self.merge_shapely_polygons(shapely_polygons)
