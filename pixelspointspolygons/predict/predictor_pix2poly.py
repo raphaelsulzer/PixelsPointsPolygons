@@ -130,7 +130,11 @@ class Pix2PolyPredictor(Predictor):
                 
         out_dir = None
         # out_dir = "./polygon_predictions/debug/"
-        full_image, tiles = self.load_image_and_tile(img_infile,downsample_factor=downsample_factor,out_dir=out_dir)
+        full_image, tiles = self.load_image_and_tile(
+            img_infile,
+            overlap=0.5,
+            downsample_factor=downsample_factor,
+            out_dir=out_dir)
         
         batch_size = self.cfg.run_type.batch_size
         iters = len(tiles)//batch_size + int(len(tiles)%batch_size>0)
@@ -149,7 +153,8 @@ class Pix2PolyPredictor(Predictor):
             
             batch_polygons += self.batch_to_polygons(batch, None, self.model, self.tokenizer)
             
-            break
+            if i > 1 and self.cfg.run_type.name == "debug":
+                break
     
         # assert(len(batch_polygons) == len(tiles)), f"Number of predicted polygon sets ({len(batch_polygons)}) does not match number of tiles ({len(tiles)})."
 
@@ -157,7 +162,8 @@ class Pix2PolyPredictor(Predictor):
         for i in range(len(batch_polygons)):
             shapely_polygons += self.tensor_to_shapely_polys(batch_polygons[i],
                                                              img_dim=224,
-                                                             transform=tiles[i].transform)
+                                                             transform=tiles[i].transform,
+                                                             flip_y=False)
             
         self.logger.info(f"Total polygons predicted: {len(batch_polygons)}")
         self.plot_prediction(shapely_polygons, image=full_image, lidar=None, outfile=outfile)
