@@ -326,7 +326,9 @@ class Predictor:
             poly = Polygon(poly_np)
             
             if overlap_clip > 0.0:
-                rect = box(56*transform.a+transform.c, 56*transform.a+transform.f, 168*transform.a+transform.c, 168*transform.a+transform.f)   # minx, miny, maxx, maxy
+                bottom = overlap_clip * img_dim / 2
+                top = img_dim - bottom
+                rect = box(bottom*transform.a+transform.c, bottom*transform.e+transform.f, top*transform.a+transform.c, top*transform.e+transform.f)   # minx, miny, maxx, maxy
                 
                 try:
                     poly = self.clip_polygon_with_rect(poly, rect)

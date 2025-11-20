@@ -38,11 +38,14 @@ def main(cfg):
     # if 'image_file' not in cfg and 'lidar_file' not in cfg:
     #     raise ValueError("Either an image_file or lidar_file must be provided using +image_file=$FILE_NAME or +lidar_file=$FILE_NAME.")
     
-    image_file = "/data/rsulzer/PixelsPointsPolygons_dataset/data/224/images/val/CH/image_CH_val.tif"
+    country = "CH"
+    region = "val"
+    
+    image_file = f"/data/rsulzer/PixelsPointsPolygons_dataset/data/224/images/{region}/{country}/image_{country}_{region}.tif"
     
     predictor.predict_file_with_tilling(img_infile=image_file, lidar_infile=None, 
                                         downsample_factor=1,
-                                        overlap=0.0,
+                                        overlap=0.5,
                                         outfile=f"./polygon_predictions/{os.path.splitext(os.path.basename(image_file))[0]}.shp")
     
     
