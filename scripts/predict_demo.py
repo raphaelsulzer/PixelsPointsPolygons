@@ -47,7 +47,7 @@ def main(cfg):
     if 'image_file' not in cfg and 'lidar_file' not in cfg:
         raise ValueError("Either an image_file or lidar_file must be provided using +image_file=$FILE_NAME or +lidar_file=$FILE_NAME.")
     
-    predictor.predict_file(img_infile=image_file, lidar_infile=lidar_file)
+    predictor.predict_file_224(img_infile=image_file, lidar_infile=lidar_file)
     
     
 if __name__ == "__main__":

@@ -126,6 +126,31 @@ def seed_everything(seed=1234):
     torch.backends.cudnn.deterministic = True
 
 
+
+class TimeDict:
+    def __init__(self):
+        self.time = {}
+        self.n_samples = 0
+
+    def add_time(self, key, value, count=1):
+        if key in self.time:
+            self.time[key] += value
+        else:
+            self.time[key] = value
+        self.n_samples += count
+
+    def get_final_time_dict(self):
+        
+        avg_time_dict = {}
+        for key, value in self.time.items():
+            avg_time_dict[key] = value / self.n_samples if self.n_samples > 0 else 0
+        
+        for value in avg_time_dict.values():
+            avg_time_dict["Total time"] += value
+        
+        return avg_time_dict
+
+
 class AverageMeter:
     def __init__(self, name="Metric"):
         self.name = name
