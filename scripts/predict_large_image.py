@@ -39,7 +39,7 @@ def main(cfg):
     #     raise ValueError("Either an image_file or lidar_file must be provided using +image_file=$FILE_NAME or +lidar_file=$FILE_NAME.")
     
     country = "CH"
-    region = "val"
+    region = "test"
     
     image_file = f"/data/rsulzer/PixelsPointsPolygons_dataset/data/224/images/{region}/{country}/image_{country}_{region}.tif"
     
