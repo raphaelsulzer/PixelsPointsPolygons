@@ -168,7 +168,7 @@ class Pix2PolyPredictor(Predictor):
                                                              img_dim=224,
                                                              transform=tiles[i].transform,
                                                              overlap_clip=overlap,
-                                                             flip_y=georeference)
+                                                             flip_y=False)
             
         
         shapely_polygons = self.merge_shapely_polygons(shapely_polygons)

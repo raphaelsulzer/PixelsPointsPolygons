@@ -323,7 +323,6 @@ class Predictor:
             poly_np*=np.array([transform.a,transform.e])
             poly_np+=np.array([transform.c, transform.f])
             
-            
             poly = Polygon(poly_np)
             
             if overlap_clip > 0.0:
