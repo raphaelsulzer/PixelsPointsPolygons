@@ -575,3 +575,8 @@ This repository benefits from the following open-source work. We thank the autho
 1. [Frame Field Learning](https://github.com/Lydorn/Polygonization-by-Frame-Field-Learning)
 2. [HiSup](https://github.com/SarahwXU/HiSup)
 3. [Pix2Poly](https://github.com/yeshwanth95/Pix2Poly)
+
+
+## License
+
+The dataset is publish under the CC-BY-4.0 license. The code and pretrained models are published under an academic non-commerical license. See [LICENSE.md](LICENSE.md) for additional details.
