@@ -1,6 +1,6 @@
 # Academic Research Non-Commercial License
 
-**Copyright (c) [2025] [LuxCarta]**  
+**Copyright (c) [2025] [[LuxCarta](https://www.luxcarta.com/)]**  
 All rights reserved.
 
 ---
@@ -68,6 +68,6 @@ Upon termination, the User must destroy all copies of the Software.
 ## 7. Commercial Licensing
 
 Commercial licenses may be negotiated separately by contacting:  
-**[LuxCarta](luxcarta.com)**
+**[LuxCarta](https://www.luxcarta.com/contact)**
 
 ---
